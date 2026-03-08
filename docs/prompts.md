@@ -36,3 +36,12 @@ Envuelve las secciones para activar los estilos visuales del preset:
 Analiza las reglas anteriores y aplícalas directamente a la siguiente canción:
 
 [PEGA AQUÍ TU CANCIÓN]
+
+
+## Prompt Storage Strategy
+
+Runtime prompts used by the application are stored in the `app/prompts` directory.
+
+This allows prompts to be versioned and modified independently from the code.
+
+The prompts documented here represent reference versions used during design.

@@ -172,3 +172,29 @@ Integrations with external systems such as LLM providers, filesystem and ChordPr
 UI
 
 User interface and state management.
+
+## Processing Pipeline
+
+Song processing follows a centralized pipeline architecture.
+
+The pipeline is orchestrated by a dedicated application service.
+
+Pipeline flow:
+
+Raw Song Input  
+↓  
+Cleaning Service  
+↓  
+Conversion Service  
+↓  
+Song Model Builder  
+↓  
+Song Domain Model  
+↓  
+Preview  
+↓  
+Export
+
+The UI does not directly coordinate individual services.
+
+Instead it interacts with a central pipeline service responsible for orchestrating the workflow.
