@@ -27,9 +27,12 @@ Envuelve las secciones para activar los estilos visuales del preset:
 - Estrofas: Usa {start_of_verse} y {end_of_verse} (sin nombre, solo las etiquetas de bloque).
 - Otras secciones (Intro, Puente, Solo): Usa {comment: Nombre}.
 
-6. Limpieza y Rigor
-- Sin caracteres extraños ni códigos \n en metadatos.
 
 Analiza las reglas anteriores y aplícalas directamente a la siguiente canción:
 
-[PEGA AQUÍ TU CANCIÓN]
+
+User preferences:
+
+{{user_preferences}}
+
+{{song_text}}

@@ -85,6 +85,12 @@ the documentation must be updated first.
 - reason for the assumption: conservative cleaning must prioritize musical information preservation and alignment safety
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: updating `app/prompts/conversion.prompt.md` for PromptLoader variables
+- assumption made: the new `User preferences` block should be appended near the final input area, immediately before `{{song_text}}`, while preserving all existing conversion rules and instruction sections
+- reason for the assumption: architecture docs define both `{{song_text}}` and `{{user_preferences}}` as current prompt variables but do not mandate an exact insertion line
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
