@@ -1,23 +1,18 @@
-import { access, readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+const bundledPrompts = import.meta.glob("../../prompts/*.prompt.md", {
+  query: "?raw",
+  import: "default",
+  eager: true
+}) as Record<string, string>;
 
 export class PromptLoader {
   private readonly cache = new Map<string, string>();
   private readonly promptDirectories: string[];
 
   constructor(promptDirectory?: string) {
-    const localPromptsDir = path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      "../../prompts"
-    );
-    const cwdPromptsDir = path.resolve(process.cwd(), "app/prompts");
-
     this.promptDirectories = [
       ...(promptDirectory ? [promptDirectory] : []),
-      ...(process.env.CHORDPRO_PROMPTS_DIR ? [process.env.CHORDPRO_PROMPTS_DIR] : []),
-      cwdPromptsDir,
-      localPromptsDir
+      ...this.resolveEnvPromptDirectory(),
+      ...this.resolveCwdPromptDirectory()
     ];
   }
 
@@ -29,8 +24,7 @@ export class PromptLoader {
     }
 
     const fileName = `${normalizedName}.prompt.md`;
-    const promptPath = await this.resolvePromptPath(fileName);
-    const prompt = await readFile(promptPath, "utf8");
+    const prompt = await this.resolvePromptContent(fileName);
 
     this.cache.set(normalizedName, prompt);
     return prompt;
@@ -62,19 +56,52 @@ export class PromptLoader {
     return normalized;
   }
 
-  private async resolvePromptPath(fileName: string): Promise<string> {
+  private resolveEnvPromptDirectory(): string[] {
+    const envValue = (
+      globalThis as { process?: { env?: Record<string, string | undefined> } }
+    ).process?.env?.CHORDPRO_PROMPTS_DIR;
+
+    return envValue ? [envValue] : [];
+  }
+
+  private resolveCwdPromptDirectory(): string[] {
+    const cwd = (globalThis as { process?: { cwd?: () => string } }).process?.cwd?.();
+    return cwd ? [`${cwd}/app/prompts`] : [];
+  }
+
+  private async resolvePromptContent(fileName: string): Promise<string> {
+    const bundledKey = Object.keys(bundledPrompts).find((key) =>
+      key.endsWith(`/${fileName}`)
+    );
+    if (bundledKey) {
+      return bundledPrompts[bundledKey];
+    }
+
+    const fileSystemPrompt = await this.readFromFileSystem(fileName);
+    if (fileSystemPrompt !== undefined) {
+      return fileSystemPrompt;
+    }
+
+    throw new Error(`Prompt file "${fileName}" not found.`);
+  }
+
+  private async readFromFileSystem(fileName: string): Promise<string | undefined> {
+    if (this.promptDirectories.length === 0) {
+      return undefined;
+    }
+
+    let fsPromises: typeof import("node:fs/promises");
     for (const directory of this.promptDirectories) {
-      const fullPath = path.resolve(directory, fileName);
       try {
-        await access(fullPath);
-        return fullPath;
+        fsPromises ??= await import("node:fs/promises");
+        const fullPath = `${directory.replace(/[\\/]+$/g, "")}/${fileName}`;
+        await fsPromises.access(fullPath);
+        return await fsPromises.readFile(fullPath, "utf8");
       } catch {
         // Try next candidate directory.
       }
     }
 
-    throw new Error(
-      `Prompt file "${fileName}" not found in: ${this.promptDirectories.join(", ")}`
-    );
+    return undefined;
   }
 }

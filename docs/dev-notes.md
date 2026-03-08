@@ -103,6 +103,18 @@ the documentation must be updated first.
 - reason for the assumption: architecture now documents concrete service flow, and legacy wrappers introduced type/API drift from real implementations
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: implementing developer Pipeline Playground view
+- assumption made: the playground should prefer `OpenAIProvider` with model `gpt-4.1-mini`, fall back to `GeminiProvider` with model `gemini-1.5-flash`, and show a runtime error if no API key is configured
+- reason for the assumption: the task requires reusing existing service implementations and opening directly into a developer debugging view without adding new configuration UI
+- whether it requires later validation: yes
+
+- date: 2026-03-08
+- context: making PromptLoader compatible with the developer Playground running in the Vue app
+- assumption made: prompt files should be loaded from bundled `app/prompts/*.prompt.md` at runtime in the browser build, with filesystem reads kept only as a fallback for Node-like environments
+- reason for the assumption: static Node imports break Vite browser builds once ConversionService is used from UI code
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.

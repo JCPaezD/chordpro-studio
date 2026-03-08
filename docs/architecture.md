@@ -199,6 +199,18 @@ The UI does not directly coordinate individual services.
 
 Instead it interacts with a central pipeline service responsible for orchestrating the workflow.
 
+### Pipeline Debug Output
+
+For development and debugging purposes, the pipeline service may expose intermediate results.
+
+The `SongPipelineService.process()` method may return:
+
+- cleanedText
+- chordPro
+- song
+
+This allows developer tools such as the Pipeline Playground to inspect intermediate pipeline stages without re-running individual services.
+
 ## ChordPro Parser
 
 The system includes an internal ChordPro parser responsible for converting ChordPro text into the internal Song domain model.
@@ -349,3 +361,33 @@ Song text:
 User preferences:
 
 {{user_preferences}}
+
+---
+
+## Developer Playground
+
+The application includes a developer-only testing view called **Pipeline Playground**.
+
+Purpose:
+
+Provide a visual debugging interface for the song processing pipeline.
+
+This view allows developers to:
+
+- paste raw chord sheet text
+- run the full processing pipeline
+- inspect intermediate pipeline outputs
+
+Displayed pipeline stages:
+
+Raw Text  
+↓  
+Cleaned Text  
+↓  
+ChordPro Text  
+↓  
+Song Domain Model (JSON)
+
+The playground is intended exclusively for development and debugging.
+
+It is not part of the end-user UI and may be removed or replaced in production builds.

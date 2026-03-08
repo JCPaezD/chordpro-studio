@@ -1,13 +1,7 @@
 <template>
-  <main>
-    <h1>ChordPro Studio</h1>
-    <p>Desktop-first workflow for song cleaning, conversion, and export.</p>
-  </main>
+  <PipelinePlaygroundView />
 </template>
 
-<style scoped>
-main {
-  margin: 2rem;
-  font-family: sans-serif;
-}
-</style>
+<script setup lang="ts">
+import PipelinePlaygroundView from "./ui/views/PipelinePlaygroundView.vue";
+</script>

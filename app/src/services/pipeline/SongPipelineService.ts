@@ -13,12 +13,13 @@ export class SongPipelineService {
   async process(
     rawText: string,
     preferences?: Record<string, unknown>
-  ): Promise<{ chordPro: string; song: Song }> {
+  ): Promise<{ cleanedText: string; chordPro: string; song: Song }> {
     const cleanedText = this.cleaningService.clean(rawText);
     const chordPro = await this.conversionService.convert(cleanedText, preferences);
     const song = this.chordProParser.parse(chordPro);
 
     return {
+      cleanedText,
       chordPro,
       song
     };
