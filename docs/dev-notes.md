@@ -48,3 +48,24 @@ the documentation must be updated first.
 - assumption made: the runtime prompt content starts at `Actúa...` and ends at `[PEGA AQUÍ TU CANCIÓN]`, excluding the `prompts.md` heading and `## Prompt Storage Strategy` section
 - reason for the assumption: those parts are documentation metadata and storage guidance, not runtime prompt text
 - whether it requires later validation: yes
+
+- date: 2026-03-08
+- context: fixing encoding in `app/prompts/conversion.prompt.md`
+- assumption made: mojibake shown in terminal output is caused by console display encoding, so UTF-8 byte validation is the source of truth for correctness
+- reason for the assumption: direct UTF-8 decoding checks confirmed correct accented content while console rendering remained inconsistent
+- whether it requires later validation: yes
+
+## File Encoding Rule
+
+All text files in the project must use UTF-8 encoding without BOM.
+
+This includes:
+
+- Markdown documentation
+- prompt files
+- TypeScript files
+- configuration files
+
+Special characters such as accented vowels must be preserved correctly.
+
+If encoding issues appear (for example broken accented characters), the file must be rewritten using UTF-8 encoding.
