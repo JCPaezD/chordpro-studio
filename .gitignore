@@ -3,3 +3,7 @@ app/node_modules/
 app/dist/
 src-tauri/target/
 .DS_Store
+.env
+.env.local
+app/.env
+app/.env.local

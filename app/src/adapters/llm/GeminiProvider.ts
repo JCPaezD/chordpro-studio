@@ -1,6 +1,7 @@
 import type { LLMProvider } from "./LLMProvider";
 
 type ProcessEnvMap = Record<string, string | undefined>;
+type ViteEnvMap = Record<string, string | boolean | undefined>;
 
 function readEnv(name: string): string | undefined {
   const fromProcess = (
@@ -9,6 +10,12 @@ function readEnv(name: string): string | undefined {
 
   if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
     return fromProcess.trim();
+  }
+
+  const viteKey = `VITE_${name}`;
+  const fromVite = (import.meta as ImportMeta & { env?: ViteEnvMap }).env?.[viteKey];
+  if (typeof fromVite === "string" && fromVite.trim().length > 0) {
+    return fromVite.trim();
   }
 
   return undefined;

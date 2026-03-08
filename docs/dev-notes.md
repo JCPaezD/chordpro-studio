@@ -121,6 +121,12 @@ the documentation must be updated first.
 - reason for the assumption: failures were caused by missing root `package.json`, while the functional app already lived under `app/`
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: enabling LLM API key detection in Vite dev browser runtime
+- assumption made: browser-side development uses `VITE_OPENAI_API_KEY` / `VITE_GEMINI_API_KEY` from `app/.env.local`, while Node/Tauri runtime keeps `OPENAI_API_KEY` / `GEMINI_API_KEY` via `process.env`
+- reason for the assumption: Vite only exposes prefixed variables to client code and does not provide raw process environment variables in browser runtime
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
