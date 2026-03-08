@@ -73,6 +73,12 @@ the documentation must be updated first.
 - reason for the assumption: this keeps runtime behavior deterministic across Node/Tauri contexts while avoiding silent data loss from missing render variables
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: implementing `OpenAIProvider` and `GeminiProvider` in `app/src/adapters/llm/`
+- assumption made: initial provider calls target OpenAI `POST /v1/responses` and Gemini `v1beta ... :generateContent`, extracting plain text from `output_text`/content parts
+- reason for the assumption: this is a simple deterministic HTTP integration that satisfies current MVP requirements without external SDK dependencies
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
