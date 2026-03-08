@@ -55,6 +55,12 @@ the documentation must be updated first.
 - reason for the assumption: direct UTF-8 decoding checks confirmed correct accented content while console rendering remained inconsistent
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: implementing `ChordProParser` in `app/src/services/parser/ChordProParser.ts`
+- assumption made: parser output must follow the currently implemented TypeScript domain interfaces (which do not yet include all fields listed in `docs/domain-model.md`), and unknown section labels from `{comment: ...}` are mapped to section type `custom`
+- reason for the assumption: architecture and domain docs are ahead of the current code model, and parser must still emit a valid `Song` object compatible with existing interfaces
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
