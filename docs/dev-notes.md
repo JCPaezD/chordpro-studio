@@ -91,6 +91,12 @@ the documentation must be updated first.
 - reason for the assumption: architecture docs define both `{{song_text}}` and `{{user_preferences}}` as current prompt variables but do not mandate an exact insertion line
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: implementing `app/src/services/conversion/ConversionService.ts`
+- assumption made: new conversion flow returns raw ChordPro text from the provider and coexists temporarily with older placeholder/contracts that still model conversion as `Song`
+- reason for the assumption: task requires prompt-driven LLM conversion output as string and explicitly excludes parsing from this service
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.

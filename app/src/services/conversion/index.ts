@@ -14,3 +14,5 @@ export const conversionServicePlaceholder: ConversionService = {
     return emptySong;
   }
 };
+
+export { ConversionService } from "./ConversionService";
