@@ -79,6 +79,12 @@ the documentation must be updated first.
 - reason for the assumption: this is a simple deterministic HTTP integration that satisfies current MVP requirements without external SDK dependencies
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: implementing conservative `CleaningService` in `app/src/services/cleaning/CleaningService.ts`
+- assumption made: known website boilerplate removal is limited to exact, line-level matches from the documented examples to avoid deleting possible musical text; HTML cleanup removes tag markup but preserves remaining visible characters
+- reason for the assumption: conservative cleaning must prioritize musical information preservation and alignment safety
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
