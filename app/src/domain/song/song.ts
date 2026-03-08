@@ -1,21 +1,11 @@
-export interface SongMetadata {
-  title: string;
-  artist: string;
-  album?: string;
-  year?: string;
-}
-
-export interface SongLine {
-  chords: string[];
-  lyrics: string;
-}
-
-export interface SongSection {
-  type: "verse" | "chorus" | "bridge" | "intro" | "outro";
-  lines: SongLine[];
-}
+import type { SongMetadata } from "./metadata";
+import type { SongSection } from "./section";
+import type { SongSource } from "./source";
+import type { SongId } from "./types";
 
 export interface Song {
+  id?: SongId;
   metadata: SongMetadata;
+  source?: SongSource;
   sections: SongSection[];
 }
