@@ -105,3 +105,15 @@ This includes:
 Special characters such as accented vowels must be preserved correctly.
 
 If encoding issues appear (for example broken accented characters), the file must be rewritten using UTF-8 encoding.
+
+## Commit Policy
+
+Before creating any commit, Codex must review the entire working tree.
+
+If manual changes exist in the repository (for example documentation edits made by the user), Codex should include them in the commit when they belong to the same logical change.
+
+Codex should avoid leaving unrelated uncommitted files after a task unless explicitly instructed.
+
+## Documentation Changes
+
+When documentation files are manually edited by the user, Codex should treat them as authoritative changes and include them in the next relevant commit unless instructed otherwise.
