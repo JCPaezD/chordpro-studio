@@ -67,6 +67,12 @@ the documentation must be updated first.
 - reason for the assumption: task explicitly requires strict domain-model alignment and also forbids modifying existing domain interfaces in this change
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: implementing `PromptLoader` in `app/src/utils/PromptLoader.ts`
+- assumption made: prompt lookup should support `app/prompts` from repository root and a runtime override via `CHORDPRO_PROMPTS_DIR`; unresolved template variables should remain unchanged in rendered output
+- reason for the assumption: this keeps runtime behavior deterministic across Node/Tauri contexts while avoiding silent data loss from missing render variables
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
