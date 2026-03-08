@@ -1,19 +1,15 @@
 import type { LLMProvider } from "./LLMProvider";
 
-type ProcessEnvMap = Record<string, string | undefined>;
-type ViteEnvMap = Record<string, string | boolean | undefined>;
-
-function readEnv(name: string): string | undefined {
+function readGeminiApiKey(): string | undefined {
   const fromProcess = (
-    globalThis as { process?: { env?: ProcessEnvMap } }
-  ).process?.env?.[name];
+    globalThis as { process?: { env?: Record<string, string | undefined> } }
+  ).process?.env?.GEMINI_API_KEY;
 
   if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
     return fromProcess.trim();
   }
 
-  const viteKey = `VITE_${name}`;
-  const fromVite = (import.meta as ImportMeta & { env?: ViteEnvMap }).env?.[viteKey];
+  const fromVite = import.meta.env?.VITE_GEMINI_API_KEY;
   if (typeof fromVite === "string" && fromVite.trim().length > 0) {
     return fromVite.trim();
   }
@@ -25,7 +21,7 @@ export class GeminiProvider implements LLMProvider {
   private readonly apiKey: string;
 
   constructor(private readonly model: string) {
-    const apiKey = readEnv("GEMINI_API_KEY");
+    const apiKey = readGeminiApiKey();
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not set.");
     }

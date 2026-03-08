@@ -127,6 +127,12 @@ the documentation must be updated first.
 - reason for the assumption: Vite only exposes prefixed variables to client code and does not provide raw process environment variables in browser runtime
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: fixing missing API key detection in the Pipeline Playground
+- assumption made: repository-root `.env.local` is the canonical development env file, so Vite should load env values from repo root (`envDir: \"..\"`) while providers resolve `process.env` first and then `import.meta.env`
+- reason for the assumption: the active developer workflow runs npm commands from repository root and already stores Vite keys in root `.env.local`
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
