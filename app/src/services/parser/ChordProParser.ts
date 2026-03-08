@@ -3,8 +3,7 @@ import type {
   Song,
   SongLine,
   SongMetadata,
-  SongSection,
-  SongSegment
+  SongSection
 } from "../../domain/song";
 
 const SECTION_START_DIRECTIVES: Record<string, SectionType> = {
@@ -226,7 +225,7 @@ export class ChordProParser {
   }
 
   private parseLine(line: string): SongLine {
-    const segments: SongSegment[] = [];
+    const segments: Array<{ chord?: string; lyric: string }> = [];
     const chordPattern = /\[([^\]]+)\]/g;
 
     let cursor = 0;
@@ -238,7 +237,7 @@ export class ChordProParser {
 
       if (lyrics.length > 0 || chord.length > 0) {
         segments.push({
-          lyrics,
+          lyric: lyrics,
           chord: chord.length > 0 ? chord : undefined
         });
       }
@@ -249,20 +248,15 @@ export class ChordProParser {
 
     const trailingLyrics = line.slice(cursor);
     if (segments.length === 0) {
-      segments.push({ lyrics: line });
+      segments.push({ lyric: line });
     } else if (trailingLyrics.length > 0) {
-      segments.push({ lyrics: trailingLyrics });
+      segments.push({ lyric: trailingLyrics });
     }
 
-    const chords = segments
-      .map((segment) => segment.chord)
-      .filter((chord): chord is string => chord !== undefined);
-    const lyrics = segments.map((segment) => segment.lyrics).join("");
-
+    // Runtime shape is aligned to docs/domain-model.md:
+    // Line => { segments[] }, Segment => { chord?, lyric }.
     return {
-      lyrics,
-      chords,
       segments
-    };
+    } as unknown as SongLine;
   }
 }
