@@ -115,6 +115,12 @@ the documentation must be updated first.
 - reason for the assumption: static Node imports break Vite browser builds once ConversionService is used from UI code
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: fixing repository-level npm command failures
+- assumption made: npm commands are expected to be executed from repository root, so root workspace scripts should proxy to `app/` (`npm install`, `npm run build`, `npm run dev`)
+- reason for the assumption: failures were caused by missing root `package.json`, while the functional app already lived under `app/`
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.

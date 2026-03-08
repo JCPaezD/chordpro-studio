@@ -1,0 +1,12 @@
+{
+  "name": "chordpro-studio",
+  "private": true,
+  "workspaces": [
+    "app"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace app",
+    "build": "npm run build --workspace app",
+    "preview": "npm run preview --workspace app"
+  }
+}
