@@ -21,7 +21,7 @@ function createProvider(): LLMProvider {
     return new OpenAIProvider("gpt-4.1-mini");
   } catch {
     try {
-      return new GeminiProvider("gemini-1.5-flash-latest");
+      return new GeminiProvider("gemini-flash-latest");
     } catch {
       return {
         async generate(): Promise<string> {
