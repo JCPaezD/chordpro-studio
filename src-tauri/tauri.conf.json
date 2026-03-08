@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ChordPro Studio",
+  "version": "0.1.0",
+  "identifier": "com.jcpaezd.chordprostudio",
+  "build": {
+    "beforeDevCommand": "npm run dev --prefix app",
+    "beforeBuildCommand": "npm run build --prefix app",
+    "frontendDist": "../app/dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ChordPro Studio",
+        "width": 1280,
+        "height": 800,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}
