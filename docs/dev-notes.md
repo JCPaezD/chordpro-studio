@@ -97,6 +97,12 @@ the documentation must be updated first.
 - reason for the assumption: task requires prompt-driven LLM conversion output as string and explicitly excludes parsing from this service
 - whether it requires later validation: yes
 
+- date: 2026-03-08
+- context: cleanup of scaffold-era services compatibility layer
+- assumption made: shared `app/src/services/contracts.ts` and placeholder wrapper exports are obsolete now that concrete `CleaningService` and `ConversionService` are implemented, while `analysis` should remain contract-only until a real implementation exists
+- reason for the assumption: architecture now documents concrete service flow, and legacy wrappers introduced type/API drift from real implementations
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.

@@ -1,7 +1,5 @@
-import type { AnalysisService } from "../contracts";
+import type { Song } from "../../domain/song/song";
 
-export const analysisServicePlaceholder: AnalysisService = {
-  async analyze(): Promise<string[]> {
-    return [];
-  }
-};
+export interface AnalysisService {
+  analyze(song: Song): Promise<string[]>;
+}
