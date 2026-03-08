@@ -198,3 +198,154 @@ Export
 The UI does not directly coordinate individual services.
 
 Instead it interacts with a central pipeline service responsible for orchestrating the workflow.
+
+## ChordPro Parser
+
+The system includes an internal ChordPro parser responsible for converting ChordPro text into the internal Song domain model.
+
+Flow:
+
+ChordPro text  
+↓  
+ChordProParser  
+↓  
+Song domain model
+
+The parser must support:
+
+- metadata directives
+- section directives
+- chord notation
+- lyric lines
+
+Directives not required by the MVP may be parsed but ignored.
+
+### Section Detection
+
+Sections may be defined in two ways:
+
+1. Explicit ChordPro directives such as:
+
+{start_of_verse}
+{start_of_chorus}
+{start_of_bridge}
+
+2. Plain text headers commonly used in chord sheets, for example:
+
+Verse
+Chorus
+Bridge
+Intro
+Outro
+
+If a plain text line matches a known section name, the parser should treat it as a section boundary.
+
+Directive-based sections take precedence when both are present.
+
+## LLM Integration
+
+The application integrates Large Language Models through a provider abstraction layer.
+
+Supported providers (initial):
+
+- OpenAI
+- Gemini
+
+Additional providers may be added later.
+
+---
+
+## API Key Strategy
+
+The application resolves API keys in the following order:
+
+1. Environment variables
+2. User configuration file
+3. Manual entry in the UI
+
+Example environment variables:
+
+OPENAI_API_KEY  
+GEMINI_API_KEY
+
+User configuration is stored locally in:
+
+~/.chordpro-studio/config.json
+
+---
+
+## Prompt System
+
+Prompts used by the application are stored outside the codebase in:
+
+app/prompts/
+
+Prompts are versioned and editable without modifying application logic.
+
+Prompt files use the extension:
+
+.prompt.md
+
+Example:
+
+conversion.prompt.md
+
+---
+
+## Prompt Loader
+
+The system includes a PromptLoader utility responsible for:
+
+- loading prompt files from app/prompts
+- caching prompt contents
+- rendering prompts with variables
+
+Variable syntax:
+
+{{variable_name}}
+
+Example:
+
+{{song_text}}
+
+---
+
+## LLM Processing Flow
+
+The pipeline uses the following flow:
+
+Raw Text  
+↓  
+CleaningService  
+↓  
+ConversionService  
+↓  
+ChordPro text  
+↓  
+ChordProParser  
+↓  
+Song domain model
+
+All LLM interactions are performed through the LLMProvider abstraction.
+
+## Prompt Variables
+
+Prompts may contain template variables rendered by PromptLoader.
+
+Current variables:
+
+{{song_text}}
+The raw or cleaned chord sheet text being processed.
+
+{{user_preferences}}
+Serialized user preferences that may influence conversion behavior.
+
+Example usage in a prompt:
+
+Song text:
+
+{{song_text}}
+
+User preferences:
+
+{{user_preferences}}

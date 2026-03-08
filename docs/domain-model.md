@@ -167,3 +167,20 @@ ChordPro Text
 Internal Song Model
 
 ChordPro is later used for PDF export.
+
+## Section Identification
+
+Sections may originate from two sources:
+
+1. Explicit ChordPro section directives.
+2. Detected textual section headers in chord sheets.
+
+Examples of textual headers:
+
+Verse  
+Chorus  
+Bridge  
+Intro  
+Outro  
+
+When detected, these headers should be mapped to the corresponding SectionType.
