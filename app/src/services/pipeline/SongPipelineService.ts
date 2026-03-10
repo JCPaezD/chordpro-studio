@@ -14,15 +14,21 @@ export class SongPipelineService {
   async process(
     rawText: string,
     preferences?: Record<string, unknown>
-  ): Promise<{ cleanedText: string; chordPro: string; song: Song }> {
+  ): Promise<{
+    cleanedText: string;
+    chordPro: string;
+    retryLog?: string[];
+    song: Song;
+  }> {
     const cleanedText = this.cleaningService.clean(rawText);
-    const chordPro = await this.conversionService.convert(cleanedText, preferences);
-    ChordProOutputValidator.validate(chordPro);
-    const song = this.chordProParser.parse(chordPro);
+    const conversionResult = await this.conversionService.convert(cleanedText, preferences);
+    ChordProOutputValidator.validate(conversionResult.text);
+    const song = this.chordProParser.parse(conversionResult.text);
 
     return {
       cleanedText,
-      chordPro,
+      chordPro: conversionResult.text,
+      retryLog: conversionResult.retryLog,
       song
     };
   }

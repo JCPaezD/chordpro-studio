@@ -1,4 +1,4 @@
-import type { LLMProvider } from "../../adapters/llm/LLMProvider";
+import type { LLMGenerateResult, LLMProvider } from "../../adapters/llm/LLMProvider";
 import { PromptLoader } from "../../utils/PromptLoader";
 
 export class ConversionService {
@@ -10,7 +10,7 @@ export class ConversionService {
   async convert(
     cleanedText: string,
     preferences?: Record<string, unknown>
-  ): Promise<string> {
+  ): Promise<LLMGenerateResult> {
     const prompt = await this.promptLoader.renderPrompt("conversion", {
       song_text: cleanedText,
       user_preferences: JSON.stringify(preferences ?? {})

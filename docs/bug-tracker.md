@@ -119,10 +119,10 @@ Expected behavior:
 The system should retry the request.
 
 Temporary decision:
-Implement retry logic later.
+Resolved by adding automatic retry handling in `GeminiProvider`. Retries now occur for HTTP 429, HTTP 503 and network errors, using exponential backoff delays of 500ms, 1000ms and 2000ms. Retry attempts are collected in `retryLog`, and the Playground displays both retry attempts and the final error when retries are exhausted.
 
 Priority: Medium  
-Status: Open
+Status: Resolved
 
 ---
 

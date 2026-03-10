@@ -140,6 +140,12 @@ the documentation must be updated first.
 - whether it requires later validation: yes
 
 - date: 2026-03-10
+- context: adding retry handling for temporary Gemini failures in `GeminiProvider`
+- assumption made: Gemini requests should attempt 1 initial request plus up to 3 retries for HTTP 429, HTTP 503 and network failures, using exponential backoff (500ms, 1000ms, 2000ms), and propagate `retryLog` to the Playground for debugging whether the request eventually succeeds or fails
+- reason for the assumption: temporary provider errors should not fail the pipeline immediately, and retry visibility is necessary to debug instability from the developer Playground without relying on browser console logs
+- whether it requires later validation: yes
+
+- date: 2026-03-10
 - context: redesigning the runtime conversion prompt for pipeline use
 - assumption made: the conversion LLM must behave as a deterministic transformer that returns only valid ChordPro and must not switch into conversational or metadata-request behavior
 - reason for the assumption: the pipeline now depends on automatic downstream parsing and cannot safely process explanatory or blocking responses

@@ -1,4 +1,4 @@
-import type { LLMProvider } from "./LLMProvider";
+import type { LLMGenerateResult, LLMProvider } from "./LLMProvider";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 
@@ -30,7 +30,7 @@ export class OpenAIProvider implements LLMProvider {
     this.apiKey = apiKey;
   }
 
-  async generate(prompt: string): Promise<string> {
+  async generate(prompt: string): Promise<LLMGenerateResult> {
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
@@ -60,7 +60,7 @@ export class OpenAIProvider implements LLMProvider {
     };
 
     if (typeof data.output_text === "string" && data.output_text.length > 0) {
-      return data.output_text;
+      return { text: data.output_text };
     }
 
     const fallbackText =
@@ -73,6 +73,6 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error("OpenAI response did not include generated text.");
     }
 
-    return fallbackText;
+    return { text: fallbackText };
   }
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import { GeminiRetryError } from "../../adapters/llm/GeminiProvider";
 import { GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import type { LLMProvider } from "../../adapters/llm/LLMProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
@@ -16,6 +17,7 @@ const chordProText = ref("");
 const songJson = ref("");
 const loading = ref(false);
 const error = ref("");
+const retryLog = ref<string[]>([]);
 const validationReason = ref("");
 const validationRawOutput = ref("");
 
@@ -39,7 +41,7 @@ function createProvider(): LLMProvider {
       return new GeminiProvider("gemini-flash-latest");
     } catch {
       return {
-        async generate(): Promise<string> {
+        async generate() {
           throw new Error("No LLM API key configured. Set OPENAI_API_KEY or GEMINI_API_KEY.");
         }
       };
@@ -55,6 +57,7 @@ const pipeline = new SongPipelineService(
 
 async function runPipeline(): Promise<void> {
   error.value = "";
+  retryLog.value = [];
   validationReason.value = "";
   validationRawOutput.value = "";
   loading.value = true;
@@ -63,12 +66,17 @@ async function runPipeline(): Promise<void> {
     const result = await pipeline.process(rawInput.value);
     cleanedText.value = result.cleanedText;
     chordProText.value = result.chordPro;
+    retryLog.value = result.retryLog ?? [];
     songJson.value = JSON.stringify(result.song, null, 2);
   } catch (err) {
     if (err instanceof ChordProValidationError) {
       validationReason.value = err.details?.reason ?? "";
       validationRawOutput.value = err.details?.rawOutput ?? "";
       chordProText.value = validationRawOutput.value;
+    }
+
+    if (err instanceof GeminiRetryError) {
+      retryLog.value = err.retryLog;
     }
 
     error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
@@ -113,6 +121,17 @@ async function runPipeline(): Promise<void> {
 
       <button class="mini-button" @click="copyToClipboard(error)">Copy Error</button>
     </div>
+
+    <section v-if="retryLog.length > 0" class="retry-log">
+      <div class="retry-log-header">
+        <div>
+          <h2>LLM Retries</h2>
+          <p>Temporary Gemini retry events captured during conversion.</p>
+        </div>
+        <button class="mini-button" @click="copyToClipboard(retryLog.join('\n'))">Copy Retries</button>
+      </div>
+      <pre>{{ retryLog.join("\n") }}</pre>
+    </section>
 
     <section class="pipeline-grid">
       <section class="stage stage-input">
@@ -258,6 +277,39 @@ async function runPipeline(): Promise<void> {
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 252, 246, 0.9);
   box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
+}
+
+.retry-log {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(24, 32, 25, 0.12);
+  background: rgba(255, 252, 246, 0.9);
+  box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
+}
+
+.retry-log h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.retry-log p {
+  margin: 0.2rem 0 0;
+  color: #5f6c60;
+  font-size: 0.92rem;
+}
+
+.retry-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.retry-log pre {
+  height: 10rem;
+  min-height: 10rem;
 }
 
 .stage-header {
@@ -409,6 +461,11 @@ pre {
   }
 
   .error {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .retry-log-header {
     align-items: start;
     flex-direction: column;
   }
