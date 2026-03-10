@@ -194,7 +194,7 @@ Expected behavior:
 Each chord should be associated with the lyric text that follows it until the next chord.
 
 Temporary decision:
-Fix soon in the parser implementation.
+Resolved by updating the parser so each inline chord is associated with the lyric text that follows it until the next chord or end of line.
 
 Priority: High
-Status: Open
+Status: Resolved
