@@ -1,4 +1,5 @@
 import type { Song } from "../../domain/song";
+import { ChordProOutputValidator } from "../../domain/validation/ChordProOutputValidator";
 import type { CleaningService } from "../cleaning";
 import type { ConversionService } from "../conversion";
 import type { ChordProParser } from "../parser/ChordProParser";
@@ -16,6 +17,7 @@ export class SongPipelineService {
   ): Promise<{ cleanedText: string; chordPro: string; song: Song }> {
     const cleanedText = this.cleaningService.clean(rawText);
     const chordPro = await this.conversionService.convert(cleanedText, preferences);
+    ChordProOutputValidator.validate(chordPro);
     const song = this.chordProParser.parse(chordPro);
 
     return {

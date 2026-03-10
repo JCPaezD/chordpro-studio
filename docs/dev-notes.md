@@ -151,6 +151,12 @@ the documentation must be updated first.
 - reason for the assumption: this matches ChordPro inline notation semantics and fixes the documented BUG-08 parser inversion
 - whether it requires later validation: yes
 
+- date: 2026-03-10
+- context: adding LLM output validation before parsing in `SongPipelineService`
+- assumption made: the safest MVP boundary is to place `ChordProOutputValidator` between `ConversionService` and `ChordProParser` in the pipeline (`CleaningService -> ConversionService -> ChordProOutputValidator -> ChordProParser`) and reject model output unless it contains both basic ChordPro structure (tags plus inline chords) and none of the known non-ChordPro patterns such as markdown fences or explanatory lead-in text
+- reason for the assumption: parser errors and contaminated Song models are easier to prevent at the pipeline boundary than to repair after parsing, and surfacing `rawOutput` there gives the Playground enough context for debugging failed conversions
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.

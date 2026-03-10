@@ -4,6 +4,7 @@ import { ref } from "vue";
 import { GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import type { LLMProvider } from "../../adapters/llm/LLMProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
+import { ChordProValidationError } from "../../domain/validation/ChordProOutputValidator";
 import { CleaningService } from "../../services/cleaning";
 import { ConversionService } from "../../services/conversion";
 import { ChordProParser } from "../../services/parser/ChordProParser";
@@ -15,6 +16,8 @@ const chordProText = ref("");
 const songJson = ref("");
 const loading = ref(false);
 const error = ref("");
+const validationReason = ref("");
+const validationRawOutput = ref("");
 
 async function copyToClipboard(value: string): Promise<void> {
   if (!value) {
@@ -52,6 +55,8 @@ const pipeline = new SongPipelineService(
 
 async function runPipeline(): Promise<void> {
   error.value = "";
+  validationReason.value = "";
+  validationRawOutput.value = "";
   loading.value = true;
 
   try {
@@ -60,6 +65,12 @@ async function runPipeline(): Promise<void> {
     chordProText.value = result.chordPro;
     songJson.value = JSON.stringify(result.song, null, 2);
   } catch (err) {
+    if (err instanceof ChordProValidationError) {
+      validationReason.value = err.details?.reason ?? "";
+      validationRawOutput.value = err.details?.rawOutput ?? "";
+      chordProText.value = validationRawOutput.value;
+    }
+
     error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
   } finally {
     loading.value = false;
@@ -87,7 +98,19 @@ async function runPipeline(): Promise<void> {
     </header>
 
     <div v-if="error" class="error">
-      <p>{{ error }}</p>
+      <div class="error-content">
+        <p>{{ error }}</p>
+        <p v-if="validationReason" class="error-reason">Reason: {{ validationReason }}</p>
+
+        <div v-if="validationRawOutput" class="error-raw-output">
+          <div class="error-raw-header">
+            <strong>LLM Raw Output</strong>
+            <button class="mini-button" @click="copyToClipboard(validationRawOutput)">Copy Raw</button>
+          </div>
+          <pre>{{ validationRawOutput }}</pre>
+        </div>
+      </div>
+
       <button class="mini-button" @click="copyToClipboard(error)">Copy Error</button>
     </div>
 
@@ -323,7 +346,7 @@ pre {
 .error {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: start;
   gap: 1rem;
   padding: 0.9rem 1rem;
   margin: 0;
@@ -334,6 +357,35 @@ pre {
 
 .error p {
   margin: 0;
+}
+
+.error-content {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.error-reason {
+  font-size: 0.92rem;
+}
+
+.error-raw-output {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.error-raw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.error-raw-output pre {
+  height: 12rem;
+  min-height: 12rem;
+  background: rgba(255, 250, 245, 0.96);
 }
 
 @media (max-width: 1200px) {
@@ -357,6 +409,11 @@ pre {
   }
 
   .error {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .error-raw-header {
     align-items: start;
     flex-direction: column;
   }

@@ -95,10 +95,10 @@ Expected behavior:
 The system should detect invalid responses before parsing.
 
 Temporary decision:
-Add output validation before calling the parser.
+Resolved by introducing `ChordProOutputValidator` between conversion and parsing. It validates LLM output before `ChordProParser`, includes `rawOutput` in validation errors for debugging, and the Playground now displays that raw LLM output when validation fails.
 
 Priority: Medium  
-Status: Open
+Status: Resolved
 
 ---
 
