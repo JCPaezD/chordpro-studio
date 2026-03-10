@@ -145,6 +145,12 @@ the documentation must be updated first.
 - reason for the assumption: the pipeline now depends on automatic downstream parsing and cannot safely process explanatory or blocking responses
 - whether it requires later validation: yes
 
+- date: 2026-03-10
+- context: fixing inline ChordPro parsing in `app/src/services/parser/ChordProParser.ts`
+- assumption made: each inline chord token applies to the lyric text that follows it until the next chord or end of line, while text before the first chord remains an unchorded segment
+- reason for the assumption: this matches ChordPro inline notation semantics and fixes the documented BUG-08 parser inversion
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.

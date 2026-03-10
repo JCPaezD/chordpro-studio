@@ -227,30 +227,31 @@ export class ChordProParser {
   private parseLine(line: string): SongLine {
     const segments: Array<{ chord?: string; lyric: string }> = [];
     const chordPattern = /\[([^\]]+)\]/g;
+    const chordMatches = Array.from(line.matchAll(chordPattern));
 
-    let cursor = 0;
-    let match: RegExpExecArray | null = chordPattern.exec(line);
+    if (chordMatches.length === 0) {
+      segments.push({ lyric: line });
+    } else {
+      const firstChordIndex = chordMatches[0].index ?? 0;
+      const leadingLyrics = line.slice(0, firstChordIndex);
 
-    while (match) {
-      const lyrics = line.slice(cursor, match.index);
-      const chord = match[1].trim();
-
-      if (lyrics.length > 0 || chord.length > 0) {
-        segments.push({
-          lyric: lyrics,
-          chord: chord.length > 0 ? chord : undefined
-        });
+      if (leadingLyrics.length > 0) {
+        segments.push({ lyric: leadingLyrics });
       }
 
-      cursor = match.index + match[0].length;
-      match = chordPattern.exec(line);
-    }
+      for (let index = 0; index < chordMatches.length; index += 1) {
+        const match = chordMatches[index];
+        const chord = match[1].trim();
+        const lyricStart = (match.index ?? 0) + match[0].length;
+        const nextMatch = chordMatches[index + 1];
+        const lyricEnd = nextMatch ? (nextMatch.index ?? lyricStart) : line.length;
+        const lyric = line.slice(lyricStart, lyricEnd);
 
-    const trailingLyrics = line.slice(cursor);
-    if (segments.length === 0) {
-      segments.push({ lyric: line });
-    } else if (trailingLyrics.length > 0) {
-      segments.push({ lyric: trailingLyrics });
+        segments.push({
+          chord: chord.length > 0 ? chord : undefined,
+          lyric
+        });
+      }
     }
 
     // Runtime shape is aligned to docs/domain-model.md:
