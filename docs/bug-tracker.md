@@ -23,10 +23,10 @@ Expected behavior:
 The LLM should return only valid ChordPro text.
 
 Temporary decision:
-Improve prompt instructions and add output validation in the application.
+Resolved by the redesigned conversion prompt, which now enforces deterministic ChordPro-only output with no explanations.
 
 Priority: High  
-Status: Open
+Status: Resolved
 
 ---
 
@@ -47,10 +47,10 @@ Expected behavior:
 The LLM should not include markdown formatting.
 
 Temporary decision:
-Strengthen prompt instructions and later add output validation.
+Resolved by the redesigned conversion prompt, which now explicitly forbids markdown code fences and other non-ChordPro output.
 
 Priority: High  
-Status: Open
+Status: Resolved
 
 ---
 
@@ -71,10 +71,10 @@ Expected behavior:
 Conversion should proceed even if metadata is missing.
 
 Temporary decision:
-Modify prompt later to allow conversion with missing metadata.
+Resolved by the redesigned conversion prompt, which now continues conversion when metadata is missing and omits unavailable fields.
 
 Priority: High  
-Status: Open
+Status: Resolved
 
 ---
 
@@ -146,4 +146,55 @@ Temporary decision:
 Adjust layout later.
 
 Priority: Low  
+Status: Open
+
+---
+
+## BUG-07 — LLM does not preserve real chord alignment from chord-line spacing
+
+Layer: LLM / Conversion
+
+Description:
+When the input uses the common format of one chord line above one lyric line, the LLM sometimes ignores the real character offsets and places chords at musically incorrect positions in the generated ChordPro.
+
+Impact:
+Generated ChordPro may be structurally valid but musically misaligned.
+
+Current behavior:
+The model often places chords at semantically plausible positions instead of respecting exact spacing offsets from the source.
+
+Expected behavior:
+Chord placement should preserve the real intended alignment from the source chord sheet.
+
+Temporary decision:
+Do not fix yet. Document for later exploration of a local deterministic chord-alignment step before or alongside LLM conversion.
+
+Priority: High
+Status: Open
+
+---
+
+## BUG-08 — Parser associates chords with preceding lyric fragments instead of following fragments
+
+Layer: Parsing
+
+Description:
+For inline ChordPro such as:
+[Bm]De la noche en [A]San [G]Fran[F#]cisco
+
+the parser currently builds segments as if each chord belonged to the lyric text before it, instead of the lyric text after it until the next chord.
+
+Impact:
+The Song domain model becomes semantically incorrect and may affect future rendering, editing, or transposition features.
+
+Current behavior:
+Segments are built with inverted chord-to-lyric association.
+
+Expected behavior:
+Each chord should be associated with the lyric text that follows it until the next chord.
+
+Temporary decision:
+Fix soon in the parser implementation.
+
+Priority: High
 Status: Open
