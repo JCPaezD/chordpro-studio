@@ -139,6 +139,12 @@ the documentation must be updated first.
 - reason for the assumption: hardcoded legacy model names were not available to the current key/version and caused runtime 404 failures
 - whether it requires later validation: yes
 
+- date: 2026-03-10
+- context: redesigning the runtime conversion prompt for pipeline use
+- assumption made: the conversion LLM must behave as a deterministic transformer that returns only valid ChordPro and must not switch into conversational or metadata-request behavior
+- reason for the assumption: the pipeline now depends on automatic downstream parsing and cannot safely process explanatory or blocking responses
+- whether it requires later validation: yes
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
