@@ -167,10 +167,10 @@ Expected behavior:
 Chord placement should preserve the real intended alignment from the source chord sheet.
 
 Temporary decision:
-Do not fix yet. Document for later exploration of a local deterministic chord-alignment step before or alongside LLM conversion.
+Resolved by refining the runtime conversion prompt with explicit chord alignment rules. The prompt now treats chord/lyric pairs as monospaced alignment guides, preserves chord column calculation, and explicitly forbids carrying visual lyric indentation into the final ChordPro output. Manual tests with real chord sheets showed substantially improved alignment.
 
 Priority: High
-Status: Open
+Status: Resolved
 
 ---
 

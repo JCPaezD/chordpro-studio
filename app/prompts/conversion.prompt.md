@@ -51,7 +51,21 @@ Example:
 
 [A]Antes de que salga el sol
 
-4. Sections
+4. Chord Alignment Rules
+
+When the input uses separate chord lines above lyric lines, interpret them as monospaced text.
+
+- Character positions are fixed columns for alignment calculation.
+- Leading spaces in chord lines may be used to determine the original column position of each chord.
+- Leading spaces in lyric lines may exist only as visual alignment aids in the source text.
+- These leading spaces in lyric lines must NOT be preserved in the final ChordPro output.
+- All lyric lines in the final output must start at column 0.
+- Each chord must be inserted before the lyric syllable that corresponds to its original column position, without reproducing artificial indentation.
+- Do NOT move chords to the beginning of the line unless the chord is already in column 0 of the chord line.
+- Chord lines are alignment guides only and must not appear in the final output as separate lines.
+- The final output must contain clean lyric lines with no artificial indentation caused by alignment spaces.
+
+5. Sections
 
 Use ChordPro block tags.
 
@@ -71,7 +85,7 @@ Other sections should use comment tags:
 
 Section names must be written in Spanish.
 
-5. Columns
+6. Columns
 
 Count the total number of lines (lyrics + chords + section tags + blank lines).
 
@@ -81,7 +95,7 @@ If the total exceeds 35 lines, insert:
 
 immediately after the metadata section.
 
-6. Repeated sections
+7. Repeated sections
 
 If the text indicates that a section repeats another one (for example "Estrofa 2 igual que la 1"), expand the section and include the chords again instead of leaving the instruction.
 

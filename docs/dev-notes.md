@@ -151,6 +151,12 @@ the documentation must be updated first.
 - reason for the assumption: the pipeline now depends on automatic downstream parsing and cannot safely process explanatory or blocking responses
 - whether it requires later validation: yes
 
+- date: 2026-03-11
+- context: refining chord alignment behavior in `app/prompts/conversion.prompt.md`
+- assumption made: chord alignment issues from chord-line plus lyric-line input can be resolved at the prompt layer by explicitly treating source text as monospaced for column calculation while forcing final lyric lines to start at column 0 with no artificial indentation
+- reason for the assumption: manual tests with real chord sheets showed that explicit prompting materially improved chord placement and removed indentation artifacts without adding a separate deterministic alignment step
+- whether it requires later validation: yes
+
 - date: 2026-03-10
 - context: fixing inline ChordPro parsing in `app/src/services/parser/ChordProParser.ts`
 - assumption made: each inline chord token applies to the lyric text that follows it until the next chord or end of line, while text before the first chord remains an unchorded segment
