@@ -1,0 +1,128 @@
+// ChordPro Configuration.
+
+config {
+  type        : instrument
+  title       : Ukulele
+  description : "Ukulele, 4 strings, tuning G C E A, 100+ chords."
+}
+
+instrument {
+  description : "Ukulele, 4 strings, standard tuning"
+  type        : ukulele
+}
+
+tuning     : [ G4 C4 E4 A4 ]
+
+chords : [
+  { name : C        frets : [ 0 0 0 3 ] }
+  { name : C7       frets : [ 0 0 0 1 ] }
+  { name : Cm       frets : [ 0 3 3 3 ] }
+  { name : Cm7      frets : [ 3 3 3 3 ] }
+  { name : Cdim     frets : [ 5 3 2 3 ] }
+  { name : Cdim7    frets : [ 2 3 2 3 ] }
+  { name : Caug     frets : [ 1 0 0 3 ] }
+  { name : C6       frets : [ 0 0 0 0 ] }
+  { name : Cmaj7    frets : [ 0 0 0 2 ] }
+  { name : C9       frets : [ 0 2 0 1 ] }
+  { name : Db       frets : [ 1 1 1 4 ] }
+  { name : Db7      frets : [ 1 1 1 2 ] }
+  { name : Dbm      frets : [ 1 1 0 4 ] }
+  { name : Dbm7     frets : [ 4 4 4 4 ] }
+  { name : Dbdim    frets : [ 0 1 0 1 ] }
+  { name : Dbaug    frets : [ 2 1 1 0 ] }
+  { name : Db6      frets : [ 1 1 1 1 ] }
+  { name : Dbmaj7   frets : [ 1 1 1 3 ] }
+  { name : Db9      frets : [ 1 3 1 2 ] }
+  { name : D        frets : [ 2 2 2 0 ] }
+  { name : D7       frets : [ 2 2 2 3 ] }
+  { name : Dm       frets : [ 2 2 1 0 ] }
+  { name : Dm7      frets : [ 2 2 1 3 ] }
+  { name : Ddim     frets : [ 1 2 1 x ] }
+  { name : Ddim7    frets : [ 1 2 1 2 ] }
+  { name : Daug     frets : [ 3 2 2 1 ] }
+  { name : D6       frets : [ 2 2 2 2 ] }
+  { name : Dmaj7    frets : [ 2 2 2 4 ] }
+  { name : D9       frets : [ 2 4 2 3 ] }
+  { name : Eb       frets : [ 3 3 3 1 ] }
+  { name : Eb7      frets : [ 3 3 3 4 ] }
+  { name : Ebm      frets : [ 3 3 2 1 ] }
+  { name : Ebm7     frets : [ 3 3 2 4 ] }
+  { name : Ebdim    frets : [ 2 3 2 0 ] }
+  { name : Ebdim7   frets : [ 2 3 2 3 ] }
+  { name : Ebaug    frets : [ 2 1 1 1 ] }
+  { name : Eb6      frets : [ 3 3 3 3 ] }
+  { name : Ebmaj7   frets : [ 3 3 3 5 ] }
+  { name : Eb9      frets : [ 0 1 1 1 ] }
+  { name : E        frets : [ 4 4 4 2 ] }
+  { name : E7       frets : [ 1 2 0 2 ] }
+  { name : Em       frets : [ 0 4 0 2 ] }
+  { name : Em7      frets : [ 0 2 0 2 ] }
+  { name : Edim     frets : [ 0 1 0 1 ] }
+  { name : Eaug     frets : [ 1 0 0 3 ] }
+  { name : E6       frets : [ 1 1 0 2 ] }
+  { name : Emaj7    frets : [ 1 3 0 2 ] }
+  { name : E9       frets : [ 1 2 2 2 ] }
+  { name : F        frets : [ 2 0 1 0 ] }
+  { name : F7       frets : [ 2 3 1 0 ] }
+  { name : Fm       frets : [ 1 0 1 3 ] }
+  { name : Fm7      frets : [ 1 3 1 3 ] }
+  { name : Fdim     frets : [ 1 2 1 2 ] }
+  { name : Faug     frets : [ 2 1 1 0 ] }
+  { name : F6       frets : [ 2 2 1 3 ] }
+  { name : Fmaj7    frets : [ 2 4 1 3 ] }
+  { name : F9       frets : [ 2 3 3 3 ] }
+  { name : Gb       frets : [ 3 1 2 1 ] }
+  { name : Gb7      frets : [ 3 4 2 4 ] }
+  { name : Gbm      frets : [ 2 1 2 0 ] }
+  { name : Gbm7     frets : [ 2 4 2 4 ] }
+  { name : Gbdim    frets : [ 2 3 2 3 ] }
+  { name : Gbaug    frets : [ 3 2 2 1 ] }
+  { name : Gb6      frets : [ 3 3 2 4 ] }
+  { name : Gbmaj7   frets : [ 3 5 2 4 ] }
+  { name : Gb9      frets : [ 1 1 0 1 ] }
+  { name : G        frets : [ 0 2 3 2 ] }
+  { name : G7       frets : [ 0 2 1 2 ] }
+  { name : Gm       frets : [ 0 2 3 1 ] }
+  { name : Gm7      frets : [ 0 2 1 1 ] }
+  { name : Gdim     frets : [ 0 1 0 1 ] }
+  { name : Gaug     frets : [ 4 3 3 2 ] }
+  { name : G6       frets : [ 0 2 0 2 ] }
+  { name : Gmaj7    frets : [ 0 2 2 2 ] }
+  { name : G9       frets : [ 2 2 1 2 ] }
+  { name : Ab       frets : [ 5 3 4 3 ] }
+  { name : Ab7      frets : [ 1 3 2 3 ] }
+  { name : Abm      frets : [ 1 3 4 2 ] }
+  { name : Abm7     frets : [ 1 3 2 2 ] }
+  { name : Abdim    frets : [ 1 2 1 2 ] }
+  { name : Abaug    frets : [ 1 0 0 3 ] }
+  { name : Ab6      frets : [ 1 3 1 3 ] }
+  { name : Abmaj7   frets : [ 1 3 3 3 ] }
+  { name : Ab9      frets : [ 3 3 2 3 ] }
+  { name : A        frets : [ 2 1 0 0 ] }
+  { name : A7       frets : [ 0 1 0 0 ] }
+  { name : Am       frets : [ 2 0 0 0 ] }
+  { name : Am7      frets : [ 0 0 0 0 ] }
+  { name : Adim     frets : [ 2 3 2 3 ] }
+  { name : Aaug     frets : [ 2 1 1 1 ] }
+  { name : A6       frets : [ 2 4 2 4 ] }
+  { name : Amaj7    frets : [ 1 1 0 0 ] }
+  { name : A9       frets : [ 0 1 0 2 ] }
+  { name : Bb       frets : [ 3 2 1 1 ] }
+  { name : Bb7      frets : [ 1 2 1 1 ] }
+  { name : Bbm      frets : [ 3 1 1 1 ] }
+  { name : Bbm7     frets : [ 1 1 1 1 ] }
+  { name : Bbdim    frets : [ 0 1 0 1 ] }
+  { name : Bbaug    frets : [ 3 2 2 1 ] }
+  { name : Bb6      frets : [ 0 2 1 1 ] }
+  { name : Bbmaj7   frets : [ 3 2 1 0 ] }
+  { name : Bb9      frets : [ 1 2 1 3 ] }
+  { name : B        frets : [ 4 3 2 2 ] }
+  { name : B7       frets : [ 2 3 2 2 ] }
+  { name : Bm       frets : [ 4 2 2 2 ] }
+  { name : Bm7      frets : [ 2 2 2 2 ] }
+  { name : Bdim     frets : [ 1 2 1 2 ] }
+  { name : Baug     frets : [ 4 3 3 2 ] }
+  { name : B6       frets : [ 1 3 2 2 ] }
+  { name : Bmaj7    frets : [ 3 3 2 2 ] }
+  { name : B9       frets : [ 2 3 2 4 ] }
+]

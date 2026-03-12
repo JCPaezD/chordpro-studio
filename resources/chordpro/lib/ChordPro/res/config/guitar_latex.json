@@ -1,0 +1,13 @@
+// ChordPro Config.
+
+config {
+    type        : backend
+    title       : "LaTeX/Guitar"
+    description : "Backend support for LaTeX generation."
+}
+
+latex.templates {
+    songbook : guitar_songbook.tt
+    comment  : guitar_comment.tt
+    image    : guitar_image.tt
+}

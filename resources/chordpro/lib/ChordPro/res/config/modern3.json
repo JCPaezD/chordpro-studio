@@ -1,0 +1,74 @@
+// Configuration for ChordPro.
+//
+// This is a relaxed JSON document, so comments are possible.
+
+config {
+    type        : style
+    title       : "Modern 3"
+    description : "Modern look with sans-serif fonts and chords diagrams in a side column."
+}
+
+// Settings for PDF output.
+pdf {
+
+  // Appearance of chorus.
+  chorus {
+
+    // Indent of the chorus, not including bar.
+    indent : 12
+
+    // Appearance of side bar.
+    bar.width : 0.5
+  }
+
+  // Appearance of chord diagrams for string instruments.
+  diagrams {
+
+    // Diagrams for all chords of the song can be shown at the
+    // "top", "bottom" or "right" side of the first page,
+    // or "below" the last song line.
+    show : right
+
+    // Width of each diagram cell.
+    width : 8
+
+    // Height of each diagram cell.
+    height : 8
+
+    // Horizontal space between diagrams.
+    hspace : 3.95
+
+    // Vertical space between diagrams.
+    vspace : 3
+
+    // The number of frets shown.
+    vcells : 4
+
+    // Thickness of the diagram lines as a fraction of 'width'.
+    linewidth : 0.1
+  }
+
+  // Appearance of chord diagrams for keyboards.
+  kbdiagrams.show : right
+
+  // A {titles: left} directive may conflict with customized formats.
+  // Set to true to ignore the directive.
+  titles-directive-ignore : true
+
+  // Formats.
+  formats.title {
+
+    // The first page of a song has:
+    title : [ "%{title}" "" "" ]
+    subtitle : [ "%{subtitle|%{}|%{subtitle}}" "" "" ]
+  }
+
+  fonts {
+    title   : "sans-serif bold"
+    text    : sans-serif
+    chord   : "sans-serif bold 12"
+    comment : "sans-serif 12"
+    toc     : "sans-serif 11"
+  }
+}
+// End of config.

@@ -1,0 +1,15 @@
+// ChordPro Config.
+
+config {
+    type        : backend
+    title       : "LaTeX/Songbook"
+    description : "Backend support for LaTeX generation."
+}
+
+latex.templates {
+  songbook : songbook.tt
+  comment  : comment.tt
+  image    : image.tt
+}
+
+

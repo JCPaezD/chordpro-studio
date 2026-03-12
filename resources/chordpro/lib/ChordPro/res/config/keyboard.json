@@ -1,0 +1,17 @@
+// ChordPro Configuration.
+
+config {
+  type        : instrument
+  title       : Keyboard
+  description : "Keyboard, tempered tuning."
+}
+
+instrument {
+  description : "Keyboard, Piano, ..."
+  type        : keyboard
+}
+
+chords : [
+  { name : "NC"   keys : [] }
+  { name : "N.C." keys : [] }
+]

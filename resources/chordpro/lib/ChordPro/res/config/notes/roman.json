@@ -1,0 +1,22 @@
+// Configuration for ChordPro.
+//
+// This is a relaxed JSON document, so comments are possible.
+//
+// Definitions of Notes.
+
+config {
+    type        : notes
+    title       : "Roman Notation"
+    description : "I, II, III, IV, V, VI, VII"
+}
+
+notes {
+
+    system : roman
+    movable : true,
+
+    // Roman has a dedicated parser.
+
+}
+
+// End of config.

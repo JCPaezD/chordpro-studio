@@ -1,0 +1,15 @@
+// Configuration for Nashville Notation System.
+
+// IMPORTANT: This stylemod is to make Nashville chords look nicer in
+// the PDF output. It does NOT enable parsing and/or transcoding
+// from/to Nashville notation!
+
+config {
+    type        : stylemod
+    title       : "Nashville"
+    description : "Additional support for Nashville chords."
+    omit        : true
+}
+
+diagrams.show : none
+pdf.fonts.chord : "sans 10"

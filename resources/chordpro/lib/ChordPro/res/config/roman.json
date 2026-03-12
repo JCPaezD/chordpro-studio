@@ -1,0 +1,15 @@
+// Configuration for Roman Notation System.
+
+// IMPORTANT: This stylemod is to make Roman chords look nicer in
+// the PDF output. It does NOT enable parsing and/or transcoding
+// from/to Roman notation!
+
+config {
+    type        : stylemod
+    title       : "Roman"
+    description : "Additional support for Roman chords."
+    omit        : true
+}
+
+diagrams.show : none
+pdf.fonts.chord : "sans 10"

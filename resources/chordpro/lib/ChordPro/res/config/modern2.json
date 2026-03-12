@@ -1,0 +1,53 @@
+// Configuration for ChordPro
+// 
+// This is a really relaxed JSON document, see
+// https://metacpan.org/pod/JSON::Relaxed#REALLY-RELAXED-EXTENSIONS
+
+config {
+    type        : style
+    title       : "Modern 2"
+    description : "Modern look with sans-serif fonts and chords in a side column."
+}
+
+// Settings for PDF output.
+pdf {
+
+  // Appearance of chorus.
+  chorus {
+
+    // Indent of the chorus, not including bar.
+    indent : 12
+
+    // Appearance of side bar.
+    bar.width : 0.5
+  }
+
+  // Alternative songlines with chords in a side column.
+  // Value is the column position.
+  chordscolumn : 300
+
+  // Value for Capo heading when using chordscolumn.
+  capoheading : "%{capo|Capo: %{}}"
+
+  // A {titles: left} directive may conflict with customized formats.
+  // Set to true to ignore the directive.
+  titles-directive-ignore : true
+
+  // Formats.
+  formats.title {
+
+    // The first page of a song has:
+    title : [ "%{title}" "" "" ]
+    subtitle : [ "%{subtitle|%{}|%{subtitle}}" "" "" ]
+  }
+
+  // "fonts" maps output elements to fonts as defined in "fontconfig".
+  fonts {
+    title   : "sans-serif bold"
+    text    : sans-serif
+    chord   : "sans-serif bold 12"
+    comment : "sans-serif 12"
+    toc     : sans-serif
+  }
+}
+// End of config.

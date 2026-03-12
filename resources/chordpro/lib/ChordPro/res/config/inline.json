@@ -1,0 +1,17 @@
+// Configuration for ChordPro.
+
+config {
+    type        : stylemod
+    title       : "Inline Chords"
+    description : "Chords are placed within the lyrics."
+}
+
+settings {
+    suppress-empty-chords : true
+    inline-chords         : true
+}
+
+pdf.fonts {
+    chord.description: "sans 10"
+    annotation.description: "sans 10"
+}

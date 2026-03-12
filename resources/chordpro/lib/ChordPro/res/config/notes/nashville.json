@@ -1,0 +1,22 @@
+// Configuration for ChordPro.
+//
+// This is a relaxed JSON document, so comments are possible.
+//
+// Definitions of Notes.
+
+config {
+    type        : notes
+    title       : "Nashville Notation"
+    description : "1, 2, 3, 4, 5, 6, 7"
+}
+
+notes {
+
+    system : nashville
+    movable : true,
+
+    // Nashville has a dedicated parser.
+
+}
+
+// End of config.
