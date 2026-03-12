@@ -169,6 +169,38 @@ the documentation must be updated first.
 - reason for the assumption: parser errors and contaminated Song models are easier to prevent at the pipeline boundary than to repair after parsing, and surfacing `rawOutput` there gives the Playground enough context for debugging failed conversions
 - whether it requires later validation: yes
 
+- date: 2026-03-11
+- context: implementing Tauri preview and PDF export around the ChordPro CLI
+- assumption made: the bundled ChordPro runtime will live under `resources/chordpro`, preview temp files will live in the application cache directory as `preview/preview.cho` and `preview/preview.html`, and the frontend will render the generated HTML through an iframe `srcdoc` fed by backend-returned HTML content
+- reason for the assumption: the MVP needs a deterministic local execution path that keeps preview and exported PDF aligned with the official ChordPro renderer while avoiding browser-side file loading issues in the desktop runtime
+- whether it requires later validation: yes
+
+## Preview and Export Notes
+
+Preview generation now follows this flow:
+
+`SongPipelineService` result (`chordPro`)
+-> Tauri `generate_preview`
+-> write `preview.cho` in the app cache directory
+-> execute bundled ChordPro CLI
+-> generate `preview.html`
+-> return the HTML path and HTML contents to the frontend
+-> load it in a preview iframe via `srcdoc`
+
+PDF export now follows this flow:
+
+frontend `export_pdf`
+-> Tauri `export_pdf`
+-> write temporary `.cho`
+-> execute bundled ChordPro CLI with `--output`
+-> generate the requested PDF
+
+Bundled CLI expectation:
+
+- repository/development path: `resources/chordpro/chordpro(.exe)`
+- packaged app path: Tauri bundled resources copied from `resources/chordpro`
+- Windows runtime note: the full ChordPro distribution must be bundled, not only `chordpro.exe`, because the executable depends on Perl/runtime support files shipped with the installation
+
 ## File Encoding Rule
 
 All text files in the project must use UTF-8 encoding without BOM.
