@@ -1,3 +1,9 @@
+export interface PreviewResult {
+  htmlPath: string;
+  htmlContent: string;
+}
+
 export interface ChordproAdapter {
-  exportPdf(chordproText: string, outputPath: string): Promise<void>;
+  generatePreview(chordproText: string): Promise<PreviewResult>;
+  exportPdf(chordproText: string, outputPath: string): Promise<string>;
 }

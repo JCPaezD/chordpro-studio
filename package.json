@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run dev --workspace app",
     "build": "npm run build --workspace app",
-    "preview": "npm run preview --workspace app"
+    "preview": "npm run preview --workspace app",
+    "tauri": "npm run tauri --workspace app --"
   }
 }

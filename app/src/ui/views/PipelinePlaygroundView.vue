@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import { isTauri } from "@tauri-apps/api/core";
 import { GeminiRetryError } from "../../adapters/llm/GeminiProvider";
+import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
 import { GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import type { LLMProvider } from "../../adapters/llm/LLMProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
@@ -20,6 +22,13 @@ const error = ref("");
 const retryLog = ref<string[]>([]);
 const validationReason = ref("");
 const validationRawOutput = ref("");
+const previewHtml = ref("");
+const previewPath = ref("");
+const previewError = ref("");
+const exportError = ref("");
+const exportSuccess = ref("");
+
+const chordproAdapter = new TauriChordproAdapter();
 
 async function copyToClipboard(value: string): Promise<void> {
   if (!value) {
@@ -31,6 +40,55 @@ async function copyToClipboard(value: string): Promise<void> {
 
 async function pasteFromClipboard(): Promise<void> {
   rawInput.value = await navigator.clipboard.readText();
+}
+
+async function refreshPreview(chordPro: string): Promise<void> {
+  previewError.value = "";
+
+  try {
+    const preview = await chordproAdapter.generatePreview(chordPro);
+    previewHtml.value = preview.htmlContent;
+    previewPath.value = preview.htmlPath;
+  } catch (error) {
+    previewError.value =
+      error instanceof Error ? error.message : "Preview generation failed.";
+  }
+}
+
+function buildSuggestedPdfPath(): string {
+  if (previewPath.value.toLowerCase().endsWith("preview.html")) {
+    return previewPath.value.replace(/preview\.html$/i, "preview.pdf");
+  }
+
+  return "preview.pdf";
+}
+
+async function exportPdfFile(): Promise<void> {
+  exportError.value = "";
+  exportSuccess.value = "";
+
+  try {
+    if (!chordProText.value) {
+      exportError.value = "No ChordPro text available to export.";
+      return;
+    }
+
+    const requestedPath = window.prompt(
+      "Enter the output PDF path",
+      buildSuggestedPdfPath()
+    );
+    if (!requestedPath) {
+      return;
+    }
+
+    const exportedPath = await chordproAdapter.exportPdf(
+      chordProText.value,
+      requestedPath
+    );
+    exportSuccess.value = `PDF exported to ${exportedPath}`;
+  } catch (error) {
+    exportError.value = error instanceof Error ? error.message : "PDF export failed.";
+  }
 }
 
 function createProvider(): LLMProvider {
@@ -60,6 +118,10 @@ async function runPipeline(): Promise<void> {
   retryLog.value = [];
   validationReason.value = "";
   validationRawOutput.value = "";
+  previewHtml.value = "";
+  previewError.value = "";
+  exportError.value = "";
+  exportSuccess.value = "";
   loading.value = true;
 
   try {
@@ -68,6 +130,7 @@ async function runPipeline(): Promise<void> {
     chordProText.value = result.chordPro;
     retryLog.value = result.retryLog ?? [];
     songJson.value = JSON.stringify(result.song, null, 2);
+    await refreshPreview(result.chordPro);
   } catch (err) {
     if (err instanceof ChordProValidationError) {
       validationReason.value = err.details?.reason ?? "";
@@ -122,78 +185,118 @@ async function runPipeline(): Promise<void> {
       <button class="mini-button" @click="copyToClipboard(error)">Copy Error</button>
     </div>
 
-    <section v-if="retryLog.length > 0" class="retry-log">
-      <div class="retry-log-header">
-        <div>
-          <h2>LLM Retries</h2>
-          <p>Temporary Gemini retry events captured during conversion.</p>
-        </div>
-        <button class="mini-button" @click="copyToClipboard(retryLog.join('\n'))">Copy Retries</button>
+    <section class="workspace">
+      <div class="debug-column">
+        <section v-if="retryLog.length > 0" class="retry-log">
+          <div class="retry-log-header">
+            <div>
+              <h2>LLM Retries</h2>
+              <p>Temporary Gemini retry events captured during conversion.</p>
+            </div>
+            <button class="mini-button" @click="copyToClipboard(retryLog.join('\n'))">Copy Retries</button>
+          </div>
+          <pre>{{ retryLog.join("\n") }}</pre>
+        </section>
+
+        <section class="pipeline-grid">
+          <section class="stage stage-input">
+            <div class="stage-header">
+              <span class="stage-index">01</span>
+              <div>
+                <h2>Raw Input</h2>
+                <p>Paste the original chord sheet text here.</p>
+              </div>
+              <div class="panel-actions">
+                <button class="mini-button" @click="pasteFromClipboard">Paste</button>
+                <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
+              </div>
+            </div>
+            <textarea
+              v-model="rawInput"
+              rows="18"
+              placeholder="Paste raw chord sheet text here..."
+            />
+          </section>
+
+          <section class="stage">
+            <div class="stage-header">
+              <span class="stage-index">02</span>
+              <div>
+                <h2>Cleaned Text</h2>
+                <p>Conservative normalization result.</p>
+              </div>
+              <div class="panel-actions">
+                <button class="mini-button" @click="copyToClipboard(cleanedText)">Copy</button>
+              </div>
+            </div>
+            <textarea :value="cleanedText" rows="18" readonly />
+          </section>
+
+          <section class="stage">
+            <div class="stage-header">
+              <span class="stage-index">03</span>
+              <div>
+                <h2>ChordPro Result</h2>
+                <p>Raw model output passed to the parser.</p>
+              </div>
+              <div class="panel-actions">
+                <button class="mini-button" @click="copyToClipboard(chordProText)">Copy</button>
+              </div>
+            </div>
+            <textarea :value="chordProText" rows="18" readonly />
+          </section>
+
+          <section class="stage">
+            <div class="stage-header">
+              <span class="stage-index">04</span>
+              <div>
+                <h2>Song JSON</h2>
+                <p>Parsed domain model snapshot.</p>
+              </div>
+              <div class="panel-actions">
+                <button class="mini-button" @click="copyToClipboard(songJson)">Copy</button>
+              </div>
+            </div>
+            <pre>{{ songJson }}</pre>
+          </section>
+        </section>
       </div>
-      <pre>{{ retryLog.join("\n") }}</pre>
-    </section>
 
-    <section class="pipeline-grid">
-      <section class="stage stage-input">
-        <div class="stage-header">
-          <span class="stage-index">01</span>
-          <div>
-            <h2>Raw Input</h2>
-            <p>Paste the original chord sheet text here.</p>
+      <aside class="preview-column">
+        <section class="preview-stage">
+          <div class="stage-header">
+            <span class="stage-index">05</span>
+            <div>
+              <h2>Preview</h2>
+              <p>Rendered by the bundled ChordPro CLI and loaded as HTML.</p>
+            </div>
+            <div class="panel-actions">
+              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportPdfFile">
+                Export PDF
+              </button>
+            </div>
           </div>
-          <div class="panel-actions">
-            <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-            <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
-          </div>
-        </div>
-        <textarea
-          v-model="rawInput"
-          rows="18"
-          placeholder="Paste raw chord sheet text here..."
-        />
-      </section>
 
-      <section class="stage">
-        <div class="stage-header">
-          <span class="stage-index">02</span>
-          <div>
-            <h2>Cleaned Text</h2>
-            <p>Conservative normalization result.</p>
-          </div>
-          <div class="panel-actions">
-            <button class="mini-button" @click="copyToClipboard(cleanedText)">Copy</button>
-          </div>
-        </div>
-        <textarea :value="cleanedText" rows="18" readonly />
-      </section>
+          <p v-if="previewPath" class="preview-path">{{ previewPath }}</p>
+          <p v-if="previewError" class="preview-message preview-error">{{ previewError }}</p>
+          <p v-else-if="exportError" class="preview-message preview-error">{{ exportError }}</p>
+          <p v-else-if="exportSuccess" class="preview-message preview-success">{{ exportSuccess }}</p>
+          <p v-else-if="!isTauri()" class="preview-message">
+            Preview and PDF export require the Tauri desktop runtime.
+          </p>
+          <p v-else-if="!previewHtml" class="preview-message">
+            Run the pipeline to generate a ChordPro CLI preview.
+          </p>
 
-      <section class="stage">
-        <div class="stage-header">
-          <span class="stage-index">03</span>
-          <div>
-            <h2>ChordPro Result</h2>
-            <p>Raw model output passed to the parser.</p>
-          </div>
-          <div class="panel-actions">
-            <button class="mini-button" @click="copyToClipboard(chordProText)">Copy</button>
-          </div>
-        </div>
-        <textarea :value="chordProText" rows="18" readonly />
-      </section>
-
-      <section class="stage">
-        <div class="stage-header">
-          <span class="stage-index">04</span>
-          <div>
-            <h2>Song JSON</h2>
-            <p>Parsed domain model snapshot.</p>
-          </div>
-          <div class="panel-actions">
-            <button class="mini-button" @click="copyToClipboard(songJson)">Copy</button>
-          </div>
-        </div>
-        <pre>{{ songJson }}</pre>
-      </section>
+          <iframe
+            v-if="previewHtml"
+            :key="previewPath"
+            :srcdoc="previewHtml"
+            class="preview-frame"
+            title="ChordPro Preview"
+          />
+        </section>
+      </aside>
     </section>
   </main>
 </template>
@@ -279,6 +382,32 @@ async function runPipeline(): Promise<void> {
   box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
 }
 
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(22rem, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.debug-column {
+  display: grid;
+  gap: 1rem;
+}
+
+.preview-column {
+  min-width: 0;
+}
+
+.preview-stage {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(24, 32, 25, 0.12);
+  background: rgba(255, 252, 246, 0.9);
+  box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
+}
+
 .retry-log {
   display: grid;
   gap: 0.85rem;
@@ -311,6 +440,33 @@ async function runPipeline(): Promise<void> {
   height: 10rem;
   min-height: 10rem;
 }
+
+.preview-path {
+  margin: 0;
+  color: #5f6c60;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.preview-message {
+  margin: 0;
+  color: #5f6c60;
+}
+
+.preview-error {
+  color: #8b1228;
+}
+
+.preview-success {
+  color: #214d2d;
+}
+
+.preview-frame {
+  width: 100%;
+  min-height: 56rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: #fffef9;
+ }
 
 .stage-header {
   display: grid;
@@ -441,6 +597,10 @@ pre {
 }
 
 @media (max-width: 1200px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
   .pipeline-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -479,6 +639,10 @@ pre {
   pre {
     height: 18rem;
     min-height: 18rem;
+  }
+
+  .preview-frame {
+    min-height: 32rem;
   }
 }
 </style>
