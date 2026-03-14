@@ -1,36 +1,31 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { GeminiRetryError } from "../../adapters/llm/GeminiProvider";
-import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
-import { GeminiProvider } from "../../adapters/llm/GeminiProvider";
-import type { LLMProvider } from "../../adapters/llm/LLMProvider";
-import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
-import { ChordProValidationError } from "../../domain/validation/ChordProOutputValidator";
-import type { SongMetadata } from "../../domain/song";
-import { CleaningService } from "../../services/cleaning";
-import { ConversionService } from "../../services/conversion";
-import { ChordProParser } from "../../services/parser/ChordProParser";
-import { SongPipelineService } from "../../services/pipeline/SongPipelineService";
+import { useSongWorkspace } from "../composables/useSongWorkspace";
 
-const rawInput = ref("");
-const cleanedText = ref("");
-const chordProText = ref("");
-const songJson = ref("");
-const loading = ref(false);
-const error = ref("");
-const retryLog = ref<string[]>([]);
-const validationReason = ref("");
-const validationRawOutput = ref("");
-const previewPath = ref("");
-const previewSrc = ref("");
-const previewError = ref("");
-const exportError = ref("");
-const exportSuccess = ref("");
-const songMetadata = ref<SongMetadata>({});
+const {
+  rawInput,
+  cleanedText,
+  chordProText,
+  songJson,
+  loading,
+  error,
+  retryLog,
+  validationReason,
+  validationRawOutput,
+  previewPath,
+  previewSrc,
+  previewError,
+  exportError,
+  exportSuccess,
+  copyToClipboard,
+  pasteFromClipboard,
+  clearGeneratedState,
+  exportCurrent,
+  runPipeline: runWorkspacePipeline,
+  previewFromChordPro
+} = useSongWorkspace();
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
   "gemini-2.5-pro",
@@ -38,8 +33,6 @@ const availableGeminiModels = ref<string[]>([
 ]);
 const selectedGeminiModel = ref("");
 const geminiModelOverride = ref("");
-
-const chordproAdapter = new TauriChordproAdapter();
 
 function readGeminiApiKey(): string | undefined {
   const fromProcess = (
@@ -120,233 +113,9 @@ async function loadGeminiModels(): Promise<void> {
   }
 }
 
-function revokePreviewUrl(): void {
-  if (previewSrc.value.startsWith("blob:")) {
-    URL.revokeObjectURL(previewSrc.value);
-  }
-}
-
-function createPdfBlobUrl(pdfBase64: string): string {
-  const binary = atob(pdfBase64);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-}
-
-async function copyToClipboard(value: string): Promise<void> {
-  if (!value) {
-    return;
-  }
-
-  await navigator.clipboard.writeText(value);
-}
-
-async function pasteFromClipboard(): Promise<void> {
-  rawInput.value = await navigator.clipboard.readText();
-}
-
-async function refreshPreview(chordPro: string): Promise<void> {
-  previewError.value = "";
-
-  try {
-    const preview = await chordproAdapter.generatePreview(chordPro);
-    const nextPreviewUrl = createPdfBlobUrl(preview.pdfBase64);
-    revokePreviewUrl();
-    previewPath.value = preview.pdfPath;
-    previewSrc.value = nextPreviewUrl;
-  } catch (error) {
-    previewError.value =
-      error instanceof Error ? error.message : "Preview generation failed.";
-  }
-}
-
-function clearGeneratedState(): void {
-  cleanedText.value = "";
-  chordProText.value = "";
-  songJson.value = "";
-  error.value = "";
-  retryLog.value = [];
-  validationReason.value = "";
-  validationRawOutput.value = "";
-  songMetadata.value = {};
-  previewPath.value = "";
-  revokePreviewUrl();
-  previewSrc.value = "";
-  previewError.value = "";
-  exportError.value = "";
-  exportSuccess.value = "";
-}
-
-function sanitizeFilenamePart(value: string): string {
-  return value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function extractChordProMetadata(chordPro: string): SongMetadata {
-  const titleMatch = chordPro.match(/^\{title:\s*(.+?)\s*\}$/im);
-  const artistMatch = chordPro.match(/^\{artist:\s*(.+?)\s*\}$/im);
-
-  return {
-    title: titleMatch?.[1]?.trim(),
-    artist: artistMatch?.[1]?.trim()
-  };
-}
-
-function buildSuggestedExportName(extension: "pdf" | "cho"): string {
-  const metadata = {
-    ...songMetadata.value,
-    ...extractChordProMetadata(chordProText.value)
-  };
-
-  const title = metadata.title ? sanitizeFilenamePart(metadata.title) : "";
-  const artist = metadata.artist ? sanitizeFilenamePart(metadata.artist) : "";
-
-  if (artist && title) {
-    return `${artist} - ${title}.${extension}`;
-  }
-
-  if (artist) {
-    return `${artist}.${extension}`;
-  }
-
-  if (title) {
-    return `${title}.${extension}`;
-  }
-
-  return `song.${extension}`;
-}
-
-async function exportPdfFile(): Promise<void> {
-  exportError.value = "";
-  exportSuccess.value = "";
-
-  try {
-    if (!chordProText.value) {
-      exportError.value = "No ChordPro text available to export.";
-      return;
-    }
-
-    const selectedPath = await save({
-      title: "Export ChordPro output",
-      defaultPath: buildSuggestedExportName("pdf"),
-      filters: [
-        {
-          name: "PDF file",
-          extensions: ["pdf"]
-        },
-        {
-          name: "ChordPro file",
-          extensions: ["cho"]
-        }
-      ]
-    });
-
-    if (!selectedPath) {
-      return;
-    }
-
-    const normalizedPath = selectedPath.toLowerCase().endsWith(".cho")
-      ? selectedPath
-      : selectedPath.toLowerCase().endsWith(".pdf")
-        ? selectedPath
-        : `${selectedPath}.pdf`;
-
-    if (normalizedPath.toLowerCase().endsWith(".cho")) {
-      await writeTextFile(normalizedPath, chordProText.value);
-      exportSuccess.value = `ChordPro exported to ${normalizedPath}`;
-      return;
-    }
-
-    const exportedPath = await chordproAdapter.exportPdf(chordProText.value, normalizedPath);
-    exportSuccess.value = `PDF exported to ${exportedPath}`;
-  } catch (error) {
-    if (error instanceof Error && error.message) {
-      exportError.value = error.message;
-      return;
-    }
-
-    if (typeof error === "string" && error.trim().length > 0) {
-      exportError.value = error;
-      return;
-    }
-
-    exportError.value = JSON.stringify(error) || "PDF export failed.";
-  }
-}
-
-function createProvider(): LLMProvider {
-  try {
-    return new GeminiProvider(resolveGeminiModel());
-  } catch {
-    try {
-      return new OpenAIProvider("gpt-4.1-mini");
-    } catch {
-      return {
-        async generate() {
-          throw new Error("No LLM API key configured. Set OPENAI_API_KEY or GEMINI_API_KEY.");
-        }
-      };
-    }
-  }
-}
-
-function createPipeline(): SongPipelineService {
-  return new SongPipelineService(
-    new CleaningService(),
-    new ConversionService(createProvider()),
-    new ChordProParser()
-  );
-}
-
 async function runPipeline(): Promise<void> {
-  clearGeneratedState();
-  loading.value = true;
-
-  try {
-    const pipeline = createPipeline();
-    const result = await pipeline.process(rawInput.value);
-    cleanedText.value = result.cleanedText;
-    chordProText.value = result.chordPro;
-    songMetadata.value = result.song.metadata;
-    retryLog.value = result.retryLog ?? [];
-    songJson.value = JSON.stringify(result.song, null, 2);
-    await refreshPreview(result.chordPro);
-  } catch (err) {
-    if (err instanceof ChordProValidationError) {
-      validationReason.value = err.details?.reason ?? "";
-      validationRawOutput.value = err.details?.rawOutput ?? "";
-      chordProText.value = validationRawOutput.value;
-    }
-
-    if (err instanceof GeminiRetryError) {
-      retryLog.value = err.retryLog;
-    }
-
-    error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
-  } finally {
-    loading.value = false;
-  }
+  await runWorkspacePipeline({ model: resolveGeminiModel() });
 }
-
-async function previewFromChordPro(): Promise<void> {
-  previewError.value = "";
-  exportError.value = "";
-  exportSuccess.value = "";
-
-  if (!chordProText.value) {
-    previewError.value = "No ChordPro text available for preview.";
-    return;
-  }
-
-  await refreshPreview(chordProText.value);
-}
-
-onBeforeUnmount(() => {
-  revokePreviewUrl();
-});
 
 onMounted(async () => {
   geminiModelOverride.value = readGeminiModelOverride() ?? "";
@@ -417,7 +186,7 @@ onMounted(async () => {
       <button class="mini-button" @click="copyToClipboard(error)">Copy Error</button>
     </div>
 
-    <section class="workspace">
+    <section class="workspace-layout">
       <div class="debug-column">
         <section v-if="retryLog.length > 0" class="retry-log">
           <div class="retry-log-header">
@@ -503,7 +272,7 @@ onMounted(async () => {
               <p>Rendered by the bundled ChordPro CLI and loaded through the native PDF viewer.</p>
             </div>
             <div class="panel-actions">
-              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportPdfFile">
+              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
                 Export PDF (.cho)
               </button>
             </div>
@@ -541,14 +310,7 @@ onMounted(async () => {
 .playground {
   display: grid;
   gap: 1.25rem;
-  min-height: 100vh;
-  padding: 1.5rem;
   color: #182019;
-  background:
-    radial-gradient(circle at top left, rgba(235, 194, 111, 0.24), transparent 28%),
-    radial-gradient(circle at top right, rgba(133, 165, 129, 0.2), transparent 24%),
-    linear-gradient(180deg, #f7f2e8 0%, #efe6d6 100%);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
 .hero {
@@ -616,7 +378,6 @@ onMounted(async () => {
   font-size: 0.9rem;
 }
 
-.map-step,
 .stage-index {
   display: inline-flex;
   align-items: center;
@@ -647,7 +408,7 @@ onMounted(async () => {
   box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
 }
 
-.workspace {
+.workspace-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(22rem, 1fr);
   gap: 1rem;
@@ -731,7 +492,7 @@ onMounted(async () => {
   min-height: 56rem;
   border: 1px solid rgba(47, 59, 49, 0.16);
   background: #fffef9;
- }
+}
 
 .stage-header {
   display: grid;
@@ -868,7 +629,7 @@ pre {
 }
 
 @media (max-width: 1200px) {
-  .workspace {
+  .workspace-layout {
     grid-template-columns: 1fr;
   }
 
@@ -878,10 +639,6 @@ pre {
 }
 
 @media (max-width: 800px) {
-  .playground {
-    padding: 1rem;
-  }
-
   .hero {
     align-items: start;
     flex-direction: column;

@@ -241,3 +241,25 @@ Codex should avoid leaving unrelated uncommitted files after a task unless expli
 ## Documentation Changes
 
 When documentation files are manually edited by the user, Codex should treat them as authoritative changes and include them in the next relevant commit unless instructed otherwise.
+
+- date: 2026-03-14
+- context: introducing a user-facing mode alongside the existing Playground
+- assumption made: the app should keep a single shared UI workspace for raw input, ChordPro text, preview and export state so switching between `User` and `Playground` mode does not reset data, while the new User View exposes only a simplified `Fast` / `Quality` Gemini selector mapped to `gemini-flash-lite-latest` and `gemini-flash-latest`
+- reason for the assumption: the task requires reusing the exact same pipeline, preview and export mechanisms without duplicating architecture, and preserving state across view switches is simplest when both views operate on the same workspace
+- whether it requires later validation: yes
+
+## User View Notes
+
+The application now has two UI modes:
+
+- `User`: a minimal two-column interface for normal workflow (`raw input -> convert -> preview -> export`)
+- `Playground`: the existing developer/debugging interface with intermediate pipeline stages
+
+Both modes reuse the same front-end workspace state and the same underlying pipeline, preview and export adapters.
+
+User View model selector:
+
+- `Fast` -> `gemini-flash-lite-latest`
+- `Quality` -> `gemini-flash-latest`
+
+The User View also exposes a collapsible editable ChordPro source panel that reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
