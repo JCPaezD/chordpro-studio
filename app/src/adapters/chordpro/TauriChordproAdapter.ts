@@ -3,8 +3,8 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { ChordproAdapter, PreviewResult } from "./adapter";
 
 interface GeneratePreviewResponse {
-  htmlPath: string;
-  htmlContent: string;
+  pdfPath: string;
+  pdfBase64: string;
 }
 
 interface ExportPdfResponse {
@@ -48,8 +48,8 @@ export class TauriChordproAdapter implements ChordproAdapter {
       });
 
       return {
-        htmlPath: response.htmlPath,
-        htmlContent: response.htmlContent
+        pdfPath: response.pdfPath,
+        pdfBase64: response.pdfBase64
       };
     } catch (error) {
       throw formatTauriError(error);

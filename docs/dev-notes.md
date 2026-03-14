@@ -171,8 +171,8 @@ the documentation must be updated first.
 
 - date: 2026-03-11
 - context: implementing Tauri preview and PDF export around the ChordPro CLI
-- assumption made: the bundled ChordPro runtime will live under `resources/chordpro`, preview temp files will live in the application cache directory as `preview/preview.cho` and `preview/preview.html`, and the frontend will render the generated HTML through an iframe `srcdoc` fed by backend-returned HTML content
-- reason for the assumption: the MVP needs a deterministic local execution path that keeps preview and exported PDF aligned with the official ChordPro renderer while avoiding browser-side file loading issues in the desktop runtime
+- assumption made: the bundled ChordPro runtime will live under `resources/chordpro`, preview temp files will live in the application cache directory as `preview/preview.cho` and `preview/preview.pdf`, and the frontend will render that generated PDF through the native WebView PDF viewer using a browser `Blob` URL created from backend-returned PDF bytes
+- reason for the assumption: the MVP needs preview and export to use the exact same ChordPro renderer output, and local asset URLs proved unreliable for embedded PDF preview in the current desktop runtime
 - whether it requires later validation: yes
 
 ## Preview and Export Notes
@@ -183,9 +183,10 @@ Preview generation now follows this flow:
 -> Tauri `generate_preview`
 -> write `preview.cho` in the app cache directory
 -> execute bundled ChordPro CLI
--> generate `preview.html`
--> return the HTML path and HTML contents to the frontend
--> load it in a preview iframe via `srcdoc`
+-> generate `preview.pdf`
+-> return the PDF path plus PDF bytes to the frontend
+-> create a browser `Blob` URL
+-> load it through the native WebView PDF viewer
 
 PDF export now follows this flow:
 
@@ -194,6 +195,11 @@ frontend `export_pdf`
 -> write temporary `.cho`
 -> execute bundled ChordPro CLI with `--output`
 -> generate the requested PDF
+
+Preview failure behavior:
+
+- if preview generation fails, the previous valid preview remains visible
+- the frontend shows the backend error message returned by the failed preview command
 
 Bundled CLI expectation:
 

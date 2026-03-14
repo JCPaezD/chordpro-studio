@@ -1,6 +1,6 @@
 export interface PreviewResult {
-  htmlPath: string;
-  htmlContent: string;
+  pdfPath: string;
+  pdfBase64: string;
 }
 
 export interface ChordproAdapter {

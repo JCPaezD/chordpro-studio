@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
 use std::{
   fs,
@@ -7,7 +8,7 @@ use std::{
 use tauri::{AppHandle, Manager};
 
 const PREVIEW_CHO_FILENAME: &str = "preview.cho";
-const PREVIEW_HTML_FILENAME: &str = "preview.html";
+const PREVIEW_PDF_FILENAME: &str = "preview.pdf";
 const EXPORT_CHO_FILENAME: &str = "export.cho";
 
 #[derive(Debug, Serialize)]
@@ -23,8 +24,8 @@ pub struct ChordProCommandError {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewResponse {
-  pub html_path: String,
-  pub html_content: String,
+  pub pdf_path: String,
+  pub pdf_base64: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -40,7 +41,7 @@ pub fn generate_preview(
 ) -> Result<PreviewResponse, ChordProCommandError> {
   let cache_dir = ensure_preview_dir(&app)?;
   let input_path = cache_dir.join(PREVIEW_CHO_FILENAME);
-  let output_path = cache_dir.join(PREVIEW_HTML_FILENAME);
+  let output_path = cache_dir.join(PREVIEW_PDF_FILENAME);
 
   write_text_file(&input_path, &chordpro_text)?;
   run_chordpro_command(
@@ -53,14 +54,14 @@ pub fn generate_preview(
   )?;
 
   Ok(PreviewResponse {
-    html_path: output_path.to_string_lossy().into_owned(),
-    html_content: fs::read_to_string(&output_path).map_err(|error| ChordProCommandError {
+    pdf_path: output_path.to_string_lossy().into_owned(),
+    pdf_base64: STANDARD.encode(fs::read(&output_path).map_err(|error| ChordProCommandError {
       code: "PREVIEW_READ_ERROR".into(),
-      message: format!("Failed to read generated preview HTML: {error}"),
+      message: format!("Failed to read generated preview PDF: {error}"),
       stdout: None,
       stderr: None,
       details: Some(output_path.to_string_lossy().into_owned()),
-    })?,
+    })?),
   })
 }
 

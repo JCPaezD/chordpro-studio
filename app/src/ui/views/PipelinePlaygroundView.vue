@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { GeminiRetryError } from "../../adapters/llm/GeminiProvider";
@@ -22,13 +22,30 @@ const error = ref("");
 const retryLog = ref<string[]>([]);
 const validationReason = ref("");
 const validationRawOutput = ref("");
-const previewHtml = ref("");
 const previewPath = ref("");
+const previewSrc = ref("");
 const previewError = ref("");
 const exportError = ref("");
 const exportSuccess = ref("");
 
 const chordproAdapter = new TauriChordproAdapter();
+
+function revokePreviewUrl(): void {
+  if (previewSrc.value.startsWith("blob:")) {
+    URL.revokeObjectURL(previewSrc.value);
+  }
+}
+
+function createPdfBlobUrl(pdfBase64: string): string {
+  const binary = atob(pdfBase64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+}
 
 async function copyToClipboard(value: string): Promise<void> {
   if (!value) {
@@ -47,8 +64,10 @@ async function refreshPreview(chordPro: string): Promise<void> {
 
   try {
     const preview = await chordproAdapter.generatePreview(chordPro);
-    previewHtml.value = preview.htmlContent;
-    previewPath.value = preview.htmlPath;
+    const nextPreviewUrl = createPdfBlobUrl(preview.pdfBase64);
+    revokePreviewUrl();
+    previewPath.value = preview.pdfPath;
+    previewSrc.value = nextPreviewUrl;
   } catch (error) {
     previewError.value =
       error instanceof Error ? error.message : "Preview generation failed.";
@@ -56,8 +75,8 @@ async function refreshPreview(chordPro: string): Promise<void> {
 }
 
 function buildSuggestedPdfPath(): string {
-  if (previewPath.value.toLowerCase().endsWith("preview.html")) {
-    return previewPath.value.replace(/preview\.html$/i, "preview.pdf");
+  if (previewPath.value.toLowerCase().endsWith("preview.pdf")) {
+    return previewPath.value;
   }
 
   return "preview.pdf";
@@ -118,7 +137,6 @@ async function runPipeline(): Promise<void> {
   retryLog.value = [];
   validationReason.value = "";
   validationRawOutput.value = "";
-  previewHtml.value = "";
   previewError.value = "";
   exportError.value = "";
   exportSuccess.value = "";
@@ -147,6 +165,10 @@ async function runPipeline(): Promise<void> {
     loading.value = false;
   }
 }
+
+onBeforeUnmount(() => {
+  revokePreviewUrl();
+});
 </script>
 
 <template>
@@ -268,7 +290,7 @@ async function runPipeline(): Promise<void> {
             <span class="stage-index">05</span>
             <div>
               <h2>Preview</h2>
-              <p>Rendered by the bundled ChordPro CLI and loaded as HTML.</p>
+              <p>Rendered by the bundled ChordPro CLI and loaded through the native PDF viewer.</p>
             </div>
             <div class="panel-actions">
               <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportPdfFile">
@@ -284,17 +306,21 @@ async function runPipeline(): Promise<void> {
           <p v-else-if="!isTauri()" class="preview-message">
             Preview and PDF export require the Tauri desktop runtime.
           </p>
-          <p v-else-if="!previewHtml" class="preview-message">
-            Run the pipeline to generate a ChordPro CLI preview.
+          <p v-else-if="!previewSrc" class="preview-message">
+            Run the pipeline to generate a ChordPro CLI preview PDF.
           </p>
 
           <iframe
-            v-if="previewHtml"
-            :key="previewPath"
-            :srcdoc="previewHtml"
+            v-if="previewSrc"
+            :key="previewSrc"
+            :src="previewSrc"
             class="preview-frame"
-            title="ChordPro Preview"
-          />
+            title="ChordPro PDF Preview"
+          >
+            <p class="preview-message preview-error">
+              The embedded PDF preview could not be displayed.
+            </p>
+          </iframe>
         </section>
       </aside>
     </section>
