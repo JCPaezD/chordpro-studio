@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { GeminiRetryError } from "../../adapters/llm/GeminiProvider";
@@ -27,8 +27,94 @@ const previewSrc = ref("");
 const previewError = ref("");
 const exportError = ref("");
 const exportSuccess = ref("");
+const availableGeminiModels = ref<string[]>([
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash-lite"
+]);
+const selectedGeminiModel = ref("");
+const geminiModelOverride = ref("");
 
 const chordproAdapter = new TauriChordproAdapter();
+
+function readGeminiApiKey(): string | undefined {
+  const fromProcess = (
+    globalThis as { process?: { env?: Record<string, string | undefined> } }
+  ).process?.env?.GEMINI_API_KEY;
+
+  if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
+    return fromProcess.trim();
+  }
+
+  const fromVite = import.meta.env?.VITE_GEMINI_API_KEY;
+  if (typeof fromVite === "string" && fromVite.trim().length > 0) {
+    return fromVite.trim();
+  }
+
+  return undefined;
+}
+
+function readGeminiModelOverride(): string | undefined {
+  const fromProcess = (
+    globalThis as { process?: { env?: Record<string, string | undefined> } }
+  ).process?.env?.GEMINI_MODEL;
+
+  if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
+    return fromProcess.trim();
+  }
+
+  const fromVite = import.meta.env?.VITE_GEMINI_MODEL;
+  if (typeof fromVite === "string" && fromVite.trim().length > 0) {
+    return fromVite.trim();
+  }
+
+  return undefined;
+}
+
+function resolveGeminiModel(): string {
+  return geminiModelOverride.value || selectedGeminiModel.value || "gemini-2.5-flash";
+}
+
+function normalizeGeminiModelName(modelName: string): string {
+  return modelName.startsWith("models/") ? modelName.slice("models/".length) : modelName;
+}
+
+async function loadGeminiModels(): Promise<void> {
+  const apiKey = readGeminiApiKey();
+  if (!apiKey) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
+    );
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = (await response.json()) as {
+      models?: Array<{
+        name?: string;
+        supportedGenerationMethods?: string[];
+      }>;
+    };
+
+    const discoveredModels =
+      data.models
+        ?.filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
+        .map((model) => normalizeGeminiModelName(model.name ?? ""))
+        .filter((model) => model.startsWith("gemini-"))
+        .filter((model, index, models) => model.length > 0 && models.indexOf(model) === index) ?? [];
+
+    if (discoveredModels.length > 0) {
+      availableGeminiModels.value = discoveredModels;
+    }
+  } catch {
+    // Keep the fallback list when live model discovery is unavailable.
+  }
+}
 
 function revokePreviewUrl(): void {
   if (previewSrc.value.startsWith("blob:")) {
@@ -74,6 +160,22 @@ async function refreshPreview(chordPro: string): Promise<void> {
   }
 }
 
+function clearGeneratedState(): void {
+  cleanedText.value = "";
+  chordProText.value = "";
+  songJson.value = "";
+  error.value = "";
+  retryLog.value = [];
+  validationReason.value = "";
+  validationRawOutput.value = "";
+  previewPath.value = "";
+  revokePreviewUrl();
+  previewSrc.value = "";
+  previewError.value = "";
+  exportError.value = "";
+  exportSuccess.value = "";
+}
+
 function buildSuggestedPdfPath(): string {
   if (previewPath.value.toLowerCase().endsWith("preview.pdf")) {
     return previewPath.value;
@@ -112,10 +214,10 @@ async function exportPdfFile(): Promise<void> {
 
 function createProvider(): LLMProvider {
   try {
-    return new OpenAIProvider("gpt-4.1-mini");
+    return new GeminiProvider(resolveGeminiModel());
   } catch {
     try {
-      return new GeminiProvider("gemini-flash-latest");
+      return new OpenAIProvider("gpt-4.1-mini");
     } catch {
       return {
         async generate() {
@@ -126,23 +228,20 @@ function createProvider(): LLMProvider {
   }
 }
 
-const pipeline = new SongPipelineService(
-  new CleaningService(),
-  new ConversionService(createProvider()),
-  new ChordProParser()
-);
+function createPipeline(): SongPipelineService {
+  return new SongPipelineService(
+    new CleaningService(),
+    new ConversionService(createProvider()),
+    new ChordProParser()
+  );
+}
 
 async function runPipeline(): Promise<void> {
-  error.value = "";
-  retryLog.value = [];
-  validationReason.value = "";
-  validationRawOutput.value = "";
-  previewError.value = "";
-  exportError.value = "";
-  exportSuccess.value = "";
+  clearGeneratedState();
   loading.value = true;
 
   try {
+    const pipeline = createPipeline();
     const result = await pipeline.process(rawInput.value);
     cleanedText.value = result.cleanedText;
     chordProText.value = result.chordPro;
@@ -166,8 +265,35 @@ async function runPipeline(): Promise<void> {
   }
 }
 
+async function previewFromChordPro(): Promise<void> {
+  previewError.value = "";
+  exportError.value = "";
+  exportSuccess.value = "";
+
+  if (!chordProText.value) {
+    previewError.value = "No ChordPro text available for preview.";
+    return;
+  }
+
+  await refreshPreview(chordProText.value);
+}
+
 onBeforeUnmount(() => {
   revokePreviewUrl();
+});
+
+onMounted(async () => {
+  geminiModelOverride.value = readGeminiModelOverride() ?? "";
+  selectedGeminiModel.value = geminiModelOverride.value || "gemini-2.5-flash";
+
+  await loadGeminiModels();
+
+  if (
+    selectedGeminiModel.value &&
+    !availableGeminiModels.value.includes(selectedGeminiModel.value)
+  ) {
+    availableGeminiModels.value = [selectedGeminiModel.value, ...availableGeminiModels.value];
+  }
 });
 </script>
 
@@ -184,11 +310,29 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="actions">
+        <label class="model-select">
+          <span>Model</span>
+          <select v-model="selectedGeminiModel" :disabled="loading || !!geminiModelOverride">
+            <option v-for="model in availableGeminiModels" :key="model" :value="model">
+              {{ model }}
+            </option>
+          </select>
+        </label>
+        <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+          Preview from .cho
+        </button>
+        <button class="mini-button" :disabled="loading" @click="clearGeneratedState">
+          Clear all
+        </button>
         <button :disabled="loading" class="run-button" @click="runPipeline">
           {{ loading ? "Running..." : "Run Pipeline" }}
         </button>
       </div>
     </header>
+
+    <p v-if="geminiModelOverride" class="model-override-note">
+      Gemini model override active via environment: {{ geminiModelOverride }}
+    </p>
 
     <div v-if="error" class="error">
       <div class="error-content">
@@ -259,13 +403,13 @@ onBeforeUnmount(() => {
               <span class="stage-index">03</span>
               <div>
                 <h2>ChordPro Result</h2>
-                <p>Raw model output passed to the parser.</p>
+                <p>Editable `.cho` text used by preview and export.</p>
               </div>
               <div class="panel-actions">
                 <button class="mini-button" @click="copyToClipboard(chordProText)">Copy</button>
               </div>
             </div>
-            <textarea :value="chordProText" rows="18" readonly />
+            <textarea v-model="chordProText" rows="18" />
           </section>
 
           <section class="stage">
@@ -375,6 +519,35 @@ onBeforeUnmount(() => {
 .actions {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.model-select {
+  display: grid;
+  gap: 0.25rem;
+  color: #233127;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.model-select select {
+  min-width: 14rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: #f7f0e1;
+  color: #233127;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.model-override-note {
+  margin: 0;
+  color: #5f6c60;
+  font-size: 0.9rem;
 }
 
 .map-step,

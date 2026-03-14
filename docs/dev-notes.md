@@ -175,6 +175,12 @@ the documentation must be updated first.
 - reason for the assumption: the MVP needs preview and export to use the exact same ChordPro renderer output, and local asset URLs proved unreliable for embedded PDF preview in the current desktop runtime
 - whether it requires later validation: yes
 
+- date: 2026-03-14
+- context: improving Playground iteration speed for conversion and preview debugging
+- assumption made: the developer Playground should prefer Gemini when a Gemini key is available, default the selectable Gemini model to `gemini-2.5-flash`, preserve environment overrides through `GEMINI_MODEL` / `VITE_GEMINI_MODEL`, allow direct preview generation from the editable current `.cho` text by reusing the existing `generate_preview` backend command without re-running the LLM pipeline, and clear previous generated outputs before each run or when `Clear all` is used while preserving the raw input field
+- reason for the assumption: Playground usage prioritizes fast iteration and direct CLI preview debugging, while `gemini-2.5-flash` is a fast but more reliable default than flash-lite for the conversion step and explicit result clearing makes each run easier to inspect
+- whether it requires later validation: yes
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
