@@ -198,3 +198,27 @@ Resolved by updating the parser so each inline chord is associated with the lyri
 
 Priority: High
 Status: Resolved
+
+---
+
+## BUG-09 - User View shows minimal residual vertical scroll when panels are visually empty
+
+Layer: UI / Layout
+
+Description:
+The new User View still shows a very small residual vertical scroll in some desktop window sizes even when the two-column layout appears visually empty.
+
+Impact:
+The UI feels slightly unstable and less polished because the main view does not sit flush in the available window height.
+
+Current behavior:
+A small page-level scroll remains visible in the User View. The issue appears related to final layout sizing rather than content overflow from normal usage.
+
+Expected behavior:
+When the two-column User View is empty, it should fit the available desktop viewport without residual vertical scroll.
+
+Temporary decision:
+Keep as a low-priority visual bug for a later layout-polish pass. Avoid further speculative fixes for now unless the issue becomes functionally disruptive.
+
+Priority: Low
+Status: Open
