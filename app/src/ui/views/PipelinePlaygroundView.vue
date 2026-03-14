@@ -2,12 +2,15 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { GeminiRetryError } from "../../adapters/llm/GeminiProvider";
 import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
 import { GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import type { LLMProvider } from "../../adapters/llm/LLMProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
 import { ChordProValidationError } from "../../domain/validation/ChordProOutputValidator";
+import type { SongMetadata } from "../../domain/song";
 import { CleaningService } from "../../services/cleaning";
 import { ConversionService } from "../../services/conversion";
 import { ChordProParser } from "../../services/parser/ChordProParser";
@@ -27,6 +30,7 @@ const previewSrc = ref("");
 const previewError = ref("");
 const exportError = ref("");
 const exportSuccess = ref("");
+const songMetadata = ref<SongMetadata>({});
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
   "gemini-2.5-pro",
@@ -168,6 +172,7 @@ function clearGeneratedState(): void {
   retryLog.value = [];
   validationReason.value = "";
   validationRawOutput.value = "";
+  songMetadata.value = {};
   previewPath.value = "";
   revokePreviewUrl();
   previewSrc.value = "";
@@ -176,12 +181,42 @@ function clearGeneratedState(): void {
   exportSuccess.value = "";
 }
 
-function buildSuggestedPdfPath(): string {
-  if (previewPath.value.toLowerCase().endsWith("preview.pdf")) {
-    return previewPath.value;
+function sanitizeFilenamePart(value: string): string {
+  return value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function extractChordProMetadata(chordPro: string): SongMetadata {
+  const titleMatch = chordPro.match(/^\{title:\s*(.+?)\s*\}$/im);
+  const artistMatch = chordPro.match(/^\{artist:\s*(.+?)\s*\}$/im);
+
+  return {
+    title: titleMatch?.[1]?.trim(),
+    artist: artistMatch?.[1]?.trim()
+  };
+}
+
+function buildSuggestedExportName(extension: "pdf" | "cho"): string {
+  const metadata = {
+    ...songMetadata.value,
+    ...extractChordProMetadata(chordProText.value)
+  };
+
+  const title = metadata.title ? sanitizeFilenamePart(metadata.title) : "";
+  const artist = metadata.artist ? sanitizeFilenamePart(metadata.artist) : "";
+
+  if (artist && title) {
+    return `${artist} - ${title}.${extension}`;
   }
 
-  return "preview.pdf";
+  if (artist) {
+    return `${artist}.${extension}`;
+  }
+
+  if (title) {
+    return `${title}.${extension}`;
+  }
+
+  return `song.${extension}`;
 }
 
 async function exportPdfFile(): Promise<void> {
@@ -194,21 +229,51 @@ async function exportPdfFile(): Promise<void> {
       return;
     }
 
-    const requestedPath = window.prompt(
-      "Enter the output PDF path",
-      buildSuggestedPdfPath()
-    );
-    if (!requestedPath) {
+    const selectedPath = await save({
+      title: "Export ChordPro output",
+      defaultPath: buildSuggestedExportName("pdf"),
+      filters: [
+        {
+          name: "PDF file",
+          extensions: ["pdf"]
+        },
+        {
+          name: "ChordPro file",
+          extensions: ["cho"]
+        }
+      ]
+    });
+
+    if (!selectedPath) {
       return;
     }
 
-    const exportedPath = await chordproAdapter.exportPdf(
-      chordProText.value,
-      requestedPath
-    );
+    const normalizedPath = selectedPath.toLowerCase().endsWith(".cho")
+      ? selectedPath
+      : selectedPath.toLowerCase().endsWith(".pdf")
+        ? selectedPath
+        : `${selectedPath}.pdf`;
+
+    if (normalizedPath.toLowerCase().endsWith(".cho")) {
+      await writeTextFile(normalizedPath, chordProText.value);
+      exportSuccess.value = `ChordPro exported to ${normalizedPath}`;
+      return;
+    }
+
+    const exportedPath = await chordproAdapter.exportPdf(chordProText.value, normalizedPath);
     exportSuccess.value = `PDF exported to ${exportedPath}`;
   } catch (error) {
-    exportError.value = error instanceof Error ? error.message : "PDF export failed.";
+    if (error instanceof Error && error.message) {
+      exportError.value = error.message;
+      return;
+    }
+
+    if (typeof error === "string" && error.trim().length > 0) {
+      exportError.value = error;
+      return;
+    }
+
+    exportError.value = JSON.stringify(error) || "PDF export failed.";
   }
 }
 
@@ -245,6 +310,7 @@ async function runPipeline(): Promise<void> {
     const result = await pipeline.process(rawInput.value);
     cleanedText.value = result.cleanedText;
     chordProText.value = result.chordPro;
+    songMetadata.value = result.song.metadata;
     retryLog.value = result.retryLog ?? [];
     songJson.value = JSON.stringify(result.song, null, 2);
     await refreshPreview(result.chordPro);
@@ -432,13 +498,13 @@ onMounted(async () => {
         <section class="preview-stage">
           <div class="stage-header">
             <span class="stage-index">05</span>
-            <div>
+            <div class="stage-copy">
               <h2>Preview</h2>
               <p>Rendered by the bundled ChordPro CLI and loaded through the native PDF viewer.</p>
             </div>
             <div class="panel-actions">
               <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportPdfFile">
-                Export PDF
+                Export PDF (.cho)
               </button>
             </div>
           </div>
@@ -671,10 +737,15 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 0.75rem;
-  align-items: start;
+  align-items: center;
 }
 
-.stage h2 {
+.stage-copy {
+  min-width: 0;
+}
+
+.stage h2,
+.preview-stage h2 {
   margin: 0;
   font-size: 1.05rem;
 }
@@ -685,7 +756,8 @@ onMounted(async () => {
   justify-content: flex-end;
 }
 
-.stage p {
+.stage p,
+.preview-stage p {
   margin: 0.2rem 0 0;
   color: #5f6c60;
   font-size: 0.92rem;

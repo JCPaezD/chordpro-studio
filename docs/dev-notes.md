@@ -196,11 +196,13 @@ Preview generation now follows this flow:
 
 PDF export now follows this flow:
 
-frontend `export_pdf`
--> Tauri `export_pdf`
+frontend native save dialog
+-> suggest filename from `{artist}` / `{title}` metadata when available (`artist - title`, `artist` or `title`, else `song`)
+-> if `.pdf` selected: Tauri `export_pdf`
 -> write temporary `.cho`
 -> execute bundled ChordPro CLI with `--output`
 -> generate the requested PDF
+-> if `.cho` selected: write current ChordPro text directly to disk without invoking the CLI
 
 Preview failure behavior:
 
