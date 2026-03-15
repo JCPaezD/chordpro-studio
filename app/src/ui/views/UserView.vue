@@ -28,6 +28,7 @@ const {
   copyToClipboard,
   openSongbookFolder,
   refreshSongbook,
+  clearSongbook,
   openSongFile,
   saveDocument,
   setChordProText,
@@ -77,28 +78,33 @@ function updateChordPro(value: string): void {
       </button>
     </aside>
 
+    <header class="card user-header">
+      <div>
+        <p class="eyebrow">Workspace</p>
+        <h1>Convert songs and manage your ChordPro songbook</h1>
+        <p class="subtitle">
+          Create new chord sheets from raw text, open existing `.cho` songs from a folder and keep
+          the PDF preview visible while you refine the source.
+        </p>
+      </div>
+
+      <label class="mode-select">
+        <span>Conversion mode</span>
+        <select v-model="conversionMode" :disabled="loading">
+          <option value="fast">Fast</option>
+          <option value="quality">Quality</option>
+        </select>
+      </label>
+    </header>
+
     <section class="work-panel">
       <div v-if="activePanel === 'convert'" class="panel-body convert-panel">
-        <section class="panel card">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Convert</p>
-              <h2>Create a chord sheet</h2>
-              <p>Paste the original text and generate a ChordPro draft.</p>
-            </div>
-            <label class="mode-select">
-              <span>Conversion mode</span>
-              <select v-model="conversionMode" :disabled="loading">
-                <option value="fast">Fast</option>
-                <option value="quality">Quality</option>
-              </select>
-            </label>
-          </div>
-
+        <section class="panel card fill-card">
           <div class="panel-header secondary-header">
             <div>
-              <h3>Original text</h3>
-              <p>Paste the lyrics and chords you want to convert.</p>
+              <p class="eyebrow">Convert</p>
+              <h2>Original text</h2>
+              <p>Paste the lyrics and chords you want to transform into ChordPro.</p>
             </div>
             <div class="panel-actions-stack align-end">
               <div class="header-actions">
@@ -120,107 +126,123 @@ function updateChordPro(value: string): void {
             class="input-textarea"
             placeholder="Paste the original song text here..."
           />
-        </section>
 
-        <section class="panel card source-card">
-          <div>
-            <p class="eyebrow">ChordPro</p>
-            <h3>Refine the source</h3>
-            <p>Edit the generated `.cho` before refreshing the preview or exporting.</p>
+          <div class="embedded-editor">
+            <ChordProEditorPane
+              :model-value="chordProText"
+              collapsible
+              :initially-expanded="false"
+              collapsed-label="Show ChordPro source"
+              expanded-label="Hide ChordPro source"
+              placeholder="ChordPro source will appear here after generation."
+              @update:model-value="updateChordPro"
+            >
+              <template #header>
+                <div>
+                  <h3>Refine the source</h3>
+                  <p>Edit the generated `.cho` before refreshing the preview or exporting.</p>
+                </div>
+              </template>
+              <template #actions>
+                <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+                  Refresh preview
+                </button>
+                <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
+                  Save .cho
+                </button>
+                <button class="mini-button" @click="copyToClipboard(chordProText)">Copy source</button>
+              </template>
+            </ChordProEditorPane>
           </div>
-
-          <ChordProEditorPane
-            :model-value="chordProText"
-            collapsible
-            collapsed-label="Show ChordPro source"
-            expanded-label="Hide ChordPro source"
-            placeholder="ChordPro source will appear here after generation."
-            @update:model-value="updateChordPro"
-          >
-            <template #actions>
-              <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
-                Refresh preview
-              </button>
-              <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
-                Save .cho
-              </button>
-              <button class="mini-button" @click="copyToClipboard(chordProText)">Copy source</button>
-            </template>
-          </ChordProEditorPane>
         </section>
       </div>
 
       <div v-else class="panel-body songbook-panel">
-        <section class="panel card songbook-card">
-          <div class="toolbar">
-            <div class="toolbar-actions">
-              <button class="mini-button" @click="openSongbookFolder">Open folder</button>
-              <button class="mini-button" :disabled="!songbook" @click="refreshSongbook">Refresh</button>
+        <section class="panel card fill-card songbook-card">
+          <div class="panel-header secondary-header">
+            <div>
+              <p class="eyebrow">Songbook</p>
+              <h2>Folder library</h2>
+              <p>Open a folder of `.cho` files, browse the list and edit the selected song.</p>
             </div>
-            <p class="toolbar-path" :title="songbook?.path || 'No folder selected'">
-              {{ songbook?.path || "No songbook folder selected." }}
-            </p>
+            <div class="panel-actions-stack align-end">
+              <div class="header-actions">
+                <button class="mini-button" @click="openSongbookFolder">Open folder</button>
+                <button class="mini-button" :disabled="!songbook" @click="refreshSongbook">Refresh</button>
+                <button class="secondary-button" :disabled="!songbook" @click="clearSongbook">Clear</button>
+              </div>
+              <p class="action-feedback songbook-path" :title="songbook?.path || 'No folder selected'">
+                {{ songbook?.path || "No songbook folder selected." }}
+              </p>
+            </div>
+          </div>
+          <div class="songbook-meta">
+            <p v-if="songbookError" class="message error-message">{{ songbookError }}</p>
           </div>
 
-          <p v-if="songbookError" class="message error-message">{{ songbookError }}</p>
-
-          <div v-if="songbook" class="songbook-layout">
-            <aside class="song-list-panel">
-              <div class="song-list-header">
-                <h3>Songs</h3>
-                <p>{{ songbook.songs.length }} files</p>
-              </div>
-              <div v-if="songbook.songs.length === 0" class="songbook-empty">
-                No `.cho` files were found in this folder.
-              </div>
-              <button
-                v-for="songEntry in songbook.songs"
-                :key="songEntry.filePath"
-                :class="['song-item', { active: selectedSongPath === songEntry.filePath }]"
-                @click="openSongFile(songEntry.filePath)"
-              >
-                {{ songEntry.displayTitle }}
-              </button>
-            </aside>
-
-            <section class="editor-panel card-subsection">
-              <div class="editor-heading">
-                <div>
-                  <h3>{{ document.fileName || 'ChordPro source' }}</h3>
-                  <p>
-                    {{ document.filePath || 'Open a song from the list to edit its `.cho` content.' }}
-                  </p>
+          <div class="songbook-main">
+            <div v-if="songbook" class="songbook-layout">
+              <aside class="song-list-panel">
+                <div class="song-list-header">
+                  <div>
+                    <h3>Songs</h3>
+                    <p>{{ songbook.songs.length }} files</p>
+                  </div>
                 </div>
-                <span v-if="document.dirty" class="dirty-badge">Unsaved changes</span>
+                <div v-if="songbook.songs.length === 0" class="songbook-empty">
+                  No `.cho` files were found in this folder.
+                </div>
+                <button
+                  v-for="songEntry in songbook.songs"
+                  :key="songEntry.filePath"
+                  :class="['song-item', { active: selectedSongPath === songEntry.filePath }]"
+                  @click="openSongFile(songEntry.filePath)"
+                >
+                  {{ songEntry.displayTitle }}
+                </button>
+              </aside>
+
+              <section class="editor-panel card-subsection">
+                <div class="editor-heading">
+                  <div>
+                    <h3>{{ document.fileName || 'ChordPro source' }}</h3>
+                    <p>
+                      {{ document.filePath || 'Open a song from the list to edit its `.cho` content.' }}
+                    </p>
+                  </div>
+                  <span v-if="document.dirty" class="dirty-badge">Unsaved changes</span>
+                </div>
+
+                <ChordProEditorPane
+                  :model-value="chordProText"
+                  :rows="18"
+                  placeholder="Open a song from the list to edit it here."
+                  @update:model-value="updateChordPro"
+                >
+                  <template #actions>
+                    <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
+                      Save .cho
+                    </button>
+                    <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+                      Refresh preview
+                    </button>
+                    <button class="mini-button" @click="copyToClipboard(chordProText)">Copy source</button>
+                  </template>
+                </ChordProEditorPane>
+              </section>
+            </div>
+
+            <div v-else class="songbook-empty-state">
+              <div class="songbook-empty large">
+                Open a folder to build a simple songbook from its `.cho` files.
               </div>
-
-              <ChordProEditorPane
-                :model-value="chordProText"
-                :rows="18"
-                placeholder="Open a song from the list to edit it here."
-                @update:model-value="updateChordPro"
-              >
-                <template #actions>
-                  <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
-                    Save .cho
-                  </button>
-                  <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
-                    Refresh preview
-                  </button>
-                  <button class="mini-button" @click="copyToClipboard(chordProText)">Copy source</button>
-                </template>
-              </ChordProEditorPane>
-            </section>
-          </div>
-
-          <div v-else class="songbook-empty large">
-            Open a folder to build a simple songbook from its `.cho` files.
+            </div>
           </div>
         </section>
       </div>
     </section>
 
-    <section class="panel card preview-panel">
+    <section class="panel card preview-panel fill-card">
       <div class="panel-header secondary-header preview-header">
         <div>
           <p class="eyebrow">Preview</p>
@@ -269,10 +291,11 @@ function updateChordPro(value: string): void {
 <style scoped>
 .user-view {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1.15fr) minmax(24rem, 1fr);
+  grid-template-columns: 6rem minmax(0, 1.15fr) minmax(24rem, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 1rem;
   min-height: 100%;
-  align-items: start;
+  align-items: stretch;
 }
 
 .card {
@@ -283,20 +306,27 @@ function updateChordPro(value: string): void {
 }
 
 .nav-rail {
+  grid-row: 1 / span 2;
   display: grid;
   align-content: start;
   gap: 0.65rem;
-  padding: 0.75rem;
+  padding: 0.65rem;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+  overflow: hidden;
 }
 
 .nav-button {
   display: grid;
   justify-items: center;
   gap: 0.45rem;
-  padding: 0.8rem 0.45rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.8rem 0.35rem;
   border: 0;
   background: transparent;
   color: #233127;
@@ -323,48 +353,27 @@ function updateChordPro(value: string): void {
   color: #f8f3e8;
 }
 
-.work-panel,
-.preview-panel {
-  min-height: 0;
-}
-
-.panel-body,
-.songbook-card,
-.convert-panel,
-.preview-panel {
-  display: grid;
-  gap: 1rem;
-}
-
-.panel,
-.card-subsection {
-  display: grid;
-  gap: 1rem;
-}
-
-.panel-header,
-.secondary-header,
-.toolbar,
-.editor-heading,
-.song-list-header {
+.user-header {
+  grid-column: 2 / -1;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
 }
 
-.secondary-header {
-  align-items: flex-start;
-}
-
-.preview-header {
-  align-items: flex-start;
-}
-
+.user-header h1,
 .panel-header h2,
 .panel h3,
 .song-list-header h3,
 .editor-heading h3 {
   margin: 0;
+}
+
+.subtitle,
+.panel p,
+.message {
+  margin: 0.4rem 0 0;
+  color: #4a564a;
 }
 
 .eyebrow {
@@ -373,13 +382,6 @@ function updateChordPro(value: string): void {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #7a6541;
-}
-
-.panel p,
-.message,
-.toolbar-path {
-  margin: 0.4rem 0 0;
-  color: #4a564a;
 }
 
 .mode-select {
@@ -407,6 +409,47 @@ function updateChordPro(value: string): void {
   letter-spacing: normal;
 }
 
+.work-panel,
+.preview-panel,
+.panel-body,
+.panel,
+.songbook-layout,
+.song-list-panel,
+.editor-panel {
+  min-height: 0;
+}
+
+.work-panel,
+.preview-panel,
+.panel-body,
+.songbook-card,
+.convert-panel {
+  display: grid;
+  align-content: start;
+}
+
+.panel,
+.card-subsection {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.panel-header,
+.secondary-header,
+.editor-heading,
+.song-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.secondary-header,
+.preview-header,
+.editor-heading {
+  align-items: flex-start;
+}
+
 .input-textarea {
   width: 100%;
   min-height: 22rem;
@@ -415,6 +458,11 @@ function updateChordPro(value: string): void {
   box-sizing: border-box;
   font: inherit;
   line-height: 1.5;
+}
+
+.embedded-editor {
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(24, 32, 25, 0.08);
 }
 
 .panel-actions-stack {
@@ -426,8 +474,7 @@ function updateChordPro(value: string): void {
   justify-items: end;
 }
 
-.header-actions,
-.toolbar-actions {
+.header-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -502,6 +549,14 @@ function updateChordPro(value: string): void {
   font-weight: 700;
 }
 
+.songbook-path {
+  max-width: 22rem;
+  margin-top: 0;
+  color: #29603f;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .success-message {
   color: #29603f;
 }
@@ -514,18 +569,31 @@ function updateChordPro(value: string): void {
   display: grid;
   grid-template-columns: minmax(13rem, 14rem) minmax(0, 1fr);
   gap: 1rem;
+}
+
+.songbook-meta {
   min-height: 0;
 }
 
-.song-list-panel,
-.editor-panel {
-  display: grid;
-  gap: 0.75rem;
+.songbook-main {
+  min-height: 0;
+}
+
+.songbook-empty-state {
+  display: block;
   min-height: 0;
 }
 
 .song-list-panel {
+  display: grid;
   align-content: start;
+  gap: 0.75rem;
+}
+
+.editor-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
 }
 
 .song-item {
@@ -550,14 +618,13 @@ function updateChordPro(value: string): void {
 }
 
 .songbook-empty.large {
-  min-height: 14rem;
+  min-height: 0;
+  height: auto;
+  box-sizing: border-box;
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-content: start;
   text-align: center;
-}
-
-.editor-heading {
-  align-items: flex-start;
 }
 
 .dirty-badge {
@@ -571,9 +638,11 @@ function updateChordPro(value: string): void {
 }
 
 .preview-panel {
-  position: sticky;
-  top: 0;
-  align-self: start;
+  align-content: start;
+}
+
+.preview-panel .message {
+  text-align: center;
 }
 
 .preview-viewer {
@@ -598,6 +667,7 @@ function updateChordPro(value: string): void {
   min-height: 18rem;
   border: 1px dashed rgba(47, 59, 49, 0.18);
   background: rgba(255, 255, 255, 0.4);
+  align-content: center;
 }
 
 .preview-loading-overlay {
@@ -632,38 +702,54 @@ function updateChordPro(value: string): void {
 
 @media (max-width: 1180px) {
   .user-view {
-    grid-template-columns: 4.5rem minmax(0, 1fr);
+    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+  }
+
+  .user-header {
+    grid-column: 2;
   }
 
   .preview-panel {
     grid-column: 1 / -1;
-    position: static;
   }
 }
 
 @media (max-width: 900px) {
   .user-view {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 
   .nav-rail {
+    grid-row: auto;
     grid-auto-flow: column;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-header,
+  .work-panel,
+  .preview-panel {
+    grid-column: auto;
   }
 
   .songbook-layout {
     grid-template-columns: 1fr;
   }
 
+  .user-header,
   .panel-header,
   .secondary-header,
-  .toolbar,
   .editor-heading {
     flex-direction: column;
   }
 
   .panel-actions-stack.align-end {
     justify-items: start;
+  }
+
+  .songbook-path {
+    text-align: left;
   }
 }
 </style>
