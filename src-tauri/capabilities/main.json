@@ -1,16 +1,23 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Permissions required by the main window to save exported song files.",
+  "description": "Permissions required by the main window to manage songbooks, config files and exports.",
   "windows": ["*"],
   "permissions": [
     "core:default",
+    "dialog:allow-open",
+    "dialog:allow-message",
     "dialog:allow-save",
+    "fs:create-app-specific-dirs",
+    "fs:allow-read-dir",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-exists",
     {
-      "identifier": "fs:allow-write-text-file",
+      "identifier": "fs:scope",
       "allow": [
         {
-          "path": "$HOME/**"
+          "path": "**"
         }
       ]
     }
