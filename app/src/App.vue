@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import { createSongWorkspace, provideSongWorkspace } from "./ui/composables/useSongWorkspace";
 import UserView from "./ui/views/UserView.vue";
@@ -9,6 +9,10 @@ const mode = ref<"user" | "playground">("user");
 const workspace = createSongWorkspace();
 
 provideSongWorkspace(workspace);
+
+onMounted(async () => {
+  await workspace.initialize();
+});
 
 onBeforeUnmount(() => {
   workspace.dispose();

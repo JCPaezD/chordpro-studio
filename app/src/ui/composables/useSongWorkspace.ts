@@ -1,16 +1,27 @@
-import { inject, provide, ref, type InjectionKey, type Ref } from "vue";
+import { computed, inject, provide, ref, type ComputedRef, type InjectionKey, type Ref } from "vue";
 
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { message, open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
 import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
+import { ConfigRepository } from "../../adapters/filesystem/ConfigRepository";
+import { SongRepository } from "../../adapters/filesystem/SongRepository";
+import type { Song, SongMetadata } from "../../domain/song";
+import type { Songbook } from "../../domain/songbook";
 import { ChordProValidationError } from "../../domain/validation/ChordProOutputValidator";
-import type { SongMetadata } from "../../domain/song";
 import { CleaningService } from "../../services/cleaning";
 import { ConversionService } from "../../services/conversion";
 import { ChordProParser } from "../../services/parser/ChordProParser";
 import { SongPipelineService } from "../../services/pipeline/SongPipelineService";
+import { SongbookService } from "../../services/songbook/SongbookService";
+
+type WorkspaceDocument = {
+  filePath: string;
+  fileName: string;
+  chordProText: string;
+  song: Song | null;
+  dirty: boolean;
+};
 
 type RunPipelineOptions = {
   model?: string;
@@ -19,6 +30,7 @@ type RunPipelineOptions = {
 };
 
 export type SongWorkspace = {
+  activePanel: Ref<"songbook" | "convert">;
   rawInput: Ref<string>;
   cleanedText: Ref<string>;
   chordProText: Ref<string>;
@@ -26,6 +38,7 @@ export type SongWorkspace = {
   loading: Ref<boolean>;
   isGeneratingPreview: Ref<boolean>;
   error: Ref<string>;
+  songbookError: Ref<string>;
   retryLog: Ref<string[]>;
   validationReason: Ref<string>;
   validationRawOutput: Ref<string>;
@@ -35,12 +48,22 @@ export type SongWorkspace = {
   exportError: Ref<string>;
   exportMessage: Ref<string>;
   songMetadata: Ref<SongMetadata>;
+  document: Ref<WorkspaceDocument>;
+  songbook: Ref<Songbook | null>;
+  selectedSongPath: ComputedRef<string>;
+  initialize(): Promise<void>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
   refreshPreview(chordPro: string): Promise<void>;
   clearGeneratedState(): void;
   clearAllState(): void;
   exportCurrent(): Promise<void>;
+  openSongbookFolder(): Promise<void>;
+  refreshSongbook(): Promise<void>;
+  openSongFile(filePath: string): Promise<void>;
+  saveDocument(): Promise<boolean>;
+  setChordProText(value: string): void;
+  setActivePanel(panel: "songbook" | "convert"): void;
   runPipeline(options?: RunPipelineOptions): Promise<void>;
   previewFromChordPro(): Promise<void>;
   dispose(): void;
@@ -49,13 +72,14 @@ export type SongWorkspace = {
 const songWorkspaceKey: InjectionKey<SongWorkspace> = Symbol("song-workspace");
 
 export function createSongWorkspace(): SongWorkspace {
+  const activePanel = ref<"songbook" | "convert">("convert");
   const rawInput = ref("");
   const cleanedText = ref("");
-  const chordProText = ref("");
   const songJson = ref("");
   const loading = ref(false);
   const isGeneratingPreview = ref(false);
   const error = ref("");
+  const songbookError = ref("");
   const retryLog = ref<string[]>([]);
   const validationReason = ref("");
   const validationRawOutput = ref("");
@@ -65,8 +89,34 @@ export function createSongWorkspace(): SongWorkspace {
   const exportError = ref("");
   const exportMessage = ref("");
   const songMetadata = ref<SongMetadata>({});
+  const document = ref<WorkspaceDocument>({
+    filePath: "",
+    fileName: "",
+    chordProText: "",
+    song: null,
+    dirty: false
+  });
+  const songbook = ref<Songbook | null>(null);
+  const selectedSongPath = computed(() => document.value.filePath);
 
   const chordproAdapter = new TauriChordproAdapter();
+  const parser = new ChordProParser();
+  const songRepository = new SongRepository();
+  const songbookService = new SongbookService(songRepository, parser);
+  const configRepository = new ConfigRepository();
+
+  const chordProText = computed({
+    get: () => document.value.chordProText,
+    set: (value: string) => {
+      document.value = {
+        ...document.value,
+        chordProText: value,
+        dirty: true
+      };
+      exportMessage.value = "";
+      exportError.value = "";
+    }
+  });
 
   function revokePreviewUrl(): void {
     if (previewSrc.value.startsWith("blob:")) {
@@ -91,6 +141,10 @@ export function createSongWorkspace(): SongWorkspace {
     exportMessage.value = "";
   }
 
+  function setActivePanel(panel: "songbook" | "convert"): void {
+    activePanel.value = panel;
+  }
+
   function getFilenameFromPath(path: string): string {
     const normalized = path.replace(/\\/g, "/");
     const parts = normalized.split("/");
@@ -107,6 +161,31 @@ export function createSongWorkspace(): SongWorkspace {
 
   async function pasteFromClipboard(): Promise<void> {
     rawInput.value = await navigator.clipboard.readText();
+  }
+
+  function replaceDocument(nextDocument: WorkspaceDocument): void {
+    document.value = nextDocument;
+    songMetadata.value = nextDocument.song?.metadata ?? extractChordProMetadata(nextDocument.chordProText);
+    songJson.value = nextDocument.song ? JSON.stringify(nextDocument.song, null, 2) : "";
+  }
+
+  function createDocumentFromChordPro(
+    chordPro: string,
+    options?: {
+      filePath?: string;
+      dirty?: boolean;
+      song?: Song | null;
+    }
+  ): WorkspaceDocument {
+    const filePath = options?.filePath ?? "";
+
+    return {
+      filePath,
+      fileName: filePath ? getFilenameFromPath(filePath) : "",
+      chordProText: chordPro,
+      song: options?.song ?? null,
+      dirty: options?.dirty ?? false
+    };
   }
 
   async function refreshPreview(chordPro: string, manageLoadingState = true): Promise<void> {
@@ -136,13 +215,14 @@ export function createSongWorkspace(): SongWorkspace {
 
   function clearGeneratedState(): void {
     cleanedText.value = "";
-    chordProText.value = "";
     songJson.value = "";
     error.value = "";
+    songbookError.value = "";
     retryLog.value = [];
     validationReason.value = "";
     validationRawOutput.value = "";
     songMetadata.value = {};
+    replaceDocument(createDocumentFromChordPro(""));
     previewPath.value = "";
     revokePreviewUrl();
     previewSrc.value = "";
@@ -197,7 +277,7 @@ export function createSongWorkspace(): SongWorkspace {
     exportMessage.value = "";
 
     try {
-      if (!chordProText.value) {
+      if (!document.value.chordProText) {
         exportError.value = "Export failed.";
         return;
       }
@@ -228,12 +308,22 @@ export function createSongWorkspace(): SongWorkspace {
           : `${selectedPath}.pdf`;
 
       if (normalizedPath.toLowerCase().endsWith(".cho")) {
-        await writeTextFile(normalizedPath, chordProText.value);
+        await songRepository.writeSong(normalizedPath, document.value.chordProText);
+        replaceDocument(
+          createDocumentFromChordPro(document.value.chordProText, {
+            filePath: normalizedPath,
+            song: document.value.song,
+            dirty: false
+          })
+        );
+        if (songbook.value) {
+          await refreshSongbook();
+        }
         exportMessage.value = `Saved to: ${getFilenameFromPath(normalizedPath)}`;
         return;
       }
 
-      const exportedPath = await chordproAdapter.exportPdf(chordProText.value, normalizedPath);
+      const exportedPath = await chordproAdapter.exportPdf(document.value.chordProText, normalizedPath);
       exportMessage.value = `Saved to: ${getFilenameFromPath(exportedPath)}`;
     } catch (err) {
       exportError.value = "Export failed.";
@@ -282,16 +372,24 @@ export function createSongWorkspace(): SongWorkspace {
       const pipeline = createPipeline(options?.model);
       const result = await pipeline.process(rawInput.value, options?.preferences);
       cleanedText.value = result.cleanedText;
-      chordProText.value = result.chordPro;
-      songMetadata.value = result.song.metadata;
+      replaceDocument(
+        createDocumentFromChordPro(result.chordPro, {
+          song: result.song,
+          dirty: false
+        })
+      );
       retryLog.value = result.retryLog ?? [];
-      songJson.value = JSON.stringify(result.song, null, 2);
       await refreshPreview(result.chordPro, false);
     } catch (err) {
       if (err instanceof ChordProValidationError) {
         validationReason.value = err.details?.reason ?? "";
         validationRawOutput.value = err.details?.rawOutput ?? "";
-        chordProText.value = validationRawOutput.value;
+        replaceDocument(
+          createDocumentFromChordPro(validationRawOutput.value, {
+            song: null,
+            dirty: false
+          })
+        );
       }
 
       if (err instanceof GeminiRetryError) {
@@ -308,12 +406,184 @@ export function createSongWorkspace(): SongWorkspace {
   async function previewFromChordPro(): Promise<void> {
     clearOperationMessages();
 
-    if (!chordProText.value) {
+    if (!document.value.chordProText) {
       previewError.value = "Preview generation failed.";
       return;
     }
 
-    await refreshPreview(chordProText.value);
+    try {
+      const parsedSong = parser.parse(document.value.chordProText);
+      replaceDocument(
+        createDocumentFromChordPro(document.value.chordProText, {
+          filePath: document.value.filePath,
+          song: parsedSong,
+          dirty: document.value.dirty
+        })
+      );
+    } catch {
+      // Keep the last valid parsed song if the current draft is not parseable.
+    }
+
+    await refreshPreview(document.value.chordProText);
+  }
+
+  function setChordProText(value: string): void {
+    chordProText.value = value;
+  }
+
+  async function refreshSongbook(): Promise<void> {
+    if (!songbook.value?.path) {
+      return;
+    }
+
+    songbookError.value = "";
+
+    try {
+      songbook.value = await songbookService.loadSongbook(songbook.value.path);
+      await configRepository.save({ lastSongbookPath: songbook.value.path });
+    } catch (err) {
+      songbookError.value = err instanceof Error ? err.message : "Could not refresh the songbook.";
+    }
+  }
+
+  async function ensureDocumentCanBeReplaced(): Promise<boolean> {
+    if (!document.value.dirty || !document.value.chordProText) {
+      return true;
+    }
+
+    const choice = await message("This song has unsaved changes.", {
+      title: "Unsaved changes",
+      kind: "warning",
+      buttons: {
+        yes: "Save",
+        no: "Discard",
+        cancel: "Cancel"
+      }
+    });
+
+    if (choice === "Cancel") {
+      return false;
+    }
+
+    if (choice === "Save") {
+      return saveDocument();
+    }
+
+    return true;
+  }
+
+  async function saveDocument(): Promise<boolean> {
+    if (!document.value.chordProText) {
+      return false;
+    }
+
+    let targetPath = document.value.filePath;
+
+    if (!targetPath) {
+      const selectedPath = await save({
+        title: "Save ChordPro file",
+        defaultPath: buildSuggestedExportName("cho"),
+        filters: [
+          {
+            name: "ChordPro file",
+            extensions: ["cho"]
+          }
+        ]
+      });
+
+      if (!selectedPath) {
+        return false;
+      }
+
+      targetPath = selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : `${selectedPath}.cho`;
+    }
+
+    await songbookService.saveSong(targetPath, document.value.chordProText);
+
+    let parsedSong = document.value.song;
+    try {
+      parsedSong = parser.parse(document.value.chordProText);
+    } catch {
+      // Keep the previous valid song snapshot if the current draft cannot be parsed.
+    }
+
+    replaceDocument(
+      createDocumentFromChordPro(document.value.chordProText, {
+        filePath: targetPath,
+        song: parsedSong,
+        dirty: false
+      })
+    );
+
+    if (songbook.value) {
+      await refreshSongbook();
+    }
+
+    return true;
+  }
+
+  async function openSongFile(filePath: string): Promise<void> {
+    if (!(await ensureDocumentCanBeReplaced())) {
+      return;
+    }
+
+    clearOperationMessages();
+    error.value = "";
+    songbookError.value = "";
+
+    try {
+      const loadedSong = await songbookService.openSong(filePath);
+      replaceDocument(
+        createDocumentFromChordPro(loadedSong.chordProText, {
+          filePath: loadedSong.filePath,
+          song: loadedSong.song,
+          dirty: false
+        })
+      );
+      rawInput.value = "";
+      cleanedText.value = "";
+      retryLog.value = [];
+      validationReason.value = "";
+      validationRawOutput.value = "";
+      await refreshPreview(loadedSong.chordProText);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Could not open the selected song.";
+    }
+  }
+
+  async function openSongbookFolder(): Promise<void> {
+    const selectedFolder = await open({
+      title: "Open songbook folder",
+      directory: true,
+      multiple: false,
+      recursive: true
+    });
+
+    if (!selectedFolder || Array.isArray(selectedFolder)) {
+      return;
+    }
+
+    songbook.value = {
+      path: selectedFolder,
+      songs: []
+    };
+    activePanel.value = "songbook";
+    await refreshSongbook();
+  }
+
+  async function initialize(): Promise<void> {
+    const config = await configRepository.load();
+
+    if (!config.lastSongbookPath) {
+      return;
+    }
+
+    try {
+      songbook.value = await songbookService.loadSongbook(config.lastSongbookPath);
+      activePanel.value = "songbook";
+    } catch {
+      songbook.value = null;
+    }
   }
 
   function dispose(): void {
@@ -321,6 +591,7 @@ export function createSongWorkspace(): SongWorkspace {
   }
 
   return {
+    activePanel,
     rawInput,
     cleanedText,
     chordProText,
@@ -328,6 +599,7 @@ export function createSongWorkspace(): SongWorkspace {
     loading,
     isGeneratingPreview,
     error,
+    songbookError,
     retryLog,
     validationReason,
     validationRawOutput,
@@ -337,12 +609,22 @@ export function createSongWorkspace(): SongWorkspace {
     exportError,
     exportMessage,
     songMetadata,
+    document,
+    songbook,
+    selectedSongPath,
+    initialize,
     copyToClipboard,
     pasteFromClipboard,
     refreshPreview,
     clearGeneratedState,
     clearAllState,
     exportCurrent,
+    openSongbookFolder,
+    refreshSongbook,
+    openSongFile,
+    saveDocument,
+    setChordProText,
+    setActivePanel,
     runPipeline,
     previewFromChordPro,
     dispose
