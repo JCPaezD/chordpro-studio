@@ -8,6 +8,7 @@ const {
   rawInput,
   chordProText,
   loading,
+  isGeneratingPreview,
   error,
   previewPath,
   previewSrc,
@@ -88,13 +89,16 @@ async function convertSong(): Promise<void> {
             <h2>PDF preview</h2>
             <p>The preview matches the exported PDF.</p>
           </div>
-          <button
-            class="mini-button"
-            :disabled="!isTauri() || !chordProText"
-            @click="exportCurrent"
-          >
-            Export PDF (.cho)
-          </button>
+          <div class="header-actions">
+            <button class="mini-button" @click="pasteFromClipboard">Paste</button>
+            <button
+              class="mini-button"
+              :disabled="!isTauri() || !chordProText"
+              @click="exportCurrent"
+            >
+              Export PDF (.cho)
+            </button>
+          </div>
         </div>
 
         <p v-if="previewPath" class="preview-path">{{ previewPath }}</p>
@@ -106,17 +110,30 @@ async function convertSong(): Promise<void> {
         <p v-else-if="!isTauri()" class="message">
           Preview and export require the Tauri desktop runtime.
         </p>
+        <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-loading-empty">
+          <div class="preview-loading-card">
+            <span class="loading-spinner" aria-hidden="true" />
+            <p class="message">Generating preview...</p>
+          </div>
+        </div>
         <p v-else-if="!previewSrc" class="message">
           Generate the sheet to see the PDF preview.
         </p>
 
-        <iframe
-          v-if="previewSrc"
-          :key="previewSrc"
-          :src="previewSrc"
-          class="preview-frame"
-          title="ChordPro PDF Preview"
-        />
+        <div v-if="previewSrc" class="preview-viewer">
+          <iframe
+            :key="previewSrc"
+            :src="previewSrc"
+            class="preview-frame"
+            title="ChordPro PDF Preview"
+          />
+          <div v-if="isGeneratingPreview" class="preview-loading-overlay">
+            <div class="preview-loading-card">
+              <span class="loading-spinner" aria-hidden="true" />
+              <p class="message">Generating preview...</p>
+            </div>
+          </div>
+        </div>
 
         <section class="source-panel">
           <button class="source-toggle" @click="sourceExpanded = !sourceExpanded">
@@ -315,6 +332,49 @@ async function convertSong(): Promise<void> {
   background: #fffef9;
 }
 
+.preview-viewer {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.preview-loading-empty {
+  display: grid;
+  place-items: center;
+  min-height: 20rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: #fffef9;
+}
+
+.preview-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(31, 37, 31, 0.24);
+}
+
+.preview-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: rgba(255, 254, 249, 0.94);
+  box-shadow: 0 12px 28px rgba(35, 49, 39, 0.12);
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 0.2rem solid rgba(35, 49, 39, 0.16);
+  border-top-color: #233127;
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
+}
+
 .source-panel {
   display: grid;
   gap: 0.75rem;
@@ -377,6 +437,16 @@ async function convertSong(): Promise<void> {
 
   .preview-frame {
     min-height: 28rem;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

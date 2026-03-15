@@ -10,6 +10,7 @@ const {
   chordProText,
   songJson,
   loading,
+  isGeneratingPreview,
   error,
   retryLog,
   validationReason,
@@ -114,7 +115,7 @@ async function loadGeminiModels(): Promise<void> {
 }
 
 async function runPipeline(): Promise<void> {
-  await runWorkspacePipeline({ model: resolveGeminiModel() });
+  await runWorkspacePipeline({ model: resolveGeminiModel(), clearBeforeRun: true });
 }
 
 onMounted(async () => {
@@ -153,9 +154,6 @@ onMounted(async () => {
             </option>
           </select>
         </label>
-        <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
-          Preview from .cho
-        </button>
         <button class="mini-button" :disabled="loading" @click="clearGeneratedState">
           Clear all
         </button>
@@ -272,6 +270,13 @@ onMounted(async () => {
               <p>Rendered by the bundled ChordPro CLI and loaded through the native PDF viewer.</p>
             </div>
             <div class="panel-actions">
+              <button
+                class="mini-button"
+                :disabled="loading || !isTauri() || !chordProText"
+                @click="previewFromChordPro"
+              >
+                Refresh preview
+              </button>
               <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
                 Export PDF (.cho)
               </button>
@@ -285,21 +290,30 @@ onMounted(async () => {
           <p v-else-if="!isTauri()" class="preview-message">
             Preview and PDF export require the Tauri desktop runtime.
           </p>
+          <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-loading-empty">
+            <div class="preview-loading-card">
+              <span class="loading-spinner" aria-hidden="true" />
+              <p class="preview-message">Generating preview...</p>
+            </div>
+          </div>
           <p v-else-if="!previewSrc" class="preview-message">
             Run the pipeline to generate a ChordPro CLI preview PDF.
           </p>
 
-          <iframe
-            v-if="previewSrc"
-            :key="previewSrc"
-            :src="previewSrc"
-            class="preview-frame"
-            title="ChordPro PDF Preview"
-          >
-            <p class="preview-message preview-error">
-              The embedded PDF preview could not be displayed.
-            </p>
-          </iframe>
+          <div v-if="previewSrc" class="preview-viewer">
+            <iframe
+              :key="previewSrc"
+              :src="previewSrc"
+              class="preview-frame"
+              title="ChordPro PDF Preview"
+            />
+            <div v-if="isGeneratingPreview" class="preview-loading-overlay">
+              <div class="preview-loading-card">
+                <span class="loading-spinner" aria-hidden="true" />
+                <p class="preview-message">Generating preview...</p>
+              </div>
+            </div>
+          </div>
         </section>
       </aside>
     </section>
@@ -494,6 +508,47 @@ onMounted(async () => {
   background: #fffef9;
 }
 
+.preview-viewer {
+  position: relative;
+  display: block;
+}
+
+.preview-loading-empty {
+  display: grid;
+  place-items: center;
+  min-height: 24rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: #fffef9;
+}
+
+.preview-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(31, 37, 31, 0.24);
+}
+
+.preview-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: rgba(255, 254, 249, 0.94);
+  box-shadow: 0 12px 28px rgba(35, 49, 39, 0.12);
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 0.2rem solid rgba(35, 49, 39, 0.16);
+  border-top-color: #233127;
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
+}
+
 .stage-header {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -671,6 +726,16 @@ pre {
 
   .preview-frame {
     min-height: 32rem;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

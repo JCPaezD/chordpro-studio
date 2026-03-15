@@ -24,6 +24,7 @@ Current status:
 - user-facing view implemented
 - mode switch between `User` and `Playground` implemented
 - preview now uses the real ChordPro PDF renderer
+- preview loading state implemented in both `User` and `Playground`
 - direct `.cho` preview for debugging is available
 - residual User View scroll remains as a low-priority visual bug
 
@@ -35,10 +36,10 @@ Current status:
    - User interface
    - Playground (development/debug view).
 4. Support exporting the current song as `.cho`.
+5. Add a visible loading state while preview is being generated.
 
 ### Block 2 - MVP corrections
 
-5. Add a visible loading state while preview is being generated.
 6. Resolve the residual User View layout scroll and remaining sizing polish.
 
 ### Block 3 - Minimal persistence

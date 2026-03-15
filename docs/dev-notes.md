@@ -208,6 +208,7 @@ Preview failure behavior:
 
 - if preview generation fails, the previous valid preview remains visible
 - the frontend shows the backend error message returned by the failed preview command
+- while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
 
 Bundled CLI expectation:
 

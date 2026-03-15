@@ -15,6 +15,7 @@ import { SongPipelineService } from "../../services/pipeline/SongPipelineService
 type RunPipelineOptions = {
   model?: string;
   preferences?: Record<string, unknown>;
+  clearBeforeRun?: boolean;
 };
 
 export type SongWorkspace = {
@@ -23,6 +24,7 @@ export type SongWorkspace = {
   chordProText: Ref<string>;
   songJson: Ref<string>;
   loading: Ref<boolean>;
+  isGeneratingPreview: Ref<boolean>;
   error: Ref<string>;
   retryLog: Ref<string[]>;
   validationReason: Ref<string>;
@@ -51,6 +53,7 @@ export function createSongWorkspace(): SongWorkspace {
   const chordProText = ref("");
   const songJson = ref("");
   const loading = ref(false);
+  const isGeneratingPreview = ref(false);
   const error = ref("");
   const retryLog = ref<string[]>([]);
   const validationReason = ref("");
@@ -93,8 +96,12 @@ export function createSongWorkspace(): SongWorkspace {
     rawInput.value = await navigator.clipboard.readText();
   }
 
-  async function refreshPreview(chordPro: string): Promise<void> {
+  async function refreshPreview(chordPro: string, manageLoadingState = true): Promise<void> {
     previewError.value = "";
+
+    if (manageLoadingState) {
+      isGeneratingPreview.value = true;
+    }
 
     try {
       const preview = await chordproAdapter.generatePreview(chordPro);
@@ -104,6 +111,10 @@ export function createSongWorkspace(): SongWorkspace {
       previewSrc.value = nextPreviewUrl;
     } catch (err) {
       previewError.value = err instanceof Error ? err.message : "Preview generation failed.";
+    } finally {
+      if (manageLoadingState) {
+        isGeneratingPreview.value = false;
+      }
     }
   }
 
@@ -245,8 +256,20 @@ export function createSongWorkspace(): SongWorkspace {
   }
 
   async function runPipeline(options?: RunPipelineOptions): Promise<void> {
-    clearGeneratedState();
+    if (options?.clearBeforeRun) {
+      clearGeneratedState();
+    } else {
+      error.value = "";
+      retryLog.value = [];
+      validationReason.value = "";
+      validationRawOutput.value = "";
+      previewError.value = "";
+      exportError.value = "";
+      exportSuccess.value = "";
+    }
+
     loading.value = true;
+    isGeneratingPreview.value = true;
 
     try {
       const pipeline = createPipeline(options?.model);
@@ -256,7 +279,7 @@ export function createSongWorkspace(): SongWorkspace {
       songMetadata.value = result.song.metadata;
       retryLog.value = result.retryLog ?? [];
       songJson.value = JSON.stringify(result.song, null, 2);
-      await refreshPreview(result.chordPro);
+      await refreshPreview(result.chordPro, false);
     } catch (err) {
       if (err instanceof ChordProValidationError) {
         validationReason.value = err.details?.reason ?? "";
@@ -271,6 +294,7 @@ export function createSongWorkspace(): SongWorkspace {
       error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
     } finally {
       loading.value = false;
+      isGeneratingPreview.value = false;
     }
   }
 
@@ -297,6 +321,7 @@ export function createSongWorkspace(): SongWorkspace {
     chordProText,
     songJson,
     loading,
+    isGeneratingPreview,
     error,
     retryLog,
     validationReason,
