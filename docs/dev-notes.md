@@ -257,6 +257,18 @@ When documentation files are manually edited by the user, Codex should treat the
 - reason for the assumption: the task requires reusing the exact same pipeline, preview and export mechanisms without duplicating architecture, and preserving state across view switches is simplest when both views operate on the same workspace
 - whether it requires later validation: yes
 
+- date: 2026-03-15
+- context: introducing folder-based songbook persistence and auto-opened last songbook state
+- assumption made: the desktop app can use a broad frontend filesystem scope so it can reopen the last chosen songbook folder on startup from `~/.chordpro-studio/config.json` without requiring the user to pick the folder again each session
+- reason for the assumption: the task explicitly requires auto-opening the last songbook and does not introduce persisted filesystem scopes or extra backend commands for that path access
+- whether it requires later validation: yes
+
+- date: 2026-03-15
+- context: deferring post-MVP songbook ergonomics
+- assumption made: manual songbook refresh and a raw `.cho` textarea are acceptable for this phase, while filesystem watching and a structured lyric/chord editor remain future improvements
+- reason for the assumption: the current roadmap block targets minimal persistence only, and the existing parser/preview flow already works with raw ChordPro text without adding another editor model
+- whether it requires later validation: yes
+
 ## User View Notes
 
 The application now has two UI modes:
@@ -272,3 +284,31 @@ User View model selector:
 - `Quality` -> `gemini-flash-latest`
 
 The User View also exposes a collapsible editable ChordPro source panel that reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
+
+## Songbook and Persistence Notes
+
+Minimal persistence now follows this flow:
+
+`.cho` file
+-> filesystem adapter (`SongRepository`)
+-> `ChordProParser`
+-> shared `WorkspaceDocument`
+-> preview refresh through the existing ChordPro CLI preview path
+
+Songbook behavior:
+
+- a songbook is a user-selected folder scanned for `.cho` files only
+- song entries are sorted alphabetically by their derived `displayTitle`
+- opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
+- the last selected songbook path is stored in `~/.chordpro-studio/config.json` and reloaded on startup
+
+Workspace document behavior:
+
+- the shared workspace now tracks a `WorkspaceDocument` with `filePath`, `fileName`, `chordProText`, parsed `song` and `dirty`
+- editing ChordPro source marks the document dirty
+- opening another song while dirty prompts the user to save, discard or cancel
+
+Future improvements kept explicitly out of this phase:
+
+- add a filesystem watcher to refresh the songbook automatically when `.cho` files are added, removed or renamed
+- replace the raw `.cho` editor with a structured chord editor that supports lyric/chord dual-line editing

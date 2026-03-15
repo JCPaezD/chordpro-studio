@@ -28,6 +28,9 @@ Current status:
 - preview and export feedback messages implemented in the UI
 - direct `.cho` preview for debugging is available
 - residual User View scroll bug resolved
+- folder-based songbook implemented
+- existing `.cho` files can be opened and parsed without running the LLM pipeline
+- workspace document tracks the current `.cho` file path and unsaved changes
 
 ### Block 1 - Completed foundation
 
@@ -44,18 +47,19 @@ Current status:
 
 7. Resolve the residual User View layout scroll and remaining sizing polish.
 
-### Block 3 - Minimal persistence
+### Block 3 - Completed minimal persistence
 
-7. Open existing `.cho` files.
-8. Provide a simple folder-based list of songs.
+8. Open existing `.cho` files.
+9. Provide a simple folder-based list of songs.
+10. Reconstruct the internal Song model by parsing `.cho` files on open.
 
 ### Block 4 - Songbook export
 
-9. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
+11. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
 
 ### Block 5 - UX polish
 
-11. Clean up the Playground UI (layout, redundant labels, language consistency).
+12. Clean up the Playground UI (layout, redundant labels, language consistency).
 
 ---
 
