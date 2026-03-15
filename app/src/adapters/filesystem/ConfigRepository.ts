@@ -1,5 +1,4 @@
-import { BaseDirectory } from "@tauri-apps/plugin-fs";
-import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 export type AppConfig = {
   lastSongbookPath?: string;
@@ -8,7 +7,16 @@ export type AppConfig = {
 const CONFIG_FILE_NAME = "config.json";
 
 export class ConfigRepository {
+  private async ensureConfigDirectory(): Promise<void> {
+    await mkdir("", {
+      baseDir: BaseDirectory.AppConfig,
+      recursive: true
+    });
+  }
+
   async load(): Promise<AppConfig> {
+    await this.ensureConfigDirectory();
+
     const hasConfig = await exists(CONFIG_FILE_NAME, { baseDir: BaseDirectory.AppConfig });
 
     if (!hasConfig) {
@@ -29,6 +37,8 @@ export class ConfigRepository {
   }
 
   async save(config: AppConfig): Promise<void> {
+    await this.ensureConfigDirectory();
+
     await writeTextFile(CONFIG_FILE_NAME, JSON.stringify(config, null, 2), {
       baseDir: BaseDirectory.AppConfig
     });
