@@ -259,7 +259,7 @@ When documentation files are manually edited by the user, Codex should treat the
 
 - date: 2026-03-15
 - context: introducing folder-based songbook persistence and auto-opened last songbook state
-- assumption made: the desktop app can use a broad frontend filesystem scope so it can reopen the last chosen songbook folder on startup from `~/.chordpro-studio/config.json` without requiring the user to pick the folder again each session
+- assumption made: the desktop app can use a broad frontend filesystem scope so it can reopen the last chosen songbook folder on startup from the Tauri `AppConfig` directory (`$APPCONFIG/config.json`, resolved from the app identifier) without requiring the user to pick the folder again each session
 - reason for the assumption: the task explicitly requires auto-opening the last songbook and does not introduce persisted filesystem scopes or extra backend commands for that path access
 - whether it requires later validation: yes
 
@@ -300,7 +300,7 @@ Songbook behavior:
 - a songbook is a user-selected folder scanned for `.cho` files only
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
-- the last selected songbook path is stored in `~/.chordpro-studio/config.json` and reloaded on startup
+- the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
 
 Workspace document behavior:
 

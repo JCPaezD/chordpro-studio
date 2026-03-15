@@ -222,3 +222,31 @@ Resolved by restructuring the application shell so the main app owns the scroll 
 
 Priority: Low
 Status: Resolved
+
+---
+
+## BUG-10 - User View panel height sync is not reliable across content states
+
+Layer: UI / Layout
+
+Description:
+The User View should present the active left panel (`Convert` or `Songbook`) at the same visual height as the `Preview` panel in two-column desktop layout, but that alignment is not reliable across content states.
+
+Impact:
+The layout feels inconsistent. In particular:
+
+- `Convert` may remain visibly shorter than `Preview`
+- expanding the collapsible ChordPro editor can push content beyond the block instead of the layout adapting cleanly
+- the empty `Songbook` placeholder does not align as cleanly as the populated state
+
+Current behavior:
+The view is functionally correct, but strict height parity between left and right panels is not solved in a robust way.
+
+Expected behavior:
+In desktop two-column layout, the active left panel and the Preview panel should align cleanly without overflow or placeholder misalignment.
+
+Temporary decision:
+Leave the current stable layout in place and defer strict panel-height synchronization to a later focused layout pass. Several CSS and runtime-sync attempts were tested and did not produce a robust solution without regressions.
+
+Priority: Low
+Status: Open

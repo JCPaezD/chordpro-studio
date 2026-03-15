@@ -282,7 +282,7 @@ GEMINI_API_KEY
 
 User configuration is stored locally in:
 
-~/.chordpro-studio/config.json
+Tauri AppConfig directory (`$APPCONFIG/config.json`, resolved from the app identifier)
 
 ---
 
