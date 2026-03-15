@@ -17,32 +17,42 @@ Focus:
 - the technical MVP pipeline is now functional
 - the next step is turning the current pipeline playground into a minimal usable application for creating chord sheets
 
-### Block 1 - MVP corrections
+Current status:
+
+- native Tauri export dialog implemented
+- export supports both `.pdf` and `.cho`
+- user-facing view implemented
+- mode switch between `User` and `Playground` implemented
+- preview now uses the real ChordPro PDF renderer
+- direct `.cho` preview for debugging is available
+- residual User View scroll remains as a low-priority visual bug
+
+### Block 1 - Completed foundation
 
 1. Replace the temporary export prompt with a proper Tauri file save dialog.
-2. Add a visible loading state while preview is being generated.
-
-### Block 2 - User interface
-
-3. Introduce a clean user-facing view separate from the developer Playground.
-4. Add navigation between:
+2. Introduce a clean user-facing view separate from the developer Playground.
+3. Add navigation between:
    - User interface
    - Playground (development/debug view).
+4. Support exporting the current song as `.cho`.
+
+### Block 2 - MVP corrections
+
+5. Add a visible loading state while preview is being generated.
+6. Resolve the residual User View layout scroll and remaining sizing polish.
 
 ### Block 3 - Minimal persistence
 
-5. Save songs as `.cho` files.
-6. Open existing `.cho` files.
-7. Provide a simple folder-based list of songs.
+7. Open existing `.cho` files.
+8. Provide a simple folder-based list of songs.
 
 ### Block 4 - Songbook export
 
-8. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
+9. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
 
 ### Block 5 - UX polish
 
-9. Improve preview and export feedback messages.
-10. Preserve the last valid preview if regeneration fails.
+10. Improve preview and export feedback messages.
 11. Clean up the Playground UI (layout, redundant labels, language consistency).
 
 ---
