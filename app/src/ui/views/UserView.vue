@@ -10,13 +10,12 @@ const {
   loading,
   isGeneratingPreview,
   error,
-  previewPath,
   previewSrc,
   previewError,
   exportError,
-  exportSuccess,
+  exportMessage,
   pasteFromClipboard,
-  clearGeneratedState,
+  clearAllState,
   exportCurrent,
   runPipeline,
   previewFromChordPro,
@@ -63,14 +62,18 @@ async function convertSong(): Promise<void> {
             <h2>Original text</h2>
             <p>Paste the lyrics and chords you want to convert.</p>
           </div>
-          <div class="header-actions">
-            <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-            <button class="secondary-button" :disabled="loading" @click="clearGeneratedState">
-              Clear
-            </button>
+          <div class="panel-actions-stack">
+            <div class="header-actions">
+              <button class="mini-button" @click="pasteFromClipboard">Paste</button>
+            <button class="secondary-button" :disabled="loading" @click="clearAllState">Clear</button>
             <button class="primary-button" :disabled="loading" @click="convertSong">
-              {{ loading ? "Generating..." : "Generate sheet" }}
+              <span :class="['button-content', { loading } ]">
+                <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
+                <span class="button-label">{{ loading ? "Generating..." : "Generate sheet" }}</span>
+              </span>
             </button>
+            </div>
+            <p v-if="error" class="action-feedback error-message">{{ error }}</p>
           </div>
         </div>
 
@@ -79,8 +82,6 @@ async function convertSong(): Promise<void> {
           class="input-textarea"
           placeholder="Paste the original song text here..."
         />
-
-        <p v-if="error" class="message error-message">{{ error }}</p>
       </section>
 
       <section class="panel preview-panel">
@@ -89,24 +90,25 @@ async function convertSong(): Promise<void> {
             <h2>PDF preview</h2>
             <p>The preview matches the exported PDF.</p>
           </div>
-          <div class="header-actions">
-            <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-            <button
-              class="mini-button"
-              :disabled="!isTauri() || !chordProText"
-              @click="exportCurrent"
-            >
-              Export PDF (.cho)
-            </button>
+          <div class="preview-actions">
+            <div class="header-actions">
+              <button class="mini-button" @click="pasteFromClipboard">Paste</button>
+              <button
+                class="mini-button"
+                :disabled="!isTauri() || !chordProText"
+                @click="exportCurrent"
+              >
+                Export PDF (.cho)
+              </button>
+            </div>
+            <p v-if="exportError" class="action-feedback error-message">{{ exportError }}</p>
+            <p v-else-if="exportMessage" class="action-feedback success-message">
+              {{ exportMessage }}
+            </p>
           </div>
         </div>
 
-        <p v-if="previewPath" class="preview-path">{{ previewPath }}</p>
         <p v-if="previewError" class="message error-message">{{ previewError }}</p>
-        <p v-else-if="exportError" class="message error-message">{{ exportError }}</p>
-        <p v-else-if="exportSuccess" class="message success-message">
-          {{ exportSuccess }}
-        </p>
         <p v-else-if="!isTauri()" class="message">
           Preview and export require the Tauri desktop runtime.
         </p>
@@ -285,15 +287,31 @@ async function convertSong(): Promise<void> {
   flex-wrap: wrap;
 }
 
+.panel-actions-stack {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.preview-actions {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
 .primary-button,
 .secondary-button,
 .mini-button,
 .source-toggle {
   width: fit-content;
+  min-height: 2.5rem;
+  box-sizing: border-box;
   cursor: pointer;
 }
 
 .primary-button {
+  position: relative;
+  width: 12.75rem;
   padding: 0.85rem 1.35rem;
   border: 0;
   background: linear-gradient(135deg, #1f3124, #37513b);
@@ -306,7 +324,10 @@ async function convertSong(): Promise<void> {
 .secondary-button,
 .mini-button,
 .source-toggle {
-  padding: 0.45rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.95rem;
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: #f7f0e1;
   color: #233127;
@@ -316,11 +337,44 @@ async function convertSong(): Promise<void> {
   text-transform: uppercase;
 }
 
-.preview-path {
+.button-content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+}
+
+.button-spinner {
+  position: absolute;
+  left: 0;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 0.14rem solid rgba(248, 243, 232, 0.34);
+  border-top-color: #f8f3e8;
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
+}
+
+.button-spinner.is-hidden {
+  visibility: hidden;
+}
+
+.button-label {
+  display: inline-block;
+}
+
+.button-content.loading .button-label {
+  padding-left: 1.35rem;
+}
+
+.action-feedback {
   margin: 0;
-  color: #5f6c60;
-  font-size: 0.85rem;
-  word-break: break-all;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  text-align: right;
+  word-break: break-word;
+  font-weight: 700;
 }
 
 .preview-frame {
@@ -406,7 +460,7 @@ async function convertSong(): Promise<void> {
 }
 
 .success-message {
-  color: #214d2d;
+  color: #255c36;
 }
 
 @media (max-width: 1100px) {
@@ -429,6 +483,15 @@ async function convertSong(): Promise<void> {
   .source-actions {
     align-items: start;
     flex-direction: column;
+  }
+
+  .panel-actions-stack,
+  .preview-actions {
+    justify-items: start;
+  }
+
+  .action-feedback {
+    text-align: left;
   }
 
   .layout {

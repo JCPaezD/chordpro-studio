@@ -19,10 +19,10 @@ const {
   previewSrc,
   previewError,
   exportError,
-  exportSuccess,
+  exportMessage,
   copyToClipboard,
   pasteFromClipboard,
-  clearGeneratedState,
+  clearAllState,
   exportCurrent,
   runPipeline: runWorkspacePipeline,
   previewFromChordPro
@@ -154,11 +154,14 @@ onMounted(async () => {
             </option>
           </select>
         </label>
-        <button class="mini-button" :disabled="loading" @click="clearGeneratedState">
+        <button class="mini-button" :disabled="loading" @click="clearAllState">
           Clear all
         </button>
         <button :disabled="loading" class="run-button" @click="runPipeline">
-          {{ loading ? "Running..." : "Run Pipeline" }}
+          <span :class="['button-content', { loading }]">
+            <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
+            <span class="button-label">{{ loading ? "Running..." : "Run Pipeline" }}</span>
+          </span>
         </button>
       </div>
     </header>
@@ -277,16 +280,20 @@ onMounted(async () => {
               >
                 Refresh preview
               </button>
-              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
-                Export PDF (.cho)
-              </button>
+              <div class="export-actions">
+                <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
+                  Export PDF (.cho)
+                </button>
+                <p v-if="exportError" class="action-feedback preview-error">{{ exportError }}</p>
+                <p v-else-if="exportMessage" class="action-feedback preview-success">
+                  {{ exportMessage }}
+                </p>
+              </div>
             </div>
           </div>
 
           <p v-if="previewPath" class="preview-path">{{ previewPath }}</p>
           <p v-if="previewError" class="preview-message preview-error">{{ previewError }}</p>
-          <p v-else-if="exportError" class="preview-message preview-error">{{ exportError }}</p>
-          <p v-else-if="exportSuccess" class="preview-message preview-success">{{ exportSuccess }}</p>
           <p v-else-if="!isTauri()" class="preview-message">
             Preview and PDF export require the Tauri desktop runtime.
           </p>
@@ -572,6 +579,20 @@ onMounted(async () => {
   justify-content: flex-end;
 }
 
+.export-actions {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.action-feedback {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-align: right;
+  word-break: break-word;
+}
+
 .stage p,
 .preview-stage p {
   margin: 0.2rem 0 0;
@@ -610,6 +631,10 @@ pre {
 
 .run-button {
   width: fit-content;
+  width: 12.75rem;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  position: relative;
   padding: 0.85rem 1.35rem;
   border: 0;
   background: linear-gradient(135deg, #1f3124, #37513b);
@@ -620,8 +645,44 @@ pre {
   cursor: pointer;
 }
 
+.button-content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+}
+
+.button-spinner {
+  position: absolute;
+  left: 0;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 0.14rem solid rgba(248, 243, 232, 0.34);
+  border-top-color: #f8f3e8;
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
+}
+
+.button-spinner.is-hidden {
+  visibility: hidden;
+}
+
+.button-label {
+  display: inline-block;
+}
+
+.button-content.loading .button-label {
+  padding-left: 1.35rem;
+}
+
 .mini-button {
   width: fit-content;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.45rem 0.75rem;
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: #f7f0e1;
@@ -716,6 +777,14 @@ pre {
   .error-raw-header {
     align-items: start;
     flex-direction: column;
+  }
+
+  .export-actions {
+    justify-items: start;
+  }
+
+  .action-feedback {
+    text-align: left;
   }
 
   textarea,

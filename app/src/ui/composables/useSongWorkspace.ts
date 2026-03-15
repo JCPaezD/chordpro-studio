@@ -33,12 +33,13 @@ export type SongWorkspace = {
   previewSrc: Ref<string>;
   previewError: Ref<string>;
   exportError: Ref<string>;
-  exportSuccess: Ref<string>;
+  exportMessage: Ref<string>;
   songMetadata: Ref<SongMetadata>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
   refreshPreview(chordPro: string): Promise<void>;
   clearGeneratedState(): void;
+  clearAllState(): void;
   exportCurrent(): Promise<void>;
   runPipeline(options?: RunPipelineOptions): Promise<void>;
   previewFromChordPro(): Promise<void>;
@@ -62,7 +63,7 @@ export function createSongWorkspace(): SongWorkspace {
   const previewSrc = ref("");
   const previewError = ref("");
   const exportError = ref("");
-  const exportSuccess = ref("");
+  const exportMessage = ref("");
   const songMetadata = ref<SongMetadata>({});
 
   const chordproAdapter = new TauriChordproAdapter();
@@ -82,6 +83,18 @@ export function createSongWorkspace(): SongWorkspace {
     }
 
     return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  }
+
+  function clearOperationMessages(): void {
+    previewError.value = "";
+    exportError.value = "";
+    exportMessage.value = "";
+  }
+
+  function getFilenameFromPath(path: string): string {
+    const normalized = path.replace(/\\/g, "/");
+    const parts = normalized.split("/");
+    return parts[parts.length - 1] || path;
   }
 
   async function copyToClipboard(value: string): Promise<void> {
@@ -110,7 +123,10 @@ export function createSongWorkspace(): SongWorkspace {
       previewPath.value = preview.pdfPath;
       previewSrc.value = nextPreviewUrl;
     } catch (err) {
-      previewError.value = err instanceof Error ? err.message : "Preview generation failed.";
+      const detail = err instanceof Error ? err.message.trim() : "";
+      previewError.value = detail
+        ? `Preview generation failed: ${detail}`
+        : "Preview generation failed.";
     } finally {
       if (manageLoadingState) {
         isGeneratingPreview.value = false;
@@ -130,9 +146,12 @@ export function createSongWorkspace(): SongWorkspace {
     previewPath.value = "";
     revokePreviewUrl();
     previewSrc.value = "";
-    previewError.value = "";
-    exportError.value = "";
-    exportSuccess.value = "";
+    clearOperationMessages();
+  }
+
+  function clearAllState(): void {
+    rawInput.value = "";
+    clearGeneratedState();
   }
 
   function sanitizeFilenamePart(value: string): string {
@@ -175,11 +194,11 @@ export function createSongWorkspace(): SongWorkspace {
 
   async function exportCurrent(): Promise<void> {
     exportError.value = "";
-    exportSuccess.value = "";
+    exportMessage.value = "";
 
     try {
       if (!chordProText.value) {
-        exportError.value = "No ChordPro text available to export.";
+        exportError.value = "Export failed.";
         return;
       }
 
@@ -210,24 +229,14 @@ export function createSongWorkspace(): SongWorkspace {
 
       if (normalizedPath.toLowerCase().endsWith(".cho")) {
         await writeTextFile(normalizedPath, chordProText.value);
-        exportSuccess.value = `ChordPro exported to ${normalizedPath}`;
+        exportMessage.value = `Saved to: ${getFilenameFromPath(normalizedPath)}`;
         return;
       }
 
       const exportedPath = await chordproAdapter.exportPdf(chordProText.value, normalizedPath);
-      exportSuccess.value = `PDF exported to ${exportedPath}`;
+      exportMessage.value = `Saved to: ${getFilenameFromPath(exportedPath)}`;
     } catch (err) {
-      if (err instanceof Error && err.message) {
-        exportError.value = err.message;
-        return;
-      }
-
-      if (typeof err === "string" && err.trim().length > 0) {
-        exportError.value = err;
-        return;
-      }
-
-      exportError.value = JSON.stringify(err) || "PDF export failed.";
+      exportError.value = "Export failed.";
     }
   }
 
@@ -263,9 +272,7 @@ export function createSongWorkspace(): SongWorkspace {
       retryLog.value = [];
       validationReason.value = "";
       validationRawOutput.value = "";
-      previewError.value = "";
-      exportError.value = "";
-      exportSuccess.value = "";
+      clearOperationMessages();
     }
 
     loading.value = true;
@@ -299,12 +306,10 @@ export function createSongWorkspace(): SongWorkspace {
   }
 
   async function previewFromChordPro(): Promise<void> {
-    previewError.value = "";
-    exportError.value = "";
-    exportSuccess.value = "";
+    clearOperationMessages();
 
     if (!chordProText.value) {
-      previewError.value = "No ChordPro text available for preview.";
+      previewError.value = "Preview generation failed.";
       return;
     }
 
@@ -330,12 +335,13 @@ export function createSongWorkspace(): SongWorkspace {
     previewSrc,
     previewError,
     exportError,
-    exportSuccess,
+    exportMessage,
     songMetadata,
     copyToClipboard,
     pasteFromClipboard,
     refreshPreview,
     clearGeneratedState,
+    clearAllState,
     exportCurrent,
     runPipeline,
     previewFromChordPro,

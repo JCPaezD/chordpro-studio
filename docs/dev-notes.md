@@ -204,11 +204,19 @@ frontend native save dialog
 -> generate the requested PDF
 -> if `.cho` selected: write current ChordPro text directly to disk without invoking the CLI
 
+Export feedback behavior:
+
+- export success or failure is shown directly in the UI near the export action in both `User` and `Playground`
+- success messages use the saved filename when available
+- export and preview feedback messages persist until the next user action clears them (`run pipeline`, `refresh preview`, `export again`, `clear`, etc.)
+- shared workspace cleanup is split between `clearGeneratedState()` (results only) and `clearAllState()` (raw input plus generated state) so `User` and `Playground` can choose the correct behavior without duplicating reset logic
+
 Preview failure behavior:
 
 - if preview generation fails, the previous valid preview remains visible
 - the frontend shows the backend error message returned by the failed preview command
 - while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
+- preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
 
 Bundled CLI expectation:
 
