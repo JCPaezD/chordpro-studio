@@ -250,3 +250,75 @@ Leave the current stable layout in place and defer strict panel-height synchroni
 
 Priority: Low
 Status: Open
+
+---
+
+## BUG-11 - User View does not default to Quality mode or persist the last selected conversion mode
+
+Layer: UI / Preferences
+
+Description:
+The User View conversion flow should open in `Quality` mode by default. In addition, when the user changes the conversion mode, that selection should be remembered after closing and reopening the app.
+
+Impact:
+The current startup behavior does not match the intended primary workflow and forces the user to reselect the preferred conversion mode on every session.
+
+Current behavior:
+The conversion mode does not reliably start in `Quality`, and the last selected mode is not restored from persisted app state.
+
+Expected behavior:
+The default mode should be `Quality`, and the current selection should be persisted and restored on startup.
+
+Temporary decision:
+Document as a deferred UX/configuration fix. Implement later through the existing persisted app configuration path instead of introducing view-local state only.
+
+Priority: Medium
+Status: Open
+
+---
+
+## BUG-12 - Opening a songbook song can discard an unsaved converted song without confirmation
+
+Layer: Workspace / Navigation
+
+Description:
+If the user has a converted song in `Convert` mode that has not been saved as `.cho`, then switches to `Songbook` and clicks a song from the list, the app does not show the same save/discard/cancel confirmation that already exists for dirty document navigation.
+
+Impact:
+A converted song can be replaced by another songbook entry without any confirmation, which risks silent loss of work.
+
+Current behavior:
+Confirmation is shown when navigating away from an edited dirty document, but not when the current workspace contains a converted unsaved song that has not yet been persisted.
+
+Expected behavior:
+The same confirmation flow should also be triggered when the current workspace contains converted unsaved song content, even if it has not yet been saved to a `.cho` file.
+
+Temporary decision:
+Document as a deferred workspace-state bug. The later fix should treat unsaved converted output as a navigation-protected state, not only `dirty === true` on already opened songbook documents.
+
+Priority: High
+Status: Open
+
+---
+
+## BUG-13 - Preview panel exposes a Paste action that is not meaningful in User View
+
+Layer: UI / User View
+
+Description:
+The preview block in the User View currently shows a `Paste` button even though the preview is a rendered result area and does not accept pasted content as part of the user workflow.
+
+Impact:
+The action is misleading and adds noise to the primary user interface.
+
+Current behavior:
+The preview panel displays a `Paste` button.
+
+Expected behavior:
+The `Paste` action should be removed from the preview block in the User View.
+
+Temporary decision:
+Document as a deferred UI cleanup item and remove the control in a later focused UX pass.
+
+Priority: Low
+Status: Open
