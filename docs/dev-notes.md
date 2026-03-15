@@ -258,6 +258,11 @@ When documentation files are manually edited by the user, Codex should treat the
 - whether it requires later validation: yes
 
 - date: 2026-03-15
+- context: introducing provisional application branding assets for Tauri and the Vue UI
+- assumption made: the user-provided transparent master icon should be kept in `app/src/ui/assets/master-icon.png` as the editable source, derived PNG logo sizes should live beside it for UI use, and Tauri desktop icons should be generated into `src-tauri/icons/` (`icon.ico`, `icon.png`, `32x32.png`, `128x128.png`, `128x128@2x.png`) without changing application behavior beyond branding
+- reason for the assumption: the current task is a visual branding pass, the provided artwork is explicitly provisional, and keeping one editable source plus generated derivatives is the simplest way to allow later icon replacement without refactoring code paths
+- whether it requires later validation: yes
+
 - context: introducing folder-based songbook persistence and auto-opened last songbook state
 - assumption made: the desktop app can use a broad frontend filesystem scope so it can reopen the last chosen songbook folder on startup from the Tauri `AppConfig` directory (`$APPCONFIG/config.json`, resolved from the app identifier) without requiring the user to pick the folder again each session
 - reason for the assumption: the task explicitly requires auto-opening the last songbook and does not introduce persisted filesystem scopes or extra backend commands for that path access
@@ -268,6 +273,13 @@ When documentation files are manually edited by the user, Codex should treat the
 - assumption made: manual songbook refresh and a raw `.cho` textarea are acceptable for this phase, while filesystem watching and a structured lyric/chord editor remain future improvements
 - reason for the assumption: the current roadmap block targets minimal persistence only, and the existing parser/preview flow already works with raw ChordPro text without adding another editor model
 - whether it requires later validation: yes
+
+## Branding Notes
+
+- the current app icon/logo is provisional and may be replaced later by final brand assets
+- editable source asset: `app/src/ui/assets/master-icon.png`
+- current UI headers import `app/src/ui/assets/logo-64.png`
+- current Tauri development/package icon set lives in `src-tauri/icons/`
 
 ## User View Notes
 

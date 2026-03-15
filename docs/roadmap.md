@@ -34,6 +34,7 @@ Current status:
 - workspace document tracks the current `.cho` file path and unsaved changes
 - last opened songbook path is persisted in Tauri AppConfig and restored on startup
 - active songbook can be cleared without affecting the current document
+- provisional application icon and header logo integrated for Tauri and the `User` / `Playground` views
 
 ### Block 1 - Completed foundation
 

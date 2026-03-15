@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
+import appLogo from "../assets/logo-64.png";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const {
@@ -137,6 +138,10 @@ onMounted(async () => {
   <main class="playground">
     <header class="hero">
       <div>
+        <div class="brand-lockup">
+          <img :src="appLogo" alt="" class="brand-mark" />
+          <span class="brand-title">ChordPro Studio</span>
+        </div>
         <p class="eyebrow">Developer Tool</p>
         <h1>Pipeline Playground</h1>
         <p class="subtitle">
@@ -343,6 +348,28 @@ onMounted(async () => {
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.85);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+}
+
+.brand-title {
+  color: #182019;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 .eyebrow {

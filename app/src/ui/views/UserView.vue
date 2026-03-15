@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
+import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
@@ -80,6 +81,10 @@ function updateChordPro(value: string): void {
 
     <header class="card user-header">
       <div>
+        <div class="brand-lockup">
+          <img :src="appLogo" alt="" class="brand-mark" />
+          <span class="brand-title">ChordPro Studio</span>
+        </div>
         <p class="eyebrow">Workspace</p>
         <h1>Convert songs and manage your ChordPro songbook</h1>
         <p class="subtitle">
@@ -359,6 +364,28 @@ function updateChordPro(value: string): void {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+}
+
+.brand-title {
+  color: #182019;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 .user-header h1,
