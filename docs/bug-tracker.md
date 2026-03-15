@@ -218,7 +218,7 @@ Expected behavior:
 When the two-column User View is empty, it should fit the available desktop viewport without residual vertical scroll.
 
 Temporary decision:
-Keep as a low-priority visual bug for a later layout-polish pass. Avoid further speculative fixes for now unless the issue becomes functionally disruptive.
+Resolved by restructuring the application shell so the main app owns the scroll container, the view switch remains sticky with an opaque background, and the default document margins no longer introduce residual viewport overflow. Manual verification confirmed the residual scroll is gone.
 
 Priority: Low
-Status: Open
+Status: Resolved
