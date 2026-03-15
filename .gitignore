@@ -8,3 +8,5 @@ src-tauri/gen/
 .env.local
 app/.env
 app/.env.local
+tauri-dev-out.log
+tauri-dev-err.log
