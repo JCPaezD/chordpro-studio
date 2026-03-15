@@ -1,5 +1,6 @@
 import { computed, inject, provide, ref, type ComputedRef, type InjectionKey, type Ref } from "vue";
 
+import { dirname, join } from "@tauri-apps/api/path";
 import { message, open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
@@ -60,6 +61,7 @@ export type SongWorkspace = {
   exportCurrent(): Promise<void>;
   openSongbookFolder(): Promise<void>;
   refreshSongbook(): Promise<void>;
+  clearSongbook(): Promise<void>;
   openSongFile(filePath: string): Promise<void>;
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
@@ -272,6 +274,17 @@ export function createSongWorkspace(): SongWorkspace {
     return `song.${extension}`;
   }
 
+  async function buildSuggestedExportPath(extension: "pdf" | "cho"): Promise<string> {
+    const fileName = buildSuggestedExportName(extension);
+    const basePath = songbook.value?.path
+      ? songbook.value.path
+      : document.value.filePath
+        ? await dirname(document.value.filePath)
+        : "";
+
+    return basePath ? join(basePath, fileName) : fileName;
+  }
+
   async function exportCurrent(): Promise<void> {
     exportError.value = "";
     exportMessage.value = "";
@@ -284,7 +297,7 @@ export function createSongWorkspace(): SongWorkspace {
 
       const selectedPath = await save({
         title: "Export ChordPro output",
-        defaultPath: buildSuggestedExportName("pdf"),
+        defaultPath: await buildSuggestedExportPath("pdf"),
         filters: [
           {
             name: "PDF file",
@@ -440,9 +453,26 @@ export function createSongWorkspace(): SongWorkspace {
 
     try {
       songbook.value = await songbookService.loadSongbook(songbook.value.path);
-      await configRepository.save({ lastSongbookPath: songbook.value.path });
     } catch (err) {
       songbookError.value = err instanceof Error ? err.message : "Could not refresh the songbook.";
+      return;
+    }
+
+    try {
+      await configRepository.save({ lastSongbookPath: songbook.value.path });
+    } catch (err) {
+      console.error("Could not persist lastSongbookPath.", err);
+    }
+  }
+
+  async function clearSongbook(): Promise<void> {
+    songbook.value = null;
+    songbookError.value = "";
+
+    try {
+      await configRepository.save({});
+    } catch (err) {
+      console.error("Could not clear lastSongbookPath.", err);
     }
   }
 
@@ -482,7 +512,7 @@ export function createSongWorkspace(): SongWorkspace {
     if (!targetPath) {
       const selectedPath = await save({
         title: "Save ChordPro file",
-        defaultPath: buildSuggestedExportName("cho"),
+        defaultPath: await buildSuggestedExportPath("cho"),
         filters: [
           {
             name: "ChordPro file",
@@ -621,6 +651,7 @@ export function createSongWorkspace(): SongWorkspace {
     exportCurrent,
     openSongbookFolder,
     refreshSongbook,
+    clearSongbook,
     openSongFile,
     saveDocument,
     setChordProText,
