@@ -107,7 +107,7 @@ the documentation must be updated first.
 - context: implementing developer Pipeline Playground view
 - assumption made: the playground should prefer `OpenAIProvider` with model `gpt-4.1-mini`, fall back to `GeminiProvider` with model `gemini-1.5-flash`, and show a runtime error if no API key is configured
 - reason for the assumption: the task requires reusing existing service implementations and opening directly into a developer debugging view without adding new configuration UI
-- whether it requires later validation: yes
+- whether it requires later validation: no, superseded later by the shared workspace model and updated Gemini selection behavior documented in the 2026-03-14 and 2026-03-15 notes
 
 - date: 2026-03-08
 - context: making PromptLoader compatible with the developer Playground running in the Vue app
@@ -301,6 +301,8 @@ Songbook behavior:
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
+- the AppConfig directory is created explicitly before reading or writing `config.json`, so first-run startup creates the config file automatically
+- clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document
 
 Workspace document behavior:
 

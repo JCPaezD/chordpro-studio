@@ -1,6 +1,6 @@
-# Roadmap - roadmap.md
+# Roadmap
 
-## Phase 1 — MVP
+## Phase 1 - MVP
 
 Goals:
 
@@ -10,6 +10,7 @@ Goals:
 - local preferences
 
 ---
+
 ## Phase: Usable v1
 
 Focus:
@@ -31,6 +32,8 @@ Current status:
 - folder-based songbook implemented
 - existing `.cho` files can be opened and parsed without running the LLM pipeline
 - workspace document tracks the current `.cho` file path and unsaved changes
+- last opened songbook path is persisted in Tauri AppConfig and restored on startup
+- active songbook can be cleared without affecting the current document
 
 ### Block 1 - Completed foundation
 
@@ -43,28 +46,30 @@ Current status:
 5. Add a visible loading state while preview is being generated.
 6. Improve preview and export feedback messages.
 
-### Block 2 - MVP corrections
+### Block 2 - Completed persistence foundation
 
-7. Resolve the residual User View layout scroll and remaining sizing polish.
+7. Resolve the residual User View layout scroll and basic sizing polish.
+8. Persist the last opened songbook path in AppConfig.
+9. Allow clearing the active songbook without closing the current document.
 
 ### Block 3 - Completed minimal persistence
 
-8. Open existing `.cho` files.
-9. Provide a simple folder-based list of songs.
-10. Reconstruct the internal Song model by parsing `.cho` files on open.
+10. Open existing `.cho` files.
+11. Provide a simple folder-based list of songs.
+12. Reconstruct the internal Song model by parsing `.cho` files on open.
 
 ### Block 4 - Songbook export
 
-11. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
+13. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
 
 ### Block 5 - UX polish
 
-12. Clean up the Playground UI (layout, redundant labels, language consistency).
+14. Clean up the Playground UI (layout, redundant labels, language consistency).
+15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
 
 ---
 
-
-## Phase 2 — Workflow Improvements
+## Phase 2 - Workflow Improvements
 
 Features:
 
@@ -75,7 +80,7 @@ Features:
 
 ---
 
-## Phase 3 — Advanced AI
+## Phase 3 - Advanced AI
 
 Features:
 
@@ -85,7 +90,7 @@ Features:
 
 ---
 
-## Phase 4 — Product Expansion
+## Phase 4 - Product Expansion
 
 Features:
 
