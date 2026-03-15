@@ -1,5 +1,13 @@
 # MVP Specification - mvp.md
 
+This document records the original MVP target.
+
+The current source of truth for shipped architecture and post-MVP evolution is:
+
+- `docs/architecture.md`
+- `docs/roadmap.md`
+- `docs/dev-notes.md`
+
 ## Goal
 
 The goal of the MVP is to create a functional desktop application capable of transforming raw chord sheets into structured songbook entries.

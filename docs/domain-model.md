@@ -1,186 +1,204 @@
 # Domain Model
 
-This document describes the core data model used by the application.
+This document describes the current internal data model used by the application.
 
-The domain model represents songs independently of any external format such as ChordPro.
-
-ChordPro is treated as an intermediate export format rather than the primary internal representation.
+The internal model is independent from the ChordPro storage format, even though `.cho` is the canonical persisted format for this phase.
 
 ---
 
-# Core Entities
+## Core Entities
 
-The system models songs using the following entities:
+Current domain entities:
 
-Song  
-Metadata  
-Source  
-Section  
-Line  
-Segment  
-
----
-
-# Song
-
-Represents a complete song.
-
-Fields:
-
-- id
-- metadata
-- sections
-- sourceText
-- cleanText
-- chordProText
-- preferencesOverride
-- tags
-- notes
-- difficulty
-- createdAt
-- updatedAt
-
-The song stores intermediate pipeline data so that processing does not need to be repeated.
+- `Song`
+- `SongMetadata`
+- `SongSource`
+- `SongSection`
+- `SongLine`
+- `SongSegment`
+- `Songbook`
+- `SongbookEntry`
 
 ---
 
-# Metadata
+## Song
 
-Metadata contains song-level descriptive information.
+Current runtime shape:
 
-Fields:
+- `id?`
+- `metadata`
+- `source?`
+- `sections`
 
-- title
-- artist
-- album
-- year
-- key
-- tempo
-- timeSignature
-- source
+Notes:
 
----
-
-# Source
-
-Optional information about where the chord sheet originated.
-
-Fields:
-
-- type
-- url
-- retrievedAt
-
-Example source types may include:
-
-- ultimate-guitar
-- cifraclub
-- manual
-- other
+- the current code does not store pipeline intermediates such as `cleanText` or `chordProText` on the `Song` itself
+- the active `.cho` text and file path are tracked separately in the shared `WorkspaceDocument`
 
 ---
 
-# Section
+## SongMetadata
 
-Songs are divided into sections.
+Current fields:
 
-Fields:
+- `title?`
+- `artist?`
+- `album?`
+- `year?`
+- `subtitle?`
 
-- id
-- type
-- label
-- lines
-- repeat
-
-Section types include:
-
-- verse
-- chorus
-- bridge
-- intro
-- outro
-- solo
-- instrumental
-- other
+Metadata is optional because conversion and parsing can succeed with partial song information.
 
 ---
 
-# Line
+## SongSource
 
-A line represents a visual row of lyrics and chords.
+Current fields:
 
-Fields:
+- `kind`
+- `originalInput?`
+- `cleanedInput?`
+- `originalFormat?`
 
-- segments
+Current `SongSourceKind` values:
+
+- `manual`
+- `paste`
+- `file`
+- `scrape`
+- `ai`
+
+`originalFormat` values:
+
+- `raw`
+- `chordpro`
 
 ---
 
-# Segment
+## SongSection
 
-Segments are the smallest unit of rendering.
+Current fields:
 
-Each segment contains:
+- `type`
+- `label?`
+- `lines`
 
-- optional chord
-- lyric text
+Current section types:
+
+- `intro`
+- `verse`
+- `chorus`
+- `bridge`
+- `pre-chorus`
+- `instrumental`
+- `solo`
+- `outro`
+- `custom`
+
+---
+
+## SongLine
+
+Current fields:
+
+- `lyrics`
+- `chords`
+- `segments?`
+
+Notes:
+
+- `lyrics` and `chords` remain part of the current runtime interface
+- `segments` is optional and is used by the parser/rendering-oriented flow
+
+This means the current code is still in a transitional state between simpler line models and a fully segment-driven model.
+
+---
+
+## SongSegment
+
+Current fields:
+
+- `lyrics`
+- `chord?`
 
 Example:
 
-[Am]Hello darkness my [G]old friend
+`[Am]Hello darkness my [G]old friend`
 
-Is represented as:
+can be represented as:
 
-Segment(chord="Am", lyric="Hello darkness my ")  
-Segment(chord="G", lyric="old friend")
-
----
-
-# Design Decisions
-
-The system models chord sheets using **segments** rather than separate chord arrays.
-
-This allows:
-
-- exact chord placement
-- future transposition
-- flexible rendering
-- accurate export to ChordPro
-
-Chord values are currently stored as strings.
-
-Chord parsing and structured chord objects may be introduced later.
+- `SongSegment { chord: "Am", lyrics: "Hello darkness my " }`
+- `SongSegment { chord: "G", lyrics: "old friend" }`
 
 ---
 
-# ChordPro Integration
+## Songbook
 
-ChordPro is not used as the primary model.
+A songbook represents a selected folder of `.cho` files.
 
-Instead the flow is:
+Current fields:
 
-Raw Text  
-↓  
-Clean Text  
-↓  
-ChordPro Text  
-↓  
-Internal Song Model
+- `path`
+- `songs`
 
-ChordPro is later used for PDF export.
+### SongbookEntry
 
-## Section Identification
+Current fields:
 
-Sections may originate from two sources:
+- `filePath`
+- `displayTitle`
 
-1. Explicit ChordPro section directives.
-2. Detected textual section headers in chord sheets.
+`displayTitle` is derived from parsed song content, not stored inside the file as a separate index.
 
-Examples of textual headers:
+---
 
-Verse  
-Chorus  
-Bridge  
-Intro  
-Outro  
+## WorkspaceDocument
 
-When detected, these headers should be mapped to the corresponding SectionType.
+`WorkspaceDocument` is not part of the domain folder, but it is part of the active application model and is important for understanding current behavior.
+
+Current fields:
+
+- `filePath`
+- `fileName`
+- `chordProText`
+- parsed `song`
+- `dirty`
+
+Responsibilities:
+
+- represent the currently open song
+- track unsaved changes
+- keep the editable `.cho` source separate from persisted storage
+
+---
+
+## ChordPro Integration
+
+Current persistence and parsing flow:
+
+`.cho`
+-> filesystem adapter
+-> `ChordProParser`
+-> internal `Song`
+
+Current conversion flow:
+
+Raw input
+-> cleaning
+-> LLM conversion
+-> ChordPro validation
+-> `ChordProParser`
+-> internal `Song`
+
+This means `.cho` is both:
+
+- the canonical persisted format
+- the bridge format used before rebuilding the internal `Song`
+
+---
+
+## Design Notes
+
+- The long-term design still favors structured internal models over treating ChordPro as the only source of truth in memory.
+- In the current implementation, some interfaces remain pragmatic rather than fully normalized.
+- Documentation should track the runtime types as they actually exist, even when future refinements are expected.

@@ -1,19 +1,19 @@
-# Architecture - architecture.md
+# Architecture
 
 ## Platform Strategy
 
-ChordPro Studio follows a **desktop-first architecture**.
+ChordPro Studio follows a desktop-first architecture.
 
 Primary platform:
 
-Desktop application built with Tauri.
+- desktop application built with Tauri
 
 Reasons:
 
 - local filesystem access
 - local ChordPro CLI execution
 - offline usage
-- faster iteration for power users
+- fast iteration for power users
 
 Future platforms may include:
 
@@ -27,7 +27,8 @@ Future platforms may include:
 1. Local-first processing
 2. AI-assisted workflows
 3. Separation of concerns
-4. Extensible architecture
+4. Shared workspace state across UI modes
+5. Extensible architecture
 
 ---
 
@@ -35,359 +36,244 @@ Future platforms may include:
 
 The system is divided into three main layers.
 
----
-
 ### 1. Core Domain
 
 The core contains platform-independent models and logic.
 
-Examples:
+Current domain areas:
 
-- Song model
-- Section model
-- Preferences
-- Layout rules
+- song
+- songbook
+- preferences
+- validation
 
 The core does not depend on:
 
 - UI
 - ChordPro CLI
 - AI providers
-- filesystem
-
----
+- filesystem plugins
 
 ### 2. Services
 
-Services implement functional logic.
+Services implement functional logic on top of domain models.
 
-Examples:
+Current services:
 
-- LLM conversion service
-- chord analysis service
-- layout optimizer
-- scraping service
+- `CleaningService`
+- `ConversionService`
+- `ChordProParser`
+- `SongPipelineService`
+- `SongbookService`
 
-Services operate on the domain models.
+Responsibilities:
 
----
+- clean raw song input
+- convert cleaned text into ChordPro through an LLM provider
+- validate ChordPro output before parsing
+- parse ChordPro into the internal `Song` model
+- load songbook folders and open `.cho` songs
 
 ### 3. Platform Adapters
 
-Adapters connect the core system to external systems.
+Adapters connect the app to external systems.
 
-Examples:
+Current adapters:
 
-Desktop adapters:
+- LLM providers (`GeminiProvider`, `OpenAIProvider`)
+- ChordPro CLI adapter (`TauriChordproAdapter`)
+- filesystem adapters (`SongRepository`, `ConfigRepository`)
 
-- ChordPro CLI
-- filesystem
-- PDF export
+Responsibilities:
 
-Future adapters:
-
-- mobile rendering
-- remote export service
-- cloud sync
+- HTTP access to LLM APIs
+- desktop preview and PDF export through Tauri commands
+- filesystem reads and writes for `.cho` files and config persistence
 
 ---
-
-## Export Pipeline
-
-The export process is expected to follow this flow:
-
-Raw input  
-→ AI conversion  
-→ Internal Song model  
-→ ChordPro generation  
-→ ChordPro CLI  
-→ PDF output
-
----
-
-## AI Integration
-
-AI is used for:
-
-- cleaning chord sheets
-- converting to structured format
-- analyzing potential chord issues
-- assisting layout optimization
-
-Multiple AI providers may be supported.
-
-
-## Project Structure
-
-The project follows a layered architecture to ensure clear separation of concerns.
-
-Repository structure:
-
-```
-chordpro-studio
-│
-├─ docs
-│
-├─ app
-│  ├─ src
-│  │  ├─ domain
-│  │  │  ├─ song
-│  │  │  └─ preferences
-│  │  │
-│  │  ├─ services
-│  │  │  ├─ cleaning
-│  │  │  ├─ conversion
-│  │  │  └─ analysis
-│  │  │
-│  │  ├─ adapters
-│  │  │  ├─ llm
-│  │  │  ├─ chordpro
-│  │  │  └─ filesystem
-│  │  │
-│  │  ├─ ui
-│  │  │  ├─ components
-│  │  │  ├─ views
-│  │  │  └─ store
-│  │  │
-│  │  ├─ types
-│  │  └─ utils
-│  │
-│  └─ public
-```
-
-### Layer Responsibilities
-
-Domain
-
-Core models and business logic.
-
-Services
-
-Application logic such as AI processing, text cleaning and conversion.
-
-Adapters
-
-Integrations with external systems such as LLM providers, filesystem and ChordPro CLI.
-
-UI
-
-User interface and state management.
 
 ## Processing Pipeline
 
-Song processing follows a centralized pipeline architecture.
-
-The pipeline is orchestrated by a dedicated application service.
-
-Pipeline flow:
-
-Raw Song Input  
-↓  
-Cleaning Service  
-↓  
-Conversion Service  
-↓  
-Song Model Builder  
-↓  
-Song Domain Model  
-↓  
-Preview  
-↓  
-Export
-
-The UI does not directly coordinate individual services.
-
-Instead it interacts with a central pipeline service responsible for orchestrating the workflow.
-
-### Pipeline Debug Output
-
-For development and debugging purposes, the pipeline service may expose intermediate results.
-
-The `SongPipelineService.process()` method may return:
-
-- cleanedText
-- chordPro
-- song
-
-This allows developer tools such as the Pipeline Playground to inspect intermediate pipeline stages without re-running individual services.
-
-## ChordPro Parser
-
-The system includes an internal ChordPro parser responsible for converting ChordPro text into the internal Song domain model.
+The conversion pipeline is centralized in `SongPipelineService`.
 
 Flow:
 
-ChordPro text  
-↓  
-ChordProParser  
-↓  
-Song domain model
+Raw input
+-> `CleaningService`
+-> `ConversionService`
+-> `ChordProOutputValidator`
+-> `ChordProParser`
+-> internal `Song` model
 
-The parser must support:
+`SongPipelineService.process()` currently returns:
 
-- metadata directives
-- section directives
-- chord notation
-- lyric lines
+- `cleanedText`
+- `chordPro`
+- `song`
+- optional `retryLog`
 
-Directives not required by the MVP may be parsed but ignored.
+The UI does not coordinate individual services directly.
 
-### Section Detection
+Instead, the shared workspace orchestrates user actions and calls the pipeline as a single unit.
 
-Sections may be defined in two ways:
+---
 
-1. Explicit ChordPro directives such as:
+## Preview and Export Pipeline
 
-{start_of_verse}
-{start_of_chorus}
-{start_of_bridge}
+Preview and export both rely on the same ChordPro renderer.
 
-2. Plain text headers commonly used in chord sheets, for example:
+Preview flow:
 
-Verse
-Chorus
-Bridge
-Intro
-Outro
+ChordPro text
+-> Tauri `generate_preview`
+-> temporary `preview.cho`
+-> ChordPro CLI
+-> `preview.pdf`
+-> backend returns PDF bytes
+-> frontend `Blob` URL
+-> native WebView PDF viewer
 
-If a plain text line matches a known section name, the parser should treat it as a section boundary.
+Export flow:
 
-Directive-based sections take precedence when both are present.
+ChordPro text
+-> native Tauri save dialog
+-> if `.pdf`: Tauri `export_pdf` -> ChordPro CLI -> requested PDF
+-> if `.cho`: direct filesystem write without invoking the CLI
+
+This keeps preview and exported PDF aligned on the same renderer.
+
+---
+
+## Minimal Persistence
+
+The canonical persisted song format is `.cho`.
+
+Opening an existing song follows this flow:
+
+`.cho`
+-> `SongRepository.readSong()`
+-> `ChordProParser`
+-> shared `WorkspaceDocument`
+-> preview refresh
+
+The LLM pipeline is not used when opening an existing `.cho` file.
+
+Songbook persistence follows this model:
+
+- a songbook is a selected folder
+- `SongbookService` scans the folder for `.cho` files
+- entries are sorted alphabetically by `displayTitle`
+- the last opened songbook path is stored in the Tauri AppConfig directory as `$APPCONFIG/config.json`
+
+Current config content:
+
+- `lastSongbookPath`
+
+`ConfigRepository` owns config persistence and ensures the AppConfig directory exists before writing.
+
+---
+
+## Workspace and UI Modes
+
+The app exposes two UI modes:
+
+- `User`
+- `Playground`
+
+Both reuse the same shared workspace created in `useSongWorkspace.ts`.
+
+The workspace owns:
+
+- current raw input
+- current `WorkspaceDocument`
+- current preview state
+- export feedback
+- current songbook state
+
+`WorkspaceDocument` represents the active song in the workspace.
+
+Fields:
+
+- `filePath`
+- `fileName`
+- `chordProText`
+- parsed `song`
+- `dirty`
+
+This shared workspace design keeps state stable when switching between `User` and `Playground`.
+
+---
+
+## Songbook UI Structure
+
+The current user-facing layout is:
+
+`| nav | left panel | preview |`
+
+Left navigation:
+
+- `Songbook`
+- `Convert`
+
+The preview panel remains visible while the left panel changes.
+
+`Convert` panel:
+
+- raw input editor
+- conversion action
+- collapsible `.cho` editor for refinement
+
+`Songbook` panel:
+
+- folder toolbar
+- song list
+- `.cho` editor for the selected song
+
+---
 
 ## LLM Integration
 
 The application integrates Large Language Models through a provider abstraction layer.
 
-Supported providers (initial):
+Supported providers:
 
 - OpenAI
 - Gemini
 
-Additional providers may be added later.
+The current runtime conversion prompt lives in:
 
----
+- `app/prompts/conversion.prompt.md`
 
-## API Key Strategy
+Prompt variables currently used:
 
-The application resolves API keys in the following order:
+- `{{song_text}}`
+- `{{user_preferences}}`
 
-1. Environment variables
-2. User configuration file
-3. Manual entry in the UI
+Current API key resolution:
 
-Example environment variables:
+1. environment variables
+2. Vite-prefixed environment variables in browser development
 
-OPENAI_API_KEY  
-GEMINI_API_KEY
+Future UI phases may add manual entry or persisted user configuration if needed.
 
-User configuration is stored locally in:
+Examples:
 
-Tauri AppConfig directory (`$APPCONFIG/config.json`, resolved from the app identifier)
-
----
-
-## Prompt System
-
-Prompts used by the application are stored outside the codebase in:
-
-app/prompts/
-
-Prompts are versioned and editable without modifying application logic.
-
-Prompt files use the extension:
-
-.prompt.md
-
-Example:
-
-conversion.prompt.md
-
----
-
-## Prompt Loader
-
-The system includes a PromptLoader utility responsible for:
-
-- loading prompt files from app/prompts
-- caching prompt contents
-- rendering prompts with variables
-
-Variable syntax:
-
-{{variable_name}}
-
-Example:
-
-{{song_text}}
-
----
-
-## LLM Processing Flow
-
-The pipeline uses the following flow:
-
-Raw Text  
-↓  
-CleaningService  
-↓  
-ConversionService  
-↓  
-ChordPro text  
-↓  
-ChordProParser  
-↓  
-Song domain model
-
-All LLM interactions are performed through the LLMProvider abstraction.
-
-## Prompt Variables
-
-Prompts may contain template variables rendered by PromptLoader.
-
-Current variables:
-
-{{song_text}}
-The raw or cleaned chord sheet text being processed.
-
-{{user_preferences}}
-Serialized user preferences that may influence conversion behavior.
-
-Example usage in a prompt:
-
-Song text:
-
-{{song_text}}
-
-User preferences:
-
-{{user_preferences}}
+- `OPENAI_API_KEY`
+- `GEMINI_API_KEY`
+- `VITE_OPENAI_API_KEY`
+- `VITE_GEMINI_API_KEY`
 
 ---
 
 ## Developer Playground
 
-The application includes a developer-only testing view called **Pipeline Playground**.
+The application includes a developer-only testing view called `Pipeline Playground`.
 
 Purpose:
 
-Provide a visual debugging interface for the song processing pipeline.
+- inspect intermediate pipeline output
+- test conversion models
+- regenerate preview directly from editable `.cho`
+- inspect retries and validation failures
 
-This view allows developers to:
-
-- paste raw chord sheet text
-- run the full processing pipeline
-- inspect intermediate pipeline outputs
-
-Displayed pipeline stages:
-
-Raw Text  
-↓  
-Cleaned Text  
-↓  
-ChordPro Text  
-↓  
-Song Domain Model (JSON)
-
-The playground is intended exclusively for development and debugging.
-
-It is not part of the end-user UI and may be removed or replaced in production builds.
+It is intended for development and debugging, not for end-user workflow.

@@ -1,6 +1,92 @@
-prompts.md
+# Prompts
 
+This document describes how prompts are handled in the project.
 
+---
+
+## Runtime Prompt Source
+
+The runtime conversion prompt used by the application lives in:
+
+- `app/prompts/conversion.prompt.md`
+
+That file is the authoritative source for the current conversion behavior.
+
+This documentation file should not drift away from the runtime prompt.
+
+---
+
+## Current Prompt Intent
+
+The active conversion prompt is designed as a deterministic transformer.
+
+Its role is to convert cleaned song text into valid ChordPro that can be processed automatically by the pipeline.
+
+Current behavior:
+
+- return only valid ChordPro
+- do not return explanations or markdown fences
+- continue even if metadata is incomplete
+- normalize chord notation to American notation
+- preserve chord alignment from chord-line plus lyric-line input
+- emit section tags in ChordPro format
+
+---
+
+## Prompt Variables
+
+The conversion prompt currently uses:
+
+- `{{song_text}}`
+- `{{user_preferences}}`
+
+These variables are rendered by `PromptLoader` before the LLM request is sent.
+
+---
+
+## Storage Strategy
+
+Prompts are stored outside the application logic so they can be versioned and edited without changing service code.
+
+Current prompt directory:
+
+- `app/prompts/`
+
+Current file naming:
+
+- `*.prompt.md`
+
+Example:
+
+- `conversion.prompt.md`
+
+---
+
+## Documentation Rule
+
+If the runtime prompt changes materially, this document should be updated to reflect:
+
+- where the authoritative prompt lives
+- what the prompt is expected to do
+- which variables it consumes
+
+This file is intentionally descriptive rather than a second copy of the full prompt body, to avoid divergence.
+
+---
+
+## Historical Reference
+
+The following prompt is kept only as historical context for the origin of the project and the early prompting strategy.
+
+It is not the current runtime prompt.
+
+The authoritative runtime prompt remains:
+
+- `app/prompts/conversion.prompt.md`
+
+Original historical reference:
+
+```md
 Actúa como un experto en el lenguaje de marcado ChordPro (v6). Tu objetivo es convertir la letra y acordes que se encuentran al final de este mensaje siguiendo estrictamente estas reglas de estilo y estructura:
 
 1. Validación de Metadatos Obligatorios
@@ -36,12 +122,4 @@ Envuelve las secciones para activar los estilos visuales del preset:
 Analiza las reglas anteriores y aplícalas directamente a la siguiente canción:
 
 [PEGA AQUÍ TU CANCIÓN]
-
-
-## Prompt Storage Strategy
-
-Runtime prompts used by the application are stored in the `app/prompts` directory.
-
-This allows prompts to be versioned and modified independently from the code.
-
-The prompts documented here represent reference versions used during design.
+```
