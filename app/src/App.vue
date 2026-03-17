@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
-import { createSongWorkspace, provideSongWorkspace } from "./ui/composables/useSongWorkspace";
+import { useSongWorkspace } from "./ui/composables/useSongWorkspace";
 import UserView from "./ui/views/UserView.vue";
 import PipelinePlaygroundView from "./ui/views/PipelinePlaygroundView.vue";
 
 const mode = ref<"user" | "playground">("user");
-const workspace = createSongWorkspace();
-
-provideSongWorkspace(workspace);
+const workspace = useSongWorkspace();
 
 onMounted(async () => {
   await workspace.initialize();

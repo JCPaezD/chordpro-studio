@@ -184,7 +184,7 @@ The app exposes two UI modes:
 - `User`
 - `Playground`
 
-Both reuse the same shared workspace created in `useSongWorkspace.ts`.
+Both reuse the same shared workspace singleton returned by `useSongWorkspace.ts`.
 
 The workspace owns:
 
@@ -204,7 +204,7 @@ Fields:
 - parsed `song`
 - `dirty`
 
-This shared workspace design keeps state stable when switching between `User` and `Playground`.
+This shared workspace design keeps state stable when switching between `User` and `Playground`. Views do not synchronize separate local states; they render and mutate the same workspace instance.
 
 The current document (`.cho` in memory) is treated as the single source of truth.
 Any action that replaces it is considered destructive and must go through the unified confirmation flow.

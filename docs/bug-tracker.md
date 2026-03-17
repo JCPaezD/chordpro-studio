@@ -340,7 +340,7 @@ Impact:
 Breaks continuity of work. The user expects both views to operate on the same active workspace.
 
 Current behavior:
-Switching views may reset or desynchronize state between User and Playground.
+Resolved. `User` and `Playground` now read and write through the same shared workspace singleton, so switching views no longer recreates or desynchronizes the active document state.
 
 Expected behavior:
 Both views must share a single workspace state. Switching between them must NOT modify or reset:
@@ -350,7 +350,7 @@ Both views must share a single workspace state. Switching between them must NOT 
 - active document metadata
 
 Temporary decision:
-Treat both views as different representations of the same workspace. State must be centralized and shared.
+Resolved by making `useSongWorkspace()` return a single module-level workspace instance, keeping `WorkspaceDocument`, raw input, loading state and songbook state centralized there, and making workspace initialization idempotent instead of rebuilding state per view.
 
 Priority: High
-Status: Open
+Status: Resolved

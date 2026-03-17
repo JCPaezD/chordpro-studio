@@ -288,7 +288,7 @@ The application now has two UI modes:
 - `User`: a minimal two-column interface for normal workflow (`raw input -> convert -> preview -> export`)
 - `Playground`: the existing developer/debugging interface with intermediate pipeline stages
 
-Both modes reuse the same front-end workspace state and the same underlying pipeline, preview and export adapters.
+Both modes reuse the same front-end workspace state and the same underlying pipeline, preview and export adapters. That shared workspace is now a singleton returned by `useSongWorkspace()`, so changing views does not recreate the active document state.
 
 User View model selector:
 
@@ -326,6 +326,7 @@ Songbook behavior:
 Workspace document behavior:
 
 - the shared workspace now tracks a `WorkspaceDocument` with `filePath`, `fileName`, `chordProText`, parsed `song` and `dirty`
+- `useSongWorkspace()` returns the same singleton instance everywhere; `User`, `Playground` and songbook interactions all mutate that single workspace instead of keeping view-local copies
 - editing ChordPro source marks the document dirty
 - the current `.cho` document in memory is the single source of truth for destructive replacement checks
 - unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window

@@ -1,4 +1,4 @@
-import { computed, inject, provide, ref, type ComputedRef, type InjectionKey, type Ref } from "vue";
+import { computed, ref, type ComputedRef, type Ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
@@ -74,9 +74,7 @@ export type SongWorkspace = {
   dispose(): void;
 };
 
-const songWorkspaceKey: InjectionKey<SongWorkspace> = Symbol("song-workspace");
-
-export function createSongWorkspace(): SongWorkspace {
+function createSongWorkspace(): SongWorkspace {
   const activePanel = ref<"songbook" | "convert">("convert");
   const rawInput = ref("");
   const cleanedText = ref("");
@@ -117,6 +115,8 @@ export function createSongWorkspace(): SongWorkspace {
   const songbookService = new SongbookService(songRepository, parser);
   const configRepository = new ConfigRepository();
   let unlistenWindowCloseRequested: null | (() => void) = null;
+  let initializePromise: Promise<void> | null = null;
+  let hasLoadedInitialConfig = false;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -623,49 +623,65 @@ export function createSongWorkspace(): SongWorkspace {
   }
 
   async function initialize(): Promise<void> {
-    const config = await configRepository.load();
+    if (initializePromise) {
+      return initializePromise;
+    }
 
-    if (isTauri()) {
-      const currentWindow = getCurrentWindow();
-      unlistenWindowCloseRequested = await currentWindow.onCloseRequested(async (event) => {
-        try {
-          if (!hasUnsavedChanges.value) {
-            return;
-          }
-
-          event.preventDefault();
-
-          const resolution = await resolveUnsavedChanges();
-
-          if (resolution === "cancel") {
-            return;
-          }
-
-          await currentWindow.destroy();
-        } catch (err) {
-          console.error("Window close interception failed.", err);
-
+    initializePromise = (async () => {
+      if (isTauri() && !unlistenWindowCloseRequested) {
+        const currentWindow = getCurrentWindow();
+        unlistenWindowCloseRequested = await currentWindow.onCloseRequested(async (event) => {
           try {
-            await currentWindow.destroy();
-          } catch (closeErr) {
-            console.error("Forced window close failed.", closeErr);
-          }
-        }
-      });
-    }
+            if (!hasUnsavedChanges.value) {
+              return;
+            }
 
-    if (!config.lastSongbookPath) {
-      return;
-    }
+            event.preventDefault();
+
+            const resolution = await resolveUnsavedChanges();
+
+            if (resolution === "cancel") {
+              return;
+            }
+
+            await currentWindow.destroy();
+          } catch (err) {
+            console.error("Window close interception failed.", err);
+
+            try {
+              await currentWindow.destroy();
+            } catch (closeErr) {
+              console.error("Forced window close failed.", closeErr);
+            }
+          }
+        });
+      }
+
+      if (hasLoadedInitialConfig) {
+        return;
+      }
+
+      const config = await configRepository.load();
+      hasLoadedInitialConfig = true;
+
+      if (!config.lastSongbookPath || songbook.value) {
+        return;
+      }
+
+      try {
+        songbook.value = await songbookService.loadSongbook(config.lastSongbookPath);
+        activePanel.value = "songbook";
+      } catch {
+        songbook.value = null;
+      }
+    })();
 
     try {
-      songbook.value = await songbookService.loadSongbook(config.lastSongbookPath);
-      activePanel.value = "songbook";
-    } catch {
-      songbook.value = null;
+      await initializePromise;
+    } finally {
+      initializePromise = null;
     }
   }
-
   function dispose(): void {
     if (unlistenWindowCloseRequested) {
       unlistenWindowCloseRequested();
@@ -718,16 +734,8 @@ export function createSongWorkspace(): SongWorkspace {
   };
 }
 
-export function provideSongWorkspace(workspace: SongWorkspace): void {
-  provide(songWorkspaceKey, workspace);
-}
+const songWorkspace = createSongWorkspace();
 
 export function useSongWorkspace(): SongWorkspace {
-  const workspace = inject(songWorkspaceKey);
-
-  if (!workspace) {
-    throw new Error("Song workspace not provided.");
-  }
-
-  return workspace;
+  return songWorkspace;
 }

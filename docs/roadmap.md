@@ -37,6 +37,7 @@ Current status:
 - active songbook can be cleared without affecting the current document
 - provisional application icon and header logo integrated for Tauri and the `User` / `Playground` views
 - unified save/discard/cancel protection now covers convert replacement, songbook navigation and app close
+- `User` and `Playground` now share a single workspace singleton, so switching views preserves the active document and generated state
 
 ### Block 1 - Completed foundation
 
