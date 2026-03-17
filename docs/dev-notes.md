@@ -320,7 +320,10 @@ Workspace document behavior:
 
 - the shared workspace now tracks a `WorkspaceDocument` with `filePath`, `fileName`, `chordProText`, parsed `song` and `dirty`
 - editing ChordPro source marks the document dirty
-- opening another song while dirty prompts the user to save, discard or cancel
+- the current `.cho` document in memory is the single source of truth for destructive replacement checks
+- unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window
+- unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`
+- Tauri close interception for this flow depends on explicit main-window permissions for `window.close` / `window.destroy` in `src-tauri/capabilities/main.json`
 
 Future improvements kept explicitly out of this phase:
 

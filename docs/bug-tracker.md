@@ -288,16 +288,16 @@ Impact:
 A converted song can be replaced by another songbook entry without any confirmation, which risks silent loss of work.
 
 Current behavior:
-Confirmation is shown when navigating away from an edited dirty document, but not when the current workspace contains a converted unsaved song that has not yet been persisted.
+Resolved. The current `.cho` document in memory is now treated as the single source of truth for destructive replacement. The same unified save/discard/cancel confirmation flow is triggered before opening a songbook item, before running a new conversion that would replace the current `.cho`, and when the user closes the application window.
 
 Expected behavior:
-The same confirmation flow should also be triggered when the current workspace contains converted unsaved song content, even if it has not yet been saved to a `.cho` file.
+Any action that replaces the current `.cho` in memory should be treated as destructive and should go through the same confirmation flow.
 
 Temporary decision:
-Document as a deferred workspace-state bug. The later fix should treat unsaved converted output as a navigation-protected state, not only `dirty === true` on already opened songbook documents.
+Resolved by centralizing unsaved-state detection in the shared workspace through `hasUnsavedChanges`, reusing the existing confirmation modal, and wiring the same protection into songbook navigation, conversion and app close. The Tauri main-window capability also now explicitly allows `window.close` and `window.destroy`, because close interception depends on those permissions.
 
 Priority: High
-Status: Open
+Status: Resolved
 
 ---
 

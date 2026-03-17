@@ -202,6 +202,14 @@ Fields:
 
 This shared workspace design keeps state stable when switching between `User` and `Playground`.
 
+The current document (`.cho` in memory) is treated as the single source of truth.
+Any action that replaces it is considered destructive and must go through the unified confirmation flow.
+Current protected actions are:
+
+- opening a song from the songbook
+- triggering a new conversion from `Convert`
+- closing the application window
+
 ---
 
 ## Songbook UI Structure

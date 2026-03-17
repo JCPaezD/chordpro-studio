@@ -35,6 +35,7 @@ Current status:
 - last opened songbook path is persisted in Tauri AppConfig and restored on startup
 - active songbook can be cleared without affecting the current document
 - provisional application icon and header logo integrated for Tauri and the `User` / `Playground` views
+- unified save/discard/cancel protection now covers convert replacement, songbook navigation and app close
 
 ### Block 1 - Completed foundation
 
@@ -68,8 +69,7 @@ Current status:
 14. Clean up the Playground UI (layout, redundant labels, language consistency).
 15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
 16. Make `Quality` the default conversion mode in User View and persist the user's last selected mode across app restarts.
-17. Extend the existing save/discard/cancel confirmation flow so opening a songbook song also protects unsaved converted songs created from `Convert`.
-18. Remove the non-meaningful `Paste` action from the User View preview block.
+17. Remove the non-meaningful `Paste` action from the User View preview block.
 
 ---
 

@@ -1,6 +1,8 @@
 import { computed, inject, provide, ref, type ComputedRef, type InjectionKey, type Ref } from "vue";
 
+import { isTauri } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { message, open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
@@ -52,6 +54,7 @@ export type SongWorkspace = {
   document: Ref<WorkspaceDocument>;
   songbook: Ref<Songbook | null>;
   selectedSongPath: ComputedRef<string>;
+  hasUnsavedChanges: ComputedRef<boolean>;
   initialize(): Promise<void>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
@@ -100,12 +103,20 @@ export function createSongWorkspace(): SongWorkspace {
   });
   const songbook = ref<Songbook | null>(null);
   const selectedSongPath = computed(() => document.value.filePath);
+  const hasUnsavedChanges = computed(() => {
+    if (document.value.filePath) {
+      return document.value.dirty;
+    }
+
+    return document.value.chordProText.trim().length > 0;
+  });
 
   const chordproAdapter = new TauriChordproAdapter();
   const parser = new ChordProParser();
   const songRepository = new SongRepository();
   const songbookService = new SongbookService(songRepository, parser);
   const configRepository = new ConfigRepository();
+  let unlistenWindowCloseRequested: null | (() => void) = null;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -368,6 +379,10 @@ export function createSongWorkspace(): SongWorkspace {
   }
 
   async function runPipeline(options?: RunPipelineOptions): Promise<void> {
+    if (!(await ensureDocumentCanBeReplaced())) {
+      return;
+    }
+
     if (options?.clearBeforeRun) {
       clearGeneratedState();
     } else {
@@ -476,9 +491,9 @@ export function createSongWorkspace(): SongWorkspace {
     }
   }
 
-  async function ensureDocumentCanBeReplaced(): Promise<boolean> {
-    if (!document.value.dirty || !document.value.chordProText) {
-      return true;
+  async function resolveUnsavedChanges(): Promise<"save" | "discard" | "cancel"> {
+    if (!hasUnsavedChanges.value) {
+      return "discard";
     }
 
     const choice = await message("This song has unsaved changes.", {
@@ -492,14 +507,20 @@ export function createSongWorkspace(): SongWorkspace {
     });
 
     if (choice === "Cancel") {
-      return false;
+      return "cancel";
     }
 
     if (choice === "Save") {
-      return saveDocument();
+      const saved = await saveDocument();
+      return saved ? "save" : "cancel";
     }
 
-    return true;
+    return "discard";
+  }
+
+  async function ensureDocumentCanBeReplaced(): Promise<boolean> {
+    const resolution = await resolveUnsavedChanges();
+    return resolution !== "cancel";
   }
 
   async function saveDocument(): Promise<boolean> {
@@ -604,6 +625,35 @@ export function createSongWorkspace(): SongWorkspace {
   async function initialize(): Promise<void> {
     const config = await configRepository.load();
 
+    if (isTauri()) {
+      const currentWindow = getCurrentWindow();
+      unlistenWindowCloseRequested = await currentWindow.onCloseRequested(async (event) => {
+        try {
+          if (!hasUnsavedChanges.value) {
+            return;
+          }
+
+          event.preventDefault();
+
+          const resolution = await resolveUnsavedChanges();
+
+          if (resolution === "cancel") {
+            return;
+          }
+
+          await currentWindow.destroy();
+        } catch (err) {
+          console.error("Window close interception failed.", err);
+
+          try {
+            await currentWindow.destroy();
+          } catch (closeErr) {
+            console.error("Forced window close failed.", closeErr);
+          }
+        }
+      });
+    }
+
     if (!config.lastSongbookPath) {
       return;
     }
@@ -617,6 +667,11 @@ export function createSongWorkspace(): SongWorkspace {
   }
 
   function dispose(): void {
+    if (unlistenWindowCloseRequested) {
+      unlistenWindowCloseRequested();
+      unlistenWindowCloseRequested = null;
+    }
+
     revokePreviewUrl();
   }
 
@@ -642,6 +697,7 @@ export function createSongWorkspace(): SongWorkspace {
     document,
     songbook,
     selectedSongPath,
+    hasUnsavedChanges,
     initialize,
     copyToClipboard,
     pasteFromClipboard,
