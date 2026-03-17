@@ -61,6 +61,10 @@ Current status:
 11. Provide a simple folder-based list of songs.
 12. Reconstruct the internal Song model by parsing `.cho` files on open.
 
+### Immediate priority before Block 4
+
+- Fix workspace state persistence between `User` and `Playground` (`BUG-14`).
+
 ### Block 4 - Songbook export
 
 13. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
@@ -70,6 +74,7 @@ Current status:
 14. Clean up the Playground UI (layout, redundant labels, language consistency).
 15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
 16. Remove the non-meaningful `Paste` action from the User View preview block.
+17. Add a side menu to the Playground with toggles to show or hide panels as a developer-oriented, non-blocking UX improvement.
 
 ---
 
@@ -81,6 +86,8 @@ Features:
 - chord analysis
 - layout optimization
 - song library
+- persist the last active view (`User` / `Playground`) across sessions; current behavior should continue to default to `Convert` in `User` view until that is implemented
+- allow aborting an ongoing conversion request from the UI in both `User` and `Playground`; medium priority and not required for v1 completion
 
 ---
 

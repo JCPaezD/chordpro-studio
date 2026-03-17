@@ -322,3 +322,35 @@ Document as a deferred UI cleanup item and remove the control in a later focused
 
 Priority: Low
 Status: Open
+
+---
+
+## BUG-14 - Workspace state is not preserved when switching between User and Playground views
+
+Layer: Workspace / Navigation
+
+Description:
+Switching between User View and Playground View does not reliably preserve the current workspace state. This may result in loss or reset of:
+
+- current `.cho` content in memory
+- original text input
+- active document state
+
+Impact:
+Breaks continuity of work. The user expects both views to operate on the same active workspace.
+
+Current behavior:
+Switching views may reset or desynchronize state between User and Playground.
+
+Expected behavior:
+Both views must share a single workspace state. Switching between them must NOT modify or reset:
+
+- chordProText
+- originalText
+- active document metadata
+
+Temporary decision:
+Treat both views as different representations of the same workspace. State must be centralized and shared.
+
+Priority: High
+Status: Open
