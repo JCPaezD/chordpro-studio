@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
+import { ConfigRepository } from "../../adapters/filesystem/ConfigRepository";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const {
@@ -28,12 +29,13 @@ const {
   runPipeline: runWorkspacePipeline,
   previewFromChordPro
 } = useSongWorkspace();
+const configRepository = new ConfigRepository();
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
   "gemini-2.5-pro",
   "gemini-2.5-flash-lite"
 ]);
-const selectedGeminiModel = ref("");
+const selectedGeminiModel = ref<string | null>(null);
 const geminiModelOverride = ref("");
 
 function readGeminiApiKey(): string | undefined {
@@ -70,8 +72,8 @@ function readGeminiModelOverride(): string | undefined {
   return undefined;
 }
 
-function resolveGeminiModel(): string {
-  return geminiModelOverride.value || selectedGeminiModel.value || "gemini-2.5-flash";
+function resolveGeminiModel(): string | null {
+  return geminiModelOverride.value || selectedGeminiModel.value;
 }
 
 function normalizeGeminiModelName(modelName: string): string {
@@ -116,13 +118,32 @@ async function loadGeminiModels(): Promise<void> {
 }
 
 async function runPipeline(): Promise<void> {
-  await runWorkspacePipeline({ model: resolveGeminiModel(), clearBeforeRun: true });
+  const model = resolveGeminiModel();
+
+  if (!model) {
+    return;
+  }
+
+  await runWorkspacePipeline({ model, clearBeforeRun: true });
+}
+
+async function loadPlaygroundModel(): Promise<void> {
+  const config = await configRepository.load();
+  selectedGeminiModel.value = geminiModelOverride.value || (config.playgroundModel ?? "gemini-flash-latest");
+}
+
+async function persistPlaygroundModel(): Promise<void> {
+  if (!selectedGeminiModel.value || geminiModelOverride.value) {
+    return;
+  }
+
+  await configRepository.update({ playgroundModel: selectedGeminiModel.value });
 }
 
 onMounted(async () => {
   geminiModelOverride.value = readGeminiModelOverride() ?? "";
-  selectedGeminiModel.value = geminiModelOverride.value || "gemini-2.5-flash";
 
+  await loadPlaygroundModel();
   await loadGeminiModels();
 
   if (
@@ -151,9 +172,9 @@ onMounted(async () => {
       </div>
 
       <div class="actions">
-        <label class="model-select">
+        <label v-if="selectedGeminiModel" class="model-select">
           <span>Model</span>
-          <select v-model="selectedGeminiModel" :disabled="loading || !!geminiModelOverride">
+          <select v-model="selectedGeminiModel" :disabled="loading || !!geminiModelOverride" @change="persistPlaygroundModel">
             <option v-for="model in availableGeminiModels" :key="model" :value="model">
               {{ model }}
             </option>
@@ -162,7 +183,7 @@ onMounted(async () => {
         <button class="mini-button" :disabled="loading" @click="clearAllState">
           Clear all
         </button>
-        <button :disabled="loading" class="run-button" @click="runPipeline">
+        <button :disabled="loading || !resolveGeminiModel()" class="run-button" @click="runPipeline">
           <span :class="['button-content', { loading }]">
             <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
             <span class="button-label">{{ loading ? "Running..." : "Run Pipeline" }}</span>

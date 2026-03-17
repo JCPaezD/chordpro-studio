@@ -253,27 +253,27 @@ Status: Open
 
 ---
 
-## BUG-11 - User View does not default to Quality mode or persist the last selected conversion mode
+## BUG-11 - Conversion mode and Playground model selection are not persisted through AppConfig
 
 Layer: UI / Preferences
 
 Description:
-The User View conversion flow should open in `Quality` mode by default. In addition, when the user changes the conversion mode, that selection should be remembered after closing and reopening the app.
+The User View conversion flow should open in `Quality` mode by default, and the Playground should restore the last selected Gemini model. Both preferences should be loaded from AppConfig on startup and remembered after closing and reopening the app.
 
 Impact:
-The current startup behavior does not match the intended primary workflow and forces the user to reselect the preferred conversion mode on every session.
+The current startup behavior does not match the intended workflow and forces the user to reselect the preferred conversion mode and Playground model on every session.
 
 Current behavior:
-The conversion mode does not reliably start in `Quality`, and the last selected mode is not restored from persisted app state.
+Resolved. User View now loads `conversionMode` from AppConfig and falls back to `quality` only when the field is missing. Playground now loads `playgroundModel` from AppConfig and falls back to `gemini-flash-latest` only when the field is missing.
 
 Expected behavior:
-The default mode should be `Quality`, and the current selection should be persisted and restored on startup.
+The default User View mode should be `Quality`, and both preferences should be persisted and restored on startup without overwriting existing config values.
 
 Temporary decision:
-Document as a deferred UX/configuration fix. Implement later through the existing persisted app configuration path instead of introducing view-local state only.
+Resolved by extending the existing AppConfig shape with `conversionMode` and `playgroundModel`, loading both values before rendering their selectors, and persisting changes only on explicit user interaction. Missing config or partial config now falls back safely without creating `config.json` during startup.
 
 Priority: Medium
-Status: Open
+Status: Resolved
 
 ---
 

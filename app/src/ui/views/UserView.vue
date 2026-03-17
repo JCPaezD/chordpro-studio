@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
+import { ConfigRepository, type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const {
@@ -36,10 +37,11 @@ const {
   setActivePanel
 } = useSongWorkspace();
 
-const conversionMode = ref<"fast" | "quality">("fast");
+const configRepository = new ConfigRepository();
+const conversionMode = ref<ConversionMode | null>(null);
 
 const selectedModel = computed(() =>
-  conversionMode.value === "quality" ? "gemini-flash-latest" : "gemini-flash-lite-latest"
+  conversionMode.value === "fast" ? "gemini-flash-lite-latest" : "gemini-flash-latest"
 );
 
 async function convertSong(): Promise<void> {
@@ -50,6 +52,23 @@ async function convertSong(): Promise<void> {
 function updateChordPro(value: string): void {
   setChordProText(value);
 }
+
+async function loadConversionMode(): Promise<void> {
+  const config = await configRepository.load();
+  conversionMode.value = config.conversionMode ?? "quality";
+}
+
+async function persistConversionMode(): Promise<void> {
+  if (!conversionMode.value) {
+    return;
+  }
+
+  await configRepository.update({ conversionMode: conversionMode.value });
+}
+
+onMounted(async () => {
+  await loadConversionMode();
+});
 </script>
 
 <template>
@@ -93,9 +112,9 @@ function updateChordPro(value: string): void {
         </p>
       </div>
 
-      <label class="mode-select">
+      <label v-if="conversionMode" class="mode-select">
         <span>Conversion mode</span>
-        <select v-model="conversionMode" :disabled="loading">
+        <select v-model="conversionMode" :disabled="loading || !conversionMode" @change="persistConversionMode">
           <option value="fast">Fast</option>
           <option value="quality">Quality</option>
         </select>
@@ -115,7 +134,7 @@ function updateChordPro(value: string): void {
               <div class="header-actions">
                 <button class="mini-button" @click="pasteFromClipboard">Paste</button>
                 <button class="secondary-button" :disabled="loading" @click="clearAllState">Clear</button>
-                <button class="primary-button" :disabled="loading" @click="convertSong">
+                <button class="primary-button" :disabled="loading || !conversionMode" @click="convertSong">
                   <span :class="['button-content', { loading }]">
                     <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
                     <span class="button-label">{{ loading ? "Generating..." : "Generate sheet" }}</span>

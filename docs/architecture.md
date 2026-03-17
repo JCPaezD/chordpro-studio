@@ -168,8 +168,12 @@ Songbook persistence follows this model:
 Current config content:
 
 - `lastSongbookPath`
+- `conversionMode`
+- `playgroundModel`
 
-`ConfigRepository` owns config persistence and ensures the AppConfig directory exists before writing.
+`ConfigRepository` owns config persistence. Missing config is treated as an empty partial config during startup, and the AppConfig directory is only created when config is explicitly written.
+
+AppConfig is also the single source of truth for persisted UI preferences such as the User View conversion mode and the Playground model selection.
 
 ---
 

@@ -474,7 +474,7 @@ export function createSongWorkspace(): SongWorkspace {
     }
 
     try {
-      await configRepository.save({ lastSongbookPath: songbook.value.path });
+      await configRepository.update({ lastSongbookPath: songbook.value.path });
     } catch (err) {
       console.error("Could not persist lastSongbookPath.", err);
     }
@@ -485,7 +485,7 @@ export function createSongWorkspace(): SongWorkspace {
     songbookError.value = "";
 
     try {
-      await configRepository.save({});
+      await configRepository.remove("lastSongbookPath");
     } catch (err) {
       console.error("Could not clear lastSongbookPath.", err);
     }

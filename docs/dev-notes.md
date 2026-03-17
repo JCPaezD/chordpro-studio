@@ -294,6 +294,12 @@ User View model selector:
 
 - `Fast` -> `gemini-flash-lite-latest`
 - `Quality` -> `gemini-flash-latest`
+- the selected conversion mode is loaded from AppConfig on startup and falls back to `Quality` only when `conversionMode` is missing
+
+Playground model selector:
+
+- the selected Gemini model is loaded from AppConfig on startup and falls back to `gemini-flash-latest` only when `playgroundModel` is missing
+- if a runtime override is present through environment variables, that override still takes precedence and the persisted preference is not rewritten on load
 
 The User View also exposes a collapsible editable ChordPro source panel that reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
 
@@ -313,7 +319,8 @@ Songbook behavior:
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
-- the AppConfig directory is created explicitly before reading or writing `config.json`, so first-run startup creates the config file automatically
+- AppConfig now also stores `conversionMode` and `playgroundModel` as persisted UI preferences
+- missing `config.json` is treated as an empty config during startup; the AppConfig directory and file are created only when something is explicitly written
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document
 
 Workspace document behavior:

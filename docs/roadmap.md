@@ -33,6 +33,7 @@ Current status:
 - existing `.cho` files can be opened and parsed without running the LLM pipeline
 - workspace document tracks the current `.cho` file path and unsaved changes
 - last opened songbook path is persisted in Tauri AppConfig and restored on startup
+- User View conversion mode and Playground model selection are persisted in AppConfig and restored on startup
 - active songbook can be cleared without affecting the current document
 - provisional application icon and header logo integrated for Tauri and the `User` / `Playground` views
 - unified save/discard/cancel protection now covers convert replacement, songbook navigation and app close
@@ -68,8 +69,7 @@ Current status:
 
 14. Clean up the Playground UI (layout, redundant labels, language consistency).
 15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
-16. Make `Quality` the default conversion mode in User View and persist the user's last selected mode across app restarts.
-17. Remove the non-meaningful `Paste` action from the User View preview block.
+16. Remove the non-meaningful `Paste` action from the User View preview block.
 
 ---
 
