@@ -38,7 +38,7 @@ Current status:
 - provisional application icon and header logo integrated for Tauri and the `User` / `Playground` views
 - unified save/discard/cancel protection now covers convert replacement, songbook navigation and app close
 - `User` and `Playground` now share a single workspace singleton, so switching views preserves the active document and generated state
-- songbook PDF export is implemented through the bundled ChordPro CLI using the same global style config as preview and single-song export
+- songbook PDF export is implemented through the bundled ChordPro CLI using the same global style config as preview and single-song export, with provisional bottom keyboard diagrams and project-specific PDF metadata
 
 ### Block 1 - Completed foundation
 
@@ -93,6 +93,7 @@ Features:
   - auto-generated cover (title, date, `Generated with ChordPro Studio`)
   - custom PDF cover support
 - user-configurable ChordPro styles (UI-based)
+  - chord diagram visibility, instrument and placement
 - advanced export options:
   - song ordering
   - song selection (checkboxes)

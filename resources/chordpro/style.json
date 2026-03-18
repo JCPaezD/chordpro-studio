@@ -5,8 +5,8 @@
 
 config {
   type        : style
-  title       : Chordii
-  description : "Legacy Chordii compatible."
+  title       : "ChordPro Studio"
+  description : "Project style for ChordPro Studio previews and PDF exports."
 }
 
 // Note that this config only contains the differences with the
@@ -19,6 +19,11 @@ settings {
 
   // Suppress blank lyrics lines.
   suppress-empty-lyrics : false
+}
+
+instrument {
+  description : "Keyboard, Piano, ..."
+  type        : keyboard
 }
 
 contents : [
@@ -56,6 +61,13 @@ contents : [
 
 // Settings for PDF output.
 pdf {
+
+  info {
+    title    : "ChordPro Studio Export"
+    author   : "ChordPro Studio"
+    subject  : "ChordPro lead sheet or songbook export"
+    keywords : "ChordPro, chords, lyrics, songbook, piano"
+  }
 
   // Output paper size.
   papersize : "a4"
@@ -103,8 +115,12 @@ pdf {
 
   // Appearance of chord diagrams for string instruments.
   diagrams {
-    show : false
+    show : bottom
     linewidth : 0.15
+  }
+
+  kbdiagrams {
+    show : bottom
   }
 
 // Page formats.
@@ -134,5 +150,5 @@ pdf {
   }
 
   songbook.dual-pages : false
-  songbook.sort-songs : true
+  songbook.sort-songs : false
 }

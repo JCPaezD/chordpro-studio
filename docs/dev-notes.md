@@ -239,6 +239,8 @@ Bundled CLI expectation:
 - a global `style.json` is now used for all CLI executions
 - this keeps rendering consistent across preview, single PDF export and songbook PDF export
 - the config is resolved from Tauri bundled resources at runtime, with the repository `resources/chordpro/style.json` path used during development
+- the current provisional project style enables keyboard chord diagrams at the bottom of the page and uses project-specific PDF metadata instead of the original preset labels
+- future user preferences should make chord diagrams configurable per user, including visibility, instrument and placement
 
 ## File Encoding Rule
 
