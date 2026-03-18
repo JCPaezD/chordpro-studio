@@ -40,6 +40,8 @@ Current status:
 - `User` and `Playground` now share a single workspace singleton, so switching views preserves the active document and generated state
 - songbook PDF export is implemented through the bundled ChordPro CLI using the same global style config as preview and single-song export, with provisional bottom keyboard diagrams and project-specific PDF metadata
 
+## Completed work
+
 ### Block 1 - Completed foundation
 
 1. Replace the temporary export prompt with a proper Tauri file save dialog.
@@ -67,24 +69,32 @@ Current status:
 
 13. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
 
-### Block 5 - UX polish
+## Current roadmap
+
+### v1 - Finalization
 
 14. Clean up the Playground UI (layout, redundant labels, language consistency).
 15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
-16. Add a side menu to the Playground with toggles to show or hide panels as a developer-oriented, non-blocking UX improvement.
 
----
+### v1.1 - Post-release improvements
 
-## Phase 2 - Workflow Improvements
+- Add a side menu to the Playground with toggles to show or hide panels as a developer-oriented, non-blocking UX improvement.
+- persist the last active view (`User` / `Playground`) across sessions; current behavior should continue to default to `Convert` in `User` view until that is implemented
+- allow aborting an ongoing conversion request from the UI in both `User` and `Playground`; medium priority and not required for v1 completion
+- Improve prompt handling of chord sequences with separators (e.g. "[Am] - [F] - [G]") to avoid treating separators as lyrics, complemented by minimal safe post-processing when needed.
+- Normalize extracted metadata (title, artist, etc.) locally in the application to ensure consistent casing and filename generation.
+- Resolve Vite warning related to `node:fs/promises` usage in PromptLoader.ts.
 
-Features:
+## v2 - Core feature expansion
 
 - scraping
 - chord analysis
 - layout optimization
 - song library
-- persist the last active view (`User` / `Playground`) across sessions; current behavior should continue to default to `Convert` in `User` view until that is implemented
-- allow aborting an ongoing conversion request from the UI in both `User` and `Playground`; medium priority and not required for v1 completion
+
+### Performance improvements
+
+- Introduce caching for preview PDF generation to avoid unnecessary CLI executions when no changes are detected.
 
 ### Export improvements (future)
 
