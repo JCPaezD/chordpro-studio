@@ -286,7 +286,6 @@ onMounted(async () => {
         </div>
         <div class="panel-actions-stack align-end">
           <div class="header-actions">
-            <button class="mini-button" @click="pasteFromClipboard">Paste</button>
             <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
               Export PDF (.cho)
             </button>

@@ -71,8 +71,7 @@ Current status:
 
 14. Clean up the Playground UI (layout, redundant labels, language consistency).
 15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
-16. Remove the non-meaningful `Paste` action from the User View preview block.
-17. Add a side menu to the Playground with toggles to show or hide panels as a developer-oriented, non-blocking UX improvement.
+16. Add a side menu to the Playground with toggles to show or hide panels as a developer-oriented, non-blocking UX improvement.
 
 ---
 

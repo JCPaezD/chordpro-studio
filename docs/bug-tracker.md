@@ -312,16 +312,16 @@ Impact:
 The action is misleading and adds noise to the primary user interface.
 
 Current behavior:
-The preview panel displays a `Paste` button.
+Resolved. The preview panel no longer exposes a `Paste` button. Clipboard paste remains available where it is meaningful (`Original text`), while the editable ChordPro source can still use normal textarea paste shortcuts.
 
 Expected behavior:
 The `Paste` action should be removed from the preview block in the User View.
 
 Temporary decision:
-Document as a deferred UI cleanup item and remove the control in a later focused UX pass.
+Resolved by removing the preview-level `Paste` action without moving it elsewhere. The preview is a render/export surface, not an input target, so the extra action only added noise.
 
 Priority: Low
-Status: Open
+Status: Resolved
 
 ---
 
