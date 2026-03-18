@@ -204,6 +204,16 @@ frontend native save dialog
 -> generate the requested PDF
 -> if `.cho` selected: write current ChordPro text directly to disk without invoking the CLI
 
+Songbook PDF export now follows this flow:
+
+frontend songbook action
+-> read `.cho` files directly from the active songbook folder
+-> sort them alphabetically by filename
+-> native save dialog
+-> Tauri `export_songbook_pdf`
+-> execute bundled ChordPro CLI with multiple input files and `--output`
+-> generate a single PDF for the full songbook
+
 Export feedback behavior:
 
 - export success or failure is shown directly in the UI near the export action in both `User` and `Playground`
@@ -223,6 +233,12 @@ Bundled CLI expectation:
 - repository/development path: `resources/chordpro/chordpro(.exe)`
 - packaged app path: Tauri bundled resources copied from `resources/chordpro`
 - Windows runtime note: the full ChordPro distribution must be bundled, not only `chordpro.exe`, because the executable depends on Perl/runtime support files shipped with the installation
+
+### ChordPro style configuration
+
+- a global `style.json` is now used for all CLI executions
+- this keeps rendering consistent across preview, single PDF export and songbook PDF export
+- the config is resolved from Tauri bundled resources at runtime, with the repository `resources/chordpro/style.json` path used during development
 
 ## File Encoding Rule
 

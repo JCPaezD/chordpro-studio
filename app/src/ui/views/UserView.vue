@@ -13,11 +13,15 @@ const {
   chordProText,
   loading,
   isGeneratingPreview,
+  isExportingSongbook,
   error,
   previewSrc,
   previewError,
   exportError,
   exportMessage,
+  songbookExportWarning,
+  songbookExportError,
+  songbookExportMessage,
   document,
   songbook,
   songbookError,
@@ -25,6 +29,7 @@ const {
   pasteFromClipboard,
   clearAllState,
   exportCurrent,
+  exportSongbookPdf,
   runPipeline,
   previewFromChordPro,
   copyToClipboard,
@@ -195,6 +200,12 @@ onMounted(async () => {
                 <button class="mini-button" :disabled="!songbook" @click="refreshSongbook">Refresh</button>
                 <button class="secondary-button" :disabled="!songbook" @click="clearSongbook">Clear</button>
               </div>
+              <button class="mini-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
+                {{ isExportingSongbook ? "Generating songbook..." : "Export Songbook PDF" }}
+              </button>
+              <p v-if="songbookExportWarning" class="action-feedback warning-message">{{ songbookExportWarning }}</p>
+              <p v-if="songbookExportError" class="action-feedback error-message">{{ songbookExportError }}</p>
+              <p v-else-if="songbookExportMessage" class="action-feedback success-message">{{ songbookExportMessage }}</p>
               <p class="action-feedback songbook-path" :title="songbook?.path || 'No folder selected'">
                 {{ songbook?.path || "No songbook folder selected." }}
               </p>
@@ -609,6 +620,10 @@ onMounted(async () => {
 
 .error-message {
   color: #8f3131;
+}
+
+.warning-message {
+  color: #8a5a14;
 }
 
 .songbook-layout {

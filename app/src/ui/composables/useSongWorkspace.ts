@@ -40,6 +40,7 @@ export type SongWorkspace = {
   songJson: Ref<string>;
   loading: Ref<boolean>;
   isGeneratingPreview: Ref<boolean>;
+  isExportingSongbook: Ref<boolean>;
   error: Ref<string>;
   songbookError: Ref<string>;
   retryLog: Ref<string[]>;
@@ -50,6 +51,9 @@ export type SongWorkspace = {
   previewError: Ref<string>;
   exportError: Ref<string>;
   exportMessage: Ref<string>;
+  songbookExportWarning: Ref<string>;
+  songbookExportError: Ref<string>;
+  songbookExportMessage: Ref<string>;
   songMetadata: Ref<SongMetadata>;
   document: Ref<WorkspaceDocument>;
   songbook: Ref<Songbook | null>;
@@ -62,6 +66,7 @@ export type SongWorkspace = {
   clearGeneratedState(): void;
   clearAllState(): void;
   exportCurrent(): Promise<void>;
+  exportSongbookPdf(): Promise<void>;
   openSongbookFolder(): Promise<void>;
   refreshSongbook(): Promise<void>;
   clearSongbook(): Promise<void>;
@@ -81,6 +86,7 @@ function createSongWorkspace(): SongWorkspace {
   const songJson = ref("");
   const loading = ref(false);
   const isGeneratingPreview = ref(false);
+  const isExportingSongbook = ref(false);
   const error = ref("");
   const songbookError = ref("");
   const retryLog = ref<string[]>([]);
@@ -91,6 +97,9 @@ function createSongWorkspace(): SongWorkspace {
   const previewError = ref("");
   const exportError = ref("");
   const exportMessage = ref("");
+  const songbookExportWarning = ref("");
+  const songbookExportError = ref("");
+  const songbookExportMessage = ref("");
   const songMetadata = ref<SongMetadata>({});
   const document = ref<WorkspaceDocument>({
     filePath: "",
@@ -152,6 +161,11 @@ function createSongWorkspace(): SongWorkspace {
     previewError.value = "";
     exportError.value = "";
     exportMessage.value = "";
+  }
+
+  function clearSongbookExportFeedback(): void {
+    songbookExportError.value = "";
+    songbookExportMessage.value = "";
   }
 
   function setActivePanel(panel: "songbook" | "convert"): void {
@@ -296,6 +310,12 @@ function createSongWorkspace(): SongWorkspace {
     return basePath ? join(basePath, fileName) : fileName;
   }
 
+  async function buildSuggestedSongbookExportPath(): Promise<string> {
+    const folderName = songbook.value?.path ? sanitizeFilenamePart(getFilenameFromPath(songbook.value.path)) : "songbook";
+    const fileName = `${folderName || "songbook"}.pdf`;
+
+    return songbook.value?.path ? join(songbook.value.path, fileName) : fileName;
+  }
   async function exportCurrent(): Promise<void> {
     exportError.value = "";
     exportMessage.value = "";
@@ -354,6 +374,54 @@ function createSongWorkspace(): SongWorkspace {
     }
   }
 
+  async function exportSongbookPdf(): Promise<void> {
+    songbookExportWarning.value = document.value.filePath && document.value.dirty
+      ? "You have unsaved changes. The export will use the last saved versions."
+      : "";
+    clearSongbookExportFeedback();
+
+    if (!songbook.value?.path) {
+      songbookExportError.value = "No songbook folder selected.";
+      return;
+    }
+
+    isExportingSongbook.value = true;
+
+    try {
+      const songFiles = await songbookService.listSongFiles(songbook.value.path);
+
+      if (songFiles.length === 0) {
+        songbookExportError.value = "No songs found.";
+        return;
+      }
+
+      const selectedPath = await save({
+        title: "Export songbook PDF",
+        defaultPath: await buildSuggestedSongbookExportPath(),
+        filters: [
+          {
+            name: "PDF file",
+            extensions: ["pdf"]
+          }
+        ]
+      });
+
+      if (!selectedPath) {
+        return;
+      }
+
+      const normalizedPath = selectedPath.toLowerCase().endsWith(".pdf")
+        ? selectedPath
+        : `${selectedPath}.pdf`;
+
+      await chordproAdapter.exportSongbookPdf(songFiles, normalizedPath);
+      songbookExportMessage.value = "Songbook exported.";
+    } catch (err) {
+      songbookExportError.value = err instanceof Error ? err.message : "Songbook export failed.";
+    } finally {
+      isExportingSongbook.value = false;
+    }
+  }
   function createProvider(model = "gemini-2.5-flash") {
     try {
       return new GeminiProvider(model);
@@ -483,6 +551,8 @@ function createSongWorkspace(): SongWorkspace {
   async function clearSongbook(): Promise<void> {
     songbook.value = null;
     songbookError.value = "";
+    songbookExportWarning.value = "";
+    clearSongbookExportFeedback();
 
     try {
       await configRepository.remove("lastSongbookPath");
@@ -699,6 +769,7 @@ function createSongWorkspace(): SongWorkspace {
     songJson,
     loading,
     isGeneratingPreview,
+    isExportingSongbook,
     error,
     songbookError,
     retryLog,
@@ -709,6 +780,9 @@ function createSongWorkspace(): SongWorkspace {
     previewError,
     exportError,
     exportMessage,
+    songbookExportWarning,
+    songbookExportError,
+    songbookExportMessage,
     songMetadata,
     document,
     songbook,
@@ -721,6 +795,7 @@ function createSongWorkspace(): SongWorkspace {
     clearGeneratedState,
     clearAllState,
     exportCurrent,
+    exportSongbookPdf,
     openSongbookFolder,
     refreshSongbook,
     clearSongbook,

@@ -1,6 +1,7 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
 use std::{
+  ffi::OsString,
   fs,
   path::{Path, PathBuf},
   process::Command,
@@ -75,15 +76,7 @@ pub fn export_pdf(
   let input_path = cache_dir.join(EXPORT_CHO_FILENAME);
   let output_path = PathBuf::from(output_path);
 
-  if let Some(parent) = output_path.parent() {
-    fs::create_dir_all(parent).map_err(|error| ChordProCommandError {
-      code: "OUTPUT_DIRECTORY_ERROR".into(),
-      message: format!("Failed to prepare output directory: {error}"),
-      stdout: None,
-      stderr: None,
-      details: Some(parent.to_string_lossy().into_owned()),
-    })?;
-  }
+  ensure_output_directory(&output_path)?;
 
   write_text_file(&input_path, &chordpro_text)?;
   run_chordpro_command(
@@ -94,6 +87,36 @@ pub fn export_pdf(
       output_path.as_os_str(),
     ],
   )?;
+
+  Ok(ExportPdfResponse {
+    output_path: output_path.to_string_lossy().into_owned(),
+  })
+}
+
+#[tauri::command]
+pub fn export_songbook_pdf(
+  app: AppHandle,
+  input_paths: Vec<String>,
+  output_path: String,
+) -> Result<ExportPdfResponse, ChordProCommandError> {
+  if input_paths.is_empty() {
+    return Err(ChordProCommandError {
+      code: "NO_INPUT_FILES".into(),
+      message: "No songs found.".into(),
+      stdout: None,
+      stderr: None,
+      details: None,
+    });
+  }
+
+  let output_path = PathBuf::from(output_path);
+  ensure_output_directory(&output_path)?;
+
+  let mut args: Vec<OsString> = input_paths.into_iter().map(OsString::from).collect();
+  args.push(OsString::from("--output"));
+  args.push(output_path.as_os_str().to_os_string());
+
+  run_chordpro_command(&app, args)?;
 
   Ok(ExportPdfResponse {
     output_path: output_path.to_string_lossy().into_owned(),
@@ -124,6 +147,20 @@ fn ensure_preview_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> 
   Ok(cache_dir)
 }
 
+fn ensure_output_directory(output_path: &Path) -> Result<(), ChordProCommandError> {
+  if let Some(parent) = output_path.parent() {
+    fs::create_dir_all(parent).map_err(|error| ChordProCommandError {
+      code: "OUTPUT_DIRECTORY_ERROR".into(),
+      message: format!("Failed to prepare output directory: {error}"),
+      stdout: None,
+      stderr: None,
+      details: Some(parent.to_string_lossy().into_owned()),
+    })?;
+  }
+
+  Ok(())
+}
+
 fn write_text_file(path: &Path, contents: &str) -> Result<(), ChordProCommandError> {
   fs::write(path, contents).map_err(|error| ChordProCommandError {
     code: "FILE_WRITE_ERROR".into(),
@@ -140,8 +177,16 @@ where
   S: AsRef<std::ffi::OsStr>,
 {
   let binary_path = resolve_chordpro_binary(app)?;
+  let style_config_path = resolve_chordpro_style_config(app)?;
+  let mut command_args = vec![
+    OsString::from("--config"),
+    style_config_path.as_os_str().to_os_string(),
+  ];
+
+  command_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
+
   let output = Command::new(&binary_path)
-    .args(args)
+    .args(&command_args)
     .output()
     .map_err(|error| ChordProCommandError {
       code: "CHORDPRO_EXECUTION_ERROR".into(),
@@ -174,21 +219,7 @@ fn resolve_chordpro_binary(app: &AppHandle) -> Result<PathBuf, ChordProCommandEr
     "chordpro"
   };
 
-  let mut candidates = Vec::new();
-
-  if let Ok(resource_dir) = app.path().resource_dir() {
-    candidates.push(resource_dir.join("chordpro").join(binary_name));
-  }
-
-  candidates.push(
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-      .join("..")
-      .join("resources")
-      .join("chordpro")
-      .join(binary_name),
-  );
-
-  let binary_path = candidates.into_iter().find(|path| path.is_file()).ok_or_else(|| {
+  let binary_path = resolve_chordpro_resource(app, binary_name).ok_or_else(|| {
     ChordProCommandError {
       code: "CHORDPRO_BINARY_NOT_FOUND".into(),
       message: "Bundled ChordPro binary was not found.".into(),
@@ -224,6 +255,34 @@ fn resolve_chordpro_binary(app: &AppHandle) -> Result<PathBuf, ChordProCommandEr
   }
 
   Ok(binary_path)
+}
+
+fn resolve_chordpro_style_config(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> {
+  resolve_chordpro_resource(app, "style.json").ok_or_else(|| ChordProCommandError {
+    code: "CHORDPRO_STYLE_NOT_FOUND".into(),
+    message: "Bundled ChordPro style configuration was not found.".into(),
+    stdout: None,
+    stderr: None,
+    details: Some("Expected resources/chordpro/style.json".into()),
+  })
+}
+
+fn resolve_chordpro_resource(app: &AppHandle, resource_name: &str) -> Option<PathBuf> {
+  let mut candidates = Vec::new();
+
+  if let Ok(resource_dir) = app.path().resource_dir() {
+    candidates.push(resource_dir.join("chordpro").join(resource_name));
+  }
+
+  candidates.push(
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("..")
+      .join("resources")
+      .join("chordpro")
+      .join(resource_name),
+  );
+
+  candidates.into_iter().find(|path| path.is_file())
 }
 
 fn decode_output(output: Vec<u8>) -> Option<String> {

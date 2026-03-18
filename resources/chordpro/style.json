@@ -1,0 +1,138 @@
+// A configuration file for ChordPro.
+
+// See ChordPro website for more details: https://www.chordpro.org/chordpro/chordpro-configuration-file/.
+// This is a really relaxed JSON document, see https://metacpan.org/pod/JSON::Relaxed#REALLY-RELAXED-EXTENSIONS
+
+config {
+  type        : style
+  title       : Chordii
+  description : "Legacy Chordii compatible."
+}
+
+// Note that this config only contains the differences with the
+// default ChordPro config.
+
+settings {
+
+  // Suppress empty chord lines.
+  suppress-empty-chords : false
+
+  // Suppress blank lyrics lines.
+  suppress-empty-lyrics : false
+}
+
+contents : [
+  {
+
+    // An identifying name for this table of contents.
+    name : contents_by_title
+
+    // The metadata for this table of contents. One or two items.
+    fields : [ artist title ]
+
+    // The label (title) for this table.
+    label : "Canciones"
+
+    // The format of the table's lines.
+    // You can use all song metadata.
+    line : "%{artist} — %{title}"
+
+    // The format for the page number in the table.
+    // You can use all song metadata.
+    pageno : "%{page}"
+
+    // For future use.
+    fold : false
+
+    // If `true`, this table is omitted.
+    omit : false
+
+    // The template for this table.
+    template : stdtoc
+
+    break : "\\n            %{artist}"
+  }
+]
+
+// Settings for PDF output.
+pdf {
+
+  // Output paper size.
+  papersize : "a4"
+
+  // Distance between columns in multi-column mode.
+  columnspace : 20
+
+  // Page top margin, excluding `headspace`.
+  margintop : 88
+
+  // Page bottom margin, excluding `footspace`.
+  marginbottom : 40
+
+  // Page left margin.
+  marginleft : 72
+
+  // Page right margin.
+  marginright : 40
+
+  // Space for page titles.
+  headspace : 57
+
+  // Space for page footers.
+  footspace : 20
+
+  // Heading on first page only, add the headspace to the other pages so they become larger.
+
+  head-first-only : true
+
+  // Baseline distances as a factor of the font size.
+  spacing {
+
+    // Spacing for page titles.
+    title : 1.5
+
+    // Spacing between songlines (grouped chords + lyrics).
+    lyrics : 1
+
+    // Spacing between chords and lyrics in songlines.
+    chords : 1
+
+    // Spacing for empty (blank) lines.
+    empty : 1.7
+  }
+
+  // Appearance of chord diagrams for string instruments.
+  diagrams {
+    show : false
+    linewidth : 0.15
+  }
+
+// Page formats.
+  formats {
+    default.title : [ "" "%{title}" "" ]
+    first.title   : [ "" "%{title}" "" ]
+
+    title.footer  : [ "%{artist}" "%{page}" "%{title}" ]
+    first.footer  : [ "%{artist}" "%{page}" "%{title}" ]
+    
+  }
+
+  // `fonts` maps output elements to fonts as defined in `fontconfig`.
+  fonts {
+
+    // The font used for page titles.
+    title : "Times-Roman 17"
+
+    // The font used for chords above the lyrics.
+    chord : "Helvetica-Oblique 9"
+
+    // The font used for comments. If not set, falls back on the `text` font.
+    comment: "Times-Roman 12; background=foreground-light"
+
+    // The font used for the table of contents. If not set, falls back on the `text` font.
+    toc: "Times-Roman 15"
+  }
+
+  songbook.dual-pages : false
+  songbook.sort-songs : true
+}

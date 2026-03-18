@@ -142,6 +142,12 @@ ChordPro text
 
 This keeps preview and exported PDF aligned on the same renderer.
 
+All ChordPro CLI executions now also share the same global style configuration.
+
+- runtime config path: bundled Tauri resource `resources/chordpro/style.json`
+- development fallback: repository `resources/chordpro/style.json`
+- applied to preview, single PDF export and songbook PDF export through the same backend command path
+
 ---
 
 ## Minimal Persistence

@@ -77,8 +77,16 @@ export class SongbookService {
     private readonly parser = new ChordProParser()
   ) {}
 
-  async loadSongbook(folderPath: string): Promise<Songbook> {
+  async listSongFiles(folderPath: string): Promise<string[]> {
     const filePaths = await this.repository.listSongs(folderPath);
+    filePaths.sort((left, right) => getFileName(left).localeCompare(getFileName(right), undefined, {
+      sensitivity: "base"
+    }));
+    return filePaths;
+  }
+
+  async loadSongbook(folderPath: string): Promise<Songbook> {
+    const filePaths = await this.listSongFiles(folderPath);
     const songs = [];
 
     for (const filePath of filePaths) {
@@ -89,10 +97,6 @@ export class SongbookService {
         displayTitle: buildDisplayTitle(song)
       });
     }
-
-    songs.sort((left, right) => left.displayTitle.localeCompare(right.displayTitle, undefined, {
-      sensitivity: "base"
-    }));
 
     return {
       path: folderPath,

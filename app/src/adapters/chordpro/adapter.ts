@@ -6,4 +6,5 @@ export interface PreviewResult {
 export interface ChordproAdapter {
   generatePreview(chordproText: string): Promise<PreviewResult>;
   exportPdf(chordproText: string, outputPath: string): Promise<string>;
+  exportSongbookPdf(inputPaths: string[], outputPath: string): Promise<string>;
 }

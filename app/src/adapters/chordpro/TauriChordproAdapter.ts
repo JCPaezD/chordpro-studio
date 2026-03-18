@@ -71,4 +71,20 @@ export class TauriChordproAdapter implements ChordproAdapter {
       throw formatTauriError(error);
     }
   }
+
+  async exportSongbookPdf(inputPaths: string[], outputPath: string): Promise<string> {
+    if (!isTauri()) {
+      throw new Error("PDF export requires the Tauri desktop runtime.");
+    }
+
+    try {
+      const response = await invoke<ExportPdfResponse>("export_songbook_pdf", {
+        inputPaths,
+        outputPath
+      });
+      return response.outputPath;
+    } catch (error) {
+      throw formatTauriError(error);
+    }
+  }
 }

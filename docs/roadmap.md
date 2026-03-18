@@ -38,6 +38,7 @@ Current status:
 - provisional application icon and header logo integrated for Tauri and the `User` / `Playground` views
 - unified save/discard/cancel protection now covers convert replacement, songbook navigation and app close
 - `User` and `Playground` now share a single workspace singleton, so switching views preserves the active document and generated state
+- songbook PDF export is implemented through the bundled ChordPro CLI using the same global style config as preview and single-song export
 
 ### Block 1 - Completed foundation
 
@@ -62,11 +63,7 @@ Current status:
 11. Provide a simple folder-based list of songs.
 12. Reconstruct the internal Song model by parsing `.cho` files on open.
 
-### Immediate priority before Block 4
-
-- Fix workspace state persistence between `User` and `Playground` (`BUG-14`).
-
-### Block 4 - Songbook export
+### Block 4 - Completed songbook export
 
 13. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
 
@@ -89,6 +86,17 @@ Features:
 - song library
 - persist the last active view (`User` / `Playground`) across sessions; current behavior should continue to default to `Convert` in `User` view until that is implemented
 - allow aborting an ongoing conversion request from the UI in both `User` and `Playground`; medium priority and not required for v1 completion
+
+### Export improvements (future)
+
+- Songbook cover support:
+  - auto-generated cover (title, date, `Generated with ChordPro Studio`)
+  - custom PDF cover support
+- user-configurable ChordPro styles (UI-based)
+- advanced export options:
+  - song ordering
+  - song selection (checkboxes)
+  - table of contents configuration
 
 ---
 
