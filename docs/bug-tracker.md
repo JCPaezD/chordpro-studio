@@ -246,7 +246,7 @@ Expected behavior:
 In desktop two-column layout, the active left panel and the Preview panel should align cleanly without overflow or placeholder misalignment.
 
 Temporary decision:
-Leave the current stable layout in place and defer strict panel-height synchronization to a later focused layout pass. Several CSS and runtime-sync attempts were tested and did not produce a robust solution without regressions.
+The issue is now treated as a consequence of the current layout model rather than a component-level sizing problem. It is expected to be resolved by the planned fixed-height UI layout refactor and should be validated again after that refactor before the bug is closed.
 
 Priority: Low
 Status: Open

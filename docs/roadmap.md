@@ -73,8 +73,12 @@ Current status:
 
 ### v1 - Finalization
 
-14. Clean up the Playground UI (layout, redundant labels, language consistency).
-15. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
+14. Refactor the app into a fixed-height layout with a non-scrollable header, no global page scroll and panel-local scrolling.
+15. Revalidate `BUG-10` after the layout refactor.
+16. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
+17. Run a full manual review of the application after the layout refactor.
+18. Apply a UI consistency pass to the User View.
+19. Clean up the Playground UI (layout, redundant labels, language consistency).
 
 ### v1.1 - Post-release improvements
 

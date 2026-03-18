@@ -222,6 +222,21 @@ Current protected actions are:
 
 ---
 
+## UI Layout
+
+The application shell is constrained to the viewport height.
+
+Layout rules:
+
+- the header remains fixed and outside the scroll flow
+- the app does not use global page scroll
+- the main panels share the remaining available height
+- each panel manages its own internal scrolling
+- UI states such as empty, loading and content must not change panel height
+- content components such as textareas, PDF preview frames and lists must not define layout height
+
+---
+
 ## Songbook UI Structure
 
 The current user-facing layout is:

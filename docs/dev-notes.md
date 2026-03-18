@@ -299,6 +299,13 @@ When documentation files are manually edited by the user, Codex should treat the
 - current UI headers import `app/src/ui/assets/logo-64.png`
 - current Tauri development/package icon set lives in `src-tauri/icons/`
 
+## UI Layout Notes
+
+- the current panel-height inconsistency comes from the layout model, where overall page height and panel content height are not constrained from a single application shell
+- trying to fix this at component level is incorrect because textareas, PDF preview and list states should not control the layout height of the app
+- the chosen direction is a fixed-height application layout constrained to the viewport, with a non-scrollable header, no global page scroll and internal scrolling only inside panel content areas
+- this removes the need for runtime height synchronization logic between panels and makes empty, loading and populated states layout-neutral
+
 ## User View Notes
 
 The application now has two UI modes:
