@@ -54,7 +54,7 @@ export type SongWorkspace = {
   songbookExportWarning: Ref<string>;
   songbookExportError: Ref<string>;
   songbookExportMessage: Ref<string>;
-  songMetadata: Ref<SongMetadata>;
+  songMetadata: ComputedRef<SongMetadata>;
   document: Ref<WorkspaceDocument>;
   songbook: Ref<Songbook | null>;
   selectedSongPath: ComputedRef<string>;
@@ -104,7 +104,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const songbookExportWarning = ref("");
   const songbookExportError = ref("");
   const songbookExportMessage = ref("");
-  const songMetadata = ref<SongMetadata>({});
   const document = ref<WorkspaceDocument>({
     filePath: "",
     fileName: "",
@@ -113,6 +112,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     dirty: false
   });
   const songbook = ref<Songbook | null>(null);
+  const songMetadata = computed<SongMetadata>(() => document.value.song?.metadata ?? extractChordProMetadata(document.value.chordProText));
   const selectedSongPath = computed(() => document.value.filePath);
   const hasUnsavedChanges = computed(() => {
     if (document.value.filePath) {
@@ -195,7 +195,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   function replaceDocument(nextDocument: WorkspaceDocument): void {
     document.value = nextDocument;
-    songMetadata.value = nextDocument.song?.metadata ?? extractChordProMetadata(nextDocument.chordProText);
     songJson.value = nextDocument.song ? JSON.stringify(nextDocument.song, null, 2) : "";
   }
 
@@ -251,7 +250,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     retryLog.value = [];
     validationReason.value = "";
     validationRawOutput.value = "";
-    songMetadata.value = {};
     replaceDocument(createDocumentFromChordPro(""));
     previewPath.value = "";
     revokePreviewUrl();
@@ -278,12 +276,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     };
   }
 
-  function buildSuggestedExportName(extension: "pdf" | "cho"): string {
-    const metadata = {
-      ...songMetadata.value,
-      ...extractChordProMetadata(chordProText.value)
-    };
-
+  function buildSuggestedExportName(extension: "pdf" | "cho", metadata: SongMetadata = songMetadata.value): string {
     const title = metadata.title ? sanitizeFilenamePart(metadata.title) : "";
     const artist = metadata.artist ? sanitizeFilenamePart(metadata.artist) : "";
 
@@ -311,6 +304,66 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         : "";
 
     return basePath ? join(basePath, fileName) : fileName;
+  }
+
+  function normalizeComparablePath(path: string): string {
+    return path.replace(/\\/g, "/");
+  }
+
+  function normalizeCaseInsensitivePath(path: string): string {
+    return normalizeComparablePath(path).toLowerCase();
+  }
+
+  async function buildSuggestedDocumentPath(filePath: string, metadata: SongMetadata): Promise<string> {
+    const folderPath = await dirname(filePath);
+    return join(folderPath, buildSuggestedExportName("cho", metadata));
+  }
+
+  async function buildTemporaryRenamePath(filePath: string): Promise<string> {
+    const folderPath = await dirname(filePath);
+    const fileName = getFilenameFromPath(filePath);
+
+    for (let attempt = 1; attempt <= 100; attempt += 1) {
+      const temporaryPath = await join(folderPath, `__rename__-${attempt}-${fileName}`);
+
+      if (!(await songRepository.songExists(temporaryPath))) {
+        return temporaryPath;
+      }
+    }
+
+    throw new Error("Could not allocate a temporary path for renaming.");
+  }
+
+  async function renameSongPathSafely(currentPath: string, targetPath: string): Promise<string> {
+    if (normalizeComparablePath(currentPath) === normalizeComparablePath(targetPath)) {
+      return currentPath;
+    }
+
+    if (normalizeCaseInsensitivePath(currentPath) === normalizeCaseInsensitivePath(targetPath)) {
+      const temporaryPath = await buildTemporaryRenamePath(currentPath);
+      await songRepository.renameSong(currentPath, temporaryPath);
+
+      try {
+        await songRepository.renameSong(temporaryPath, targetPath);
+      } catch (err) {
+        await songRepository.renameSong(temporaryPath, currentPath);
+        throw err;
+      }
+
+      return targetPath;
+    }
+
+    if (await songRepository.songExists(targetPath)) {
+      return currentPath;
+    }
+
+    await songRepository.renameSong(currentPath, targetPath);
+    return targetPath;
+  }
+
+  async function resolveSavedDocumentPath(filePath: string, metadata: SongMetadata): Promise<string> {
+    const suggestedPath = await buildSuggestedDocumentPath(filePath, metadata);
+    return renameSongPathSafely(filePath, suggestedPath);
   }
 
   async function buildSuggestedSongbookExportPath(): Promise<string> {
@@ -355,10 +408,21 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           : `${selectedPath}.pdf`;
 
       if (normalizedPath.toLowerCase().endsWith(".cho")) {
-        await songRepository.writeSong(normalizedPath, document.value.chordProText);
+        let finalPath = normalizedPath;
+        const currentFilePath = document.value.filePath;
+
+        if (currentFilePath && normalizeCaseInsensitivePath(currentFilePath) === normalizeCaseInsensitivePath(normalizedPath)) {
+          const currentSong = document.value.song;
+          const currentMetadata = currentSong?.metadata ?? extractChordProMetadata(document.value.chordProText);
+          await songRepository.writeSong(currentFilePath, document.value.chordProText);
+          finalPath = await resolveSavedDocumentPath(currentFilePath, currentMetadata);
+        } else {
+          await songRepository.writeSong(normalizedPath, document.value.chordProText);
+        }
+
         replaceDocument(
           createDocumentFromChordPro(document.value.chordProText, {
-            filePath: normalizedPath,
+            filePath: finalPath,
             song: document.value.song,
             dirty: false
           })
@@ -366,7 +430,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         if (songbook.value) {
           await refreshSongbook();
         }
-        exportMessage.value = `Saved to: ${getFilenameFromPath(normalizedPath)}`;
+        exportMessage.value = `Saved to: ${getFilenameFromPath(finalPath)}`;
         return;
       }
 
@@ -493,13 +557,15 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     isGeneratingPreview.value = true;
 
     try {
+      const activeFilePath = document.value.filePath;
       const pipeline = createPipeline(options?.model);
       const result = await pipeline.process(rawInput.value, options?.preferences);
       cleanedText.value = result.cleanedText;
       replaceDocument(
         createDocumentFromChordPro(result.chordPro, {
+          filePath: activeFilePath,
           song: result.song,
-          dirty: false
+          dirty: activeFilePath.length > 0
         })
       );
       retryLog.value = result.retryLog ?? [];
@@ -626,49 +692,64 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return false;
     }
 
-    let targetPath = document.value.filePath;
+    error.value = "";
+    songbookError.value = "";
 
-    if (!targetPath) {
-      const selectedPath = await save({
-        title: "Save ChordPro file",
-        defaultPath: await buildSuggestedExportPath("cho"),
-        filters: [
-          {
-            name: "ChordPro file",
-            extensions: ["cho"]
-          }
-        ]
-      });
-
-      if (!selectedPath) {
-        return false;
+    try {
+      let parsedSong = document.value.song;
+      try {
+        parsedSong = parser.parse(document.value.chordProText);
+      } catch {
+        // Keep the previous valid song snapshot if the current draft cannot be parsed.
       }
 
-      targetPath = selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : `${selectedPath}.cho`;
+      let targetPath = document.value.filePath;
+
+      if (!targetPath) {
+        const selectedPath = await save({
+          title: "Save ChordPro file",
+          defaultPath: await buildSuggestedExportPath("cho"),
+          filters: [
+            {
+              name: "ChordPro file",
+              extensions: ["cho"]
+            }
+          ]
+        });
+
+        if (!selectedPath) {
+          return false;
+        }
+
+        targetPath = selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : `${selectedPath}.cho`;
+        await songbookService.saveSong(targetPath, document.value.chordProText);
+      } else {
+        await songbookService.saveSong(targetPath, document.value.chordProText);
+
+        if (parsedSong) {
+          targetPath = await resolveSavedDocumentPath(targetPath, parsedSong.metadata);
+        }
+      }
+
+      replaceDocument(
+        createDocumentFromChordPro(document.value.chordProText, {
+          filePath: targetPath,
+          song: parsedSong,
+          dirty: false
+        })
+      );
+
+      if (songbook.value) {
+        await refreshSongbook();
+      }
+
+      return true;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      error.value = detail;
+      songbookError.value = detail;
+      return false;
     }
-
-    await songbookService.saveSong(targetPath, document.value.chordProText);
-
-    let parsedSong = document.value.song;
-    try {
-      parsedSong = parser.parse(document.value.chordProText);
-    } catch {
-      // Keep the previous valid song snapshot if the current draft cannot be parsed.
-    }
-
-    replaceDocument(
-      createDocumentFromChordPro(document.value.chordProText, {
-        filePath: targetPath,
-        song: parsedSong,
-        dirty: false
-      })
-    );
-
-    if (songbook.value) {
-      await refreshSongbook();
-    }
-
-    return true;
   }
 
   async function openSongFile(filePath: string): Promise<void> {
@@ -848,4 +929,7 @@ export function useSongWorkspace(dependencies?: SongWorkspaceDependencies): Song
 
   return songWorkspace;
 }
+
+
+
 

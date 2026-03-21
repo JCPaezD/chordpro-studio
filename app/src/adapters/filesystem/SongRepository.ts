@@ -1,5 +1,5 @@
+import { exists, readDir, readTextFile, rename, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
-import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 export class SongRepository {
   async listSongs(folderPath: string): Promise<string[]> {
@@ -24,4 +24,13 @@ export class SongRepository {
   async writeSong(filePath: string, chordProText: string): Promise<void> {
     await writeTextFile(filePath, chordProText);
   }
+
+  async songExists(filePath: string): Promise<boolean> {
+    return exists(filePath);
+  }
+
+  async renameSong(oldPath: string, newPath: string): Promise<void> {
+    await rename(oldPath, newPath);
+  }
 }
+

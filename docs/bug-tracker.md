@@ -371,10 +371,7 @@ Steps to reproduce:
 4. Observe the editor metadata, the song list entry and the files in the folder.
 
 Current behavior:
-- the song list may show normalized metadata
-- the editor header may still show old non-normalized metadata
-- the refresh action does not fully synchronize the active document state
-- saving may keep the old filename or create a duplicate file with the normalized name
+Resolved. After reconversion, the active workspace document now preserves the open file path, updates its parsed metadata immediately, and keeps the Songbook editor header aligned with the current document state. Saving an existing file now overwrites the current path first and then applies a conservative safe rename only when the normalized target filename is available and does not conflict with another file. `.cho` export from the Preview panel follows the same rule when it targets the current file.
 
 Expected behavior:
 After reconversion and save:
@@ -384,10 +381,12 @@ After reconversion and save:
 - filename behavior should be predictable and consistent
 
 Scope and notes:
-For `v1.1`, filename renaming should remain conservative:
-- do NOT automatically rename existing files based on metadata changes
-- focus on syncing in-memory state and preventing duplicate creation
+Resolved with a conservative rename policy:
+- existing files are renamed only when the normalized target path is available
+- conflicting target filenames are not overwritten
+- no duplicate file is created automatically
+- case-only filename normalization is supported safely on Windows through a temporary rename step
 
 Priority: Medium-High
 Target: v1.1
-Status: Open
+Status: Resolved

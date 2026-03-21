@@ -199,6 +199,13 @@ the documentation must be updated first.
 - assumption made: separator cleanup should run only on lines made exclusively of bracketed chord tokens, `-` separators and whitespace, rewriting them into simple chord-only lines while leaving any mixed lyric/chord content untouched
 - reason for the assumption: this complements the prompt instruction with a minimal safe guardrail, removes separator artifacts without attempting alignment or structural inference, and preserves existing `.cho` loading behavior
 - whether it requires later validation: no, validated on 2026-03-21 with successful chord-only, mixed-content and full-flow manual tests
+
+- date: 2026-03-22
+- context: fixing BUG-15 around metadata synchronization and filename normalization after reconversion and save
+- assumption made: the active `WorkspaceDocument` should remain the single source of truth after reconversion, while saving an existing `.cho` should only rename conservatively when the normalized target path is available and conflict-free
+- reason for the assumption: this resolves editor/song list desynchronization without introducing aggressive auto-rename behavior, and keeps Windows case-only normalization safe through a temporary rename step plus Tauri `fs:allow-rename`
+- whether it requires later validation: no, validated on 2026-03-22 with successful editor save, unsaved-changes modal save and Preview `.cho` export tests
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
@@ -221,6 +228,7 @@ frontend native save dialog
 -> execute bundled ChordPro CLI with `--output`
 -> generate the requested PDF
 -> if `.cho` selected: write current ChordPro text directly to disk without invoking the CLI
+-> if the active document already exists on disk: keep overwrite behavior first, then apply conservative filename normalization only when a safe target path is available
 
 Songbook PDF export now follows this flow:
 
@@ -238,6 +246,7 @@ Export feedback behavior:
 - success messages use the saved filename when available
 - export and preview feedback messages persist until the next user action clears them (`run pipeline`, `refresh preview`, `export again`, `clear`, etc.)
 - shared workspace cleanup is split between `clearGeneratedState()` (results only) and `clearAllState()` (raw input plus generated state) so `User` and `Playground` can choose the correct behavior without duplicating reset logic
+- Preview `.cho` export now follows the same conservative safe-rename rule used by direct editor save when it targets the current document
 
 Preview failure behavior:
 
@@ -381,9 +390,11 @@ Workspace document behavior:
 - `useSongWorkspace()` returns the same singleton instance everywhere; `User`, `Playground` and songbook interactions all mutate that single workspace instead of keeping view-local copies
 - editing ChordPro source marks the document dirty
 - the current `.cho` document in memory is the single source of truth for destructive replacement checks
+- reconverting an already opened `.cho` preserves the active `filePath` and updates the parsed song metadata immediately so the editor header, save logic and song list refresh stay aligned
 - unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window
 - unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`
 - Tauri close interception for this flow depends on explicit main-window permissions for `window.close` / `window.destroy` in `src-tauri/capabilities/main.json`
+- conservative filename normalization for existing files also depends on explicit `fs:allow-rename` permission in `src-tauri/capabilities/main.json`
 
 Future improvements kept explicitly out of this phase:
 

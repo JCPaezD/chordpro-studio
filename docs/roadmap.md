@@ -46,6 +46,7 @@ Current status:
 - frontend `PromptLoader` now loads prompts only from bundled assets, and the Vite `node:fs/promises` warning is resolved
 - LLM-generated `title` and `artist` metadata is now normalized locally before parsing, while existing `.cho` file loading remains unchanged
 - chord-only separator lines such as `[G] - [Am] - [Em]` are now cleaned safely before parsing, while mixed content remains unchanged
+- BUG-15 resolved: reconversion now keeps active song metadata synchronized in the editor and song list, and saving applies conservative safe filename normalization without creating duplicates
 
 ## Completed work
 

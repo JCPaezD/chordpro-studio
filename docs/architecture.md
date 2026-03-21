@@ -170,6 +170,14 @@ Opening an existing song follows this flow:
 
 The LLM pipeline is not used when opening an existing `.cho` file.
 
+Saving an existing song follows this rule:
+
+- overwrite the current file first
+- derive the suggested `.cho` filename from the active document metadata
+- rename only when the target path is available
+- do not overwrite conflicting files
+- allow safe case-only normalization on Windows through an intermediate temporary rename step
+
 Songbook persistence follows this model:
 
 - a songbook is a selected folder
@@ -220,6 +228,7 @@ Fields:
 This shared workspace design keeps state stable when switching between `User` and `Playground`. Views do not synchronize separate local states; they render and mutate the same workspace instance.
 
 The current document (`.cho` in memory) is treated as the single source of truth.
+After reconversion of an already opened `.cho`, the workspace preserves the active file path and replaces the parsed song snapshot so UI metadata and later save behavior continue to derive from the same document state.
 Any action that replaces it is considered destructive and must go through the unified confirmation flow.
 Current protected actions are:
 

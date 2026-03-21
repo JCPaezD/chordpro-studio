@@ -34,6 +34,7 @@ const {
   songbookExportError,
   songbookExportMessage,
   document,
+  songMetadata,
   songbook,
   songbookError,
   selectedSongPath,
@@ -72,6 +73,21 @@ const conversionModeLabel = computed(() =>
 );
 
 const apiKeyButtonLabel = computed(() => (hasApiKey.value ? "Change API Key" : "Set API Key"));
+
+const songbookEditorTitle = computed(() => {
+  const title = songMetadata.value.title?.trim();
+  const artist = songMetadata.value.artist?.trim();
+
+  if (title && artist) {
+    return `${title} - ${artist}`;
+  }
+
+  return title || artist || document.value.fileName || "ChordPro source";
+});
+
+const songbookEditorSubtitle = computed(() =>
+  document.value.fileName || "Open a song from the list to edit its `.cho` content."
+);
 
 async function convertSong(): Promise<void> {
   if (!canGenerate.value) {
@@ -327,9 +343,9 @@ async function clearApiKey(): Promise<void> {
               <section class="editor-panel card-subsection">
                 <div class="editor-heading">
                   <div>
-                    <h3>{{ document.fileName || 'ChordPro source' }}</h3>
+                    <h3>{{ songbookEditorTitle }}</h3>
                     <p>
-                      {{ document.filePath || 'Open a song from the list to edit its `.cho` content.' }}
+                      {{ songbookEditorSubtitle }}
                     </p>
                   </div>
                   <div class="editor-heading-aside">
@@ -1085,10 +1101,5 @@ async function clearApiKey(): Promise<void> {
   }
 }
 </style>
-
-
-
-
-
 
 
