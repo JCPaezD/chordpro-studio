@@ -238,9 +238,15 @@ Bundled CLI expectation:
 
 - a global `style.json` is now used for all CLI executions
 - this keeps rendering consistent across preview, single PDF export and songbook PDF export
-- the config is resolved from Tauri bundled resources at runtime, with the repository `resources/chordpro/style.json` path used during development
+- the config is resolved from Tauri bundled resources at runtime, with the repository `resources/chordpro-studio/style.json` path used during development
 - the current provisional project style enables keyboard chord diagrams at the bottom of the page and uses project-specific PDF metadata instead of the original preset labels
 - future user preferences should make chord diagrams configurable per user, including visibility, instrument and placement
+
+- date: 2026-03-21
+- context: replacing the locally copied ChordPro runtime with an official redistributable Windows release before making the repository public
+- assumption made: `resources/chordpro` should contain only the runtime files recreated from the official `ChordPro 6.090.1` Windows installer artifact (`ChordPro-Installer-6-90-1-2-msw-x64.exe`), while the project-specific style config must move out to `resources/chordpro-studio/style.json` so the third-party bundle remains clean
+- reason for the assumption: this keeps the third-party runtime provenance explicit, removes local-install leftovers, and preserves the app's existing preview/export behavior with only a minimal path adjustment
+- whether it requires later validation: yes
 
 ## File Encoding Rule
 
@@ -378,3 +384,4 @@ Future improvements kept explicitly out of this phase:
 - assumption made: the Playground should follow the same fixed-height shell rules as the User view while remaining a DEV-only internal tool, so production UX always starts and stays in `User` mode without exposing the extra toggle, while production User mode also hides the `Workspace` eyebrow that only helps differentiate views in development
 - reason for the assumption: this preserves the debugging workflow during development but removes non-product UI from the release build without duplicating workspace state
 - whether it requires later validation: yes
+

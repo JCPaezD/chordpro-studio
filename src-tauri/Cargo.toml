@@ -1,6 +1,6 @@
 [package]
 name = "chordpro-studio"
-version = "0.1.0"
+version = "1.0.0"
 description = "Desktop-first ChordPro Studio"
 authors = ["ChordPro Studio"]
 license = ""
@@ -21,3 +21,5 @@ tauri-plugin-fs = "2"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+

@@ -10,3 +10,6 @@ app/.env
 app/.env.local
 tauri-dev-out.log
 tauri-dev-err.log
+.tmp/
+releases/
+*.zip

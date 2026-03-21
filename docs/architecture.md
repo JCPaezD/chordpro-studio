@@ -144,9 +144,11 @@ This keeps preview and exported PDF aligned on the same renderer.
 
 All ChordPro CLI executions now also share the same global style configuration.
 
-- runtime config path: bundled Tauri resource `resources/chordpro/style.json`
-- development fallback: repository `resources/chordpro/style.json`
+- runtime config path: bundled Tauri resource `resources/chordpro-studio/style.json`
+- development fallback: repository `resources/chordpro-studio/style.json`
 - applied to preview, single PDF export and songbook PDF export through the same backend command path
+
+The bundled ChordPro runtime itself now stays isolated under `resources/chordpro` and is recreated from the official Windows release artifact instead of a local installation copy. Installer-only files such as `unins000.exe` and `unins000.dat` are not bundled because they are not required at runtime.
 
 ---
 
@@ -306,3 +308,4 @@ Purpose:
 - inspect retries and validation failures
 
 It is intended for development and debugging, not for end-user workflow. The Playground is now exposed only in DEV builds; production builds always open the `User` view, do not render a Playground toggle, and also remove the extra `Workspace` label that only exists to distinguish the two modes during development.
+

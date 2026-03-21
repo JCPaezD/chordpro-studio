@@ -1,5 +1,6 @@
 {
   "name": "chordpro-studio",
+  "version": "1.0.0",
   "private": true,
   "workspaces": [
     "app"
@@ -11,3 +12,4 @@
     "tauri": "npm run tauri --workspace app --"
   }
 }
+

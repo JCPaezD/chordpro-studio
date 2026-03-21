@@ -258,12 +258,12 @@ fn resolve_chordpro_binary(app: &AppHandle) -> Result<PathBuf, ChordProCommandEr
 }
 
 fn resolve_chordpro_style_config(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> {
-  resolve_chordpro_resource(app, "style.json").ok_or_else(|| ChordProCommandError {
+  resolve_style_resource(app, "style.json").ok_or_else(|| ChordProCommandError {
     code: "CHORDPRO_STYLE_NOT_FOUND".into(),
-    message: "Bundled ChordPro style configuration was not found.".into(),
+    message: "Bundled ChordPro Studio style configuration was not found.".into(),
     stdout: None,
     stderr: None,
-    details: Some("Expected resources/chordpro/style.json".into()),
+    details: Some("Expected resources/chordpro-studio/style.json".into()),
   })
 }
 
@@ -285,6 +285,24 @@ fn resolve_chordpro_resource(app: &AppHandle, resource_name: &str) -> Option<Pat
   candidates.into_iter().find(|path| path.is_file())
 }
 
+
+fn resolve_style_resource(app: &AppHandle, resource_name: &str) -> Option<PathBuf> {
+  let mut candidates = Vec::new();
+
+  if let Ok(resource_dir) = app.path().resource_dir() {
+    candidates.push(resource_dir.join("chordpro-studio").join(resource_name));
+  }
+
+  candidates.push(
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("..")
+      .join("resources")
+      .join("chordpro-studio")
+      .join(resource_name),
+  );
+
+  candidates.into_iter().find(|path| path.is_file())
+}
 fn decode_output(output: Vec<u8>) -> Option<String> {
   let text = String::from_utf8_lossy(&output).trim().to_string();
   if text.is_empty() {
@@ -293,3 +311,4 @@ fn decode_output(output: Vec<u8>) -> Option<String> {
     Some(text)
   }
 }
+

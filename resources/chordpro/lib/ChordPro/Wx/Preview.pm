@@ -17,6 +17,7 @@ use Wx ':everything';
 use Wx::Locale gettext => '_T';
 use File::Temp qw( tempfile tempdir );
 use File::Basename qw(basename);
+use Ref::Util qw( is_hashref );
 
 field $panel			:param;
 field $msgs;
@@ -87,6 +88,8 @@ method preview( $args, %opts ) {
 
     for my $preset ( qw( instruments styles stylemods ) ) {
 	for my $p ( @{$preferences{"preset_$preset"}} ) {
+	    next if $p->{default};
+	    next unless defined $p->{file};
 	    push( @ARGV, "--config", $p->{file} );
 	    $haveconfig++;
 	}
@@ -97,19 +100,26 @@ method preview( $args, %opts ) {
 	push( @ARGV, '--config', $preferences{configfile} );
 
     }
-    delete $ENV{CHORDPRO_LIB};
+    local $ENV{CHORDPRO_LIB};
     if ( $preferences{enable_customlib} ) {
 	$ENV{CHORDPRO_LIB} = $preferences{customlib};
     }
     CP->setup_resdirs;
-    if ( $preferences{enable_xcode} && $preferences{xcode} ) {
-	$haveconfig++;
-	push( @ARGV, '--transcode', $preferences{xcode} );
+
+    if ( $preferences{enable_xcode} ) {
+	my $c = $preferences{preset_xcodes}[0];
+	unless ( $c->{default} ) {
+	    $haveconfig++;
+	    push( @ARGV, '--transcode', $c->{system} );
+	}
     }
 
-    if ( $preferences{notation} ) {
-	$haveconfig++;
-	push( @ARGV, '--config', 'notes:' . $preferences{notation} );
+    if ( $preferences{preset_notations} ) {
+	my $c = $preferences{preset_notations}[0];
+	unless ( $c->{default} ) {
+	    $haveconfig++;
+	    push( @ARGV, '--config', $c->{file} );
+	}
     }
 
     push( @ARGV, '--noconfig' ) unless $haveconfig;

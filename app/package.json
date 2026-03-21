@@ -1,6 +1,6 @@
 {
   "name": "chordpro-studio-app",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,3 +21,4 @@
     "vite": "^6.0.0"
   }
 }
+
