@@ -740,7 +740,6 @@ function createSongWorkspace(): SongWorkspace {
 
       try {
         songbook.value = await songbookService.loadSongbook(config.lastSongbookPath);
-        activePanel.value = "songbook";
       } catch {
         songbook.value = null;
       }
@@ -814,3 +813,4 @@ const songWorkspace = createSongWorkspace();
 export function useSongWorkspace(): SongWorkspace {
   return songWorkspace;
 }
+

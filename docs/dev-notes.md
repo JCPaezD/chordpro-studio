@@ -301,6 +301,8 @@ When documentation files are manually edited by the user, Codex should treat the
 
 ## UI Layout Notes
 
+- the User View refactor is now implemented: the shell is viewport-constrained, the header is fixed within the view, preview height stays stable across states, and panel scrolling is internal only
+
 - the current panel-height inconsistency comes from the layout model, where overall page height and panel content height are not constrained from a single application shell
 - trying to fix this at component level is incorrect because textareas, PDF preview and list states should not control the layout height of the app
 - the chosen direction is a fixed-height application layout constrained to the viewport, with a non-scrollable header, no global page scroll and internal scrolling only inside panel content areas
@@ -326,7 +328,7 @@ Playground model selector:
 - the selected Gemini model is loaded from AppConfig on startup and falls back to `gemini-flash-latest` only when `playgroundModel` is missing
 - if a runtime override is present through environment variables, that override still takes precedence and the persisted preference is not rewritten on load
 
-The User View also exposes a collapsible editable ChordPro source panel that reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
+The User View now keeps `Convert` as the default active panel, preserves the VSCode-style sidebar for `Convert` / `Songbook`, and uses a layout-controlled optional ChordPro editor instead of a collapsible panel. The editable `.cho` area still reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
 
 ## Songbook and Persistence Notes
 
@@ -343,7 +345,7 @@ Songbook behavior:
 - a songbook is a user-selected folder scanned for `.cho` files only
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
-- the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
+- the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup without changing the default `Convert` panel on launch
 - AppConfig now also stores `conversionMode` and `playgroundModel` as persisted UI preferences
 - missing `config.json` is treated as an empty config during startup; the AppConfig directory and file are created only when something is explicitly written
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document
@@ -362,3 +364,4 @@ Future improvements kept explicitly out of this phase:
 
 - add a filesystem watcher to refresh the songbook automatically when `.cho` files are added, removed or renamed
 - replace the raw `.cho` editor with a structured chord editor that supports lyric/chord dual-line editing
+

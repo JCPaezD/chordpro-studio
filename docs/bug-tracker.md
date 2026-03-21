@@ -230,26 +230,26 @@ Status: Resolved
 Layer: UI / Layout
 
 Description:
-The User View should present the active left panel (`Convert` or `Songbook`) at the same visual height as the `Preview` panel in two-column desktop layout, but that alignment is not reliable across content states.
+The User View should present the active left panel (`Convert` or `Songbook`) at the same visual height as the `Preview` panel in two-column desktop layout, but that alignment was not reliable across content states.
 
 Impact:
-The layout feels inconsistent. In particular:
+The layout felt inconsistent. In particular:
 
-- `Convert` may remain visibly shorter than `Preview`
-- expanding the collapsible ChordPro editor can push content beyond the block instead of the layout adapting cleanly
-- the empty `Songbook` placeholder does not align as cleanly as the populated state
+- `Convert` could remain visibly shorter than `Preview`
+- expanding the ChordPro editor could push content beyond the block instead of the layout adapting cleanly
+- the empty `Songbook` placeholder did not align as cleanly as the populated state
 
 Current behavior:
-The view is functionally correct, but strict height parity between left and right panels is not solved in a robust way.
+Resolved. The User View now runs inside a fixed-height, viewport-constrained layout with a non-scrollable header, no global page scroll, stable preview sizing and panel-local scrolling, so the active left panel and the `Preview` panel share the same layout height across empty, loading and populated states.
 
 Expected behavior:
 In desktop two-column layout, the active left panel and the Preview panel should align cleanly without overflow or placeholder misalignment.
 
 Temporary decision:
-The issue is now treated as a consequence of the current layout model rather than a component-level sizing problem. It is expected to be resolved by the planned fixed-height UI layout refactor and should be validated again after that refactor before the bug is closed.
+Resolved by treating the problem as an application-shell layout issue instead of a component-level sizing issue. The fixed-height User View refactor removes the need for runtime height synchronization logic between panels.
 
 Priority: Low
-Status: Open
+Status: Resolved
 
 ---
 
@@ -354,3 +354,4 @@ Resolved by making `useSongWorkspace()` return a single module-level workspace i
 
 Priority: High
 Status: Resolved
+

@@ -7,6 +7,14 @@ import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import { ConfigRepository, type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
+const props = defineProps<{
+  mode: "user" | "playground";
+}>();
+
+const emit = defineEmits<{
+  "change-mode": [mode: "user" | "playground"];
+}>();
+
 const {
   activePanel,
   rawInput,
@@ -32,7 +40,6 @@ const {
   exportSongbookPdf,
   runPipeline,
   previewFromChordPro,
-  copyToClipboard,
   openSongbookFolder,
   refreshSongbook,
   clearSongbook,
@@ -44,9 +51,14 @@ const {
 
 const configRepository = new ConfigRepository();
 const conversionMode = ref<ConversionMode | null>(null);
+const showChordProEditor = ref(false);
 
 const selectedModel = computed(() =>
   conversionMode.value === "fast" ? "gemini-flash-lite-latest" : "gemini-flash-latest"
+);
+
+const conversionModeLabel = computed(() =>
+  conversionMode.value === "fast" ? "Fast" : "Quality"
 );
 
 async function convertSong(): Promise<void> {
@@ -71,6 +83,15 @@ async function persistConversionMode(): Promise<void> {
   await configRepository.update({ conversionMode: conversionMode.value });
 }
 
+async function toggleConversionMode(): Promise<void> {
+  if (!conversionMode.value) {
+    return;
+  }
+
+  conversionMode.value = conversionMode.value === "quality" ? "fast" : "quality";
+  await persistConversionMode();
+}
+
 onMounted(async () => {
   await loadConversionMode();
 });
@@ -78,71 +99,79 @@ onMounted(async () => {
 
 <template>
   <main class="user-view">
-    <aside class="nav-rail" aria-label="User panels">
-      <button
-        :class="['nav-button', { active: activePanel === 'songbook' }]"
-        title="Songbook"
-        @click="setActivePanel('songbook')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M6 4h10a2 2 0 0 1 2 2v12H8a2 2 0 0 0-2 2V4Z" />
-          <path d="M8 18h10v2H8a2 2 0 0 1 0-4h10" />
-        </svg>
-        <span>Songbook</span>
-      </button>
-      <button
-        :class="['nav-button', { active: activePanel === 'convert' }]"
-        title="Convert"
-        @click="setActivePanel('convert')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6h14M5 12h9M5 18h14" />
-          <path d="M16 9l3 3-3 3" />
-        </svg>
-        <span>Convert</span>
-      </button>
-    </aside>
-
     <header class="card user-header">
-      <div>
+      <div class="header-copy">
         <div class="brand-lockup">
           <img :src="appLogo" alt="" class="brand-mark" />
           <span class="brand-title">ChordPro Studio</span>
         </div>
         <p class="eyebrow">Workspace</p>
         <h1>Convert songs and manage your ChordPro songbook</h1>
-        <p class="subtitle">
-          Create new chord sheets from raw text, open existing `.cho` songs from a folder and keep
-          the PDF preview visible while you refine the source.
-        </p>
       </div>
 
-      <label v-if="conversionMode" class="mode-select">
-        <span>Conversion mode</span>
-        <select v-model="conversionMode" :disabled="loading || !conversionMode" @change="persistConversionMode">
-          <option value="fast">Fast</option>
-          <option value="quality">Quality</option>
-        </select>
-      </label>
+      <div class="header-controls">
+        <div class="view-toggle" role="tablist" aria-label="View mode">
+          <button
+            :class="['view-button', { active: props.mode === 'user' }]"
+            @click="emit('change-mode', 'user')"
+          >
+            User
+          </button>
+          <button
+            :class="['view-button', { active: props.mode === 'playground' }]"
+            @click="emit('change-mode', 'playground')"
+          >
+            Playground
+          </button>
+        </div>
+      </div>
     </header>
 
-    <section class="work-panel">
-      <div v-if="activePanel === 'convert'" class="panel-body convert-panel">
-        <section class="panel card fill-card">
+    <section class="user-main">
+      <aside class="nav-rail" aria-label="User panels">
+        <button
+          :class="['nav-button', { active: activePanel === 'convert' }]"
+          title="Convert"
+          @click="setActivePanel('convert')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 6h14M5 12h9M5 18h14" />
+            <path d="M16 9l3 3-3 3" />
+          </svg>
+          <span>Convert</span>
+        </button>
+        <button
+          :class="['nav-button', { active: activePanel === 'songbook' }]"
+          title="Songbook"
+          @click="setActivePanel('songbook')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 4h10a2 2 0 0 1 2 2v12H8a2 2 0 0 0-2 2V4Z" />
+            <path d="M8 18h10v2H8a2 2 0 0 1 0-4h10" />
+          </svg>
+          <span>Songbook</span>
+        </button>
+      </aside>
+
+      <section class="panel card workspace-panel">
+        <div v-if="activePanel === 'convert'" class="panel-shell">
           <div class="panel-header secondary-header">
             <div>
               <p class="eyebrow">Convert</p>
-              <h2>Original text</h2>
-              <p>Paste the lyrics and chords you want to transform into ChordPro.</p>
+              <h2>New sheet</h2>
             </div>
             <div class="panel-actions-stack align-end">
-              <div class="header-actions">
-                <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-                <button class="secondary-button" :disabled="loading" @click="clearAllState">Clear</button>
+              <div class="header-actions convert-actions">
+                <button class="mini-button" :disabled="loading || !conversionMode" @click="toggleConversionMode">
+                  {{ conversionModeLabel }}
+                </button>
+                <button class="mini-button" @click="showChordProEditor = !showChordProEditor">
+                  {{ showChordProEditor ? "Hide ChordPro editor" : "Show ChordPro editor" }}
+                </button>
                 <button class="primary-button" :disabled="loading || !conversionMode" @click="convertSong">
                   <span :class="['button-content', { loading }]">
                     <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
-                    <span class="button-label">{{ loading ? "Generating..." : "Generate sheet" }}</span>
+                    <span class="button-label">{{ loading ? "Generating..." : "Generate" }}</span>
                   </span>
                 </button>
               </div>
@@ -150,59 +179,68 @@ onMounted(async () => {
             </div>
           </div>
 
-          <textarea
-            v-model="rawInput"
-            class="input-textarea"
-            placeholder="Paste the original song text here..."
-          />
-
-          <div class="embedded-editor">
-            <ChordProEditorPane
-              :model-value="chordProText"
-              collapsible
-              :initially-expanded="false"
-              collapsed-label="Show ChordPro source"
-              expanded-label="Hide ChordPro source"
-              placeholder="ChordPro source will appear here after generation."
-              @update:model-value="updateChordPro"
-            >
-              <template #header>
-                <div>
-                  <h3>Refine the source</h3>
-                  <p>Edit the generated `.cho` before refreshing the preview or exporting.</p>
+          <div class="panel-content">
+            <div :class="['convert-layout', { split: showChordProEditor }]">
+              <section class="editor-column">
+                <div class="editor-heading convert-heading">
+                  <div>
+                    <h3>Original text</h3>
+                  </div>
+                  <div class="header-actions">
+                    <button class="mini-button" @click="pasteFromClipboard">Paste</button>
+                    <button class="secondary-button" :disabled="loading" @click="clearAllState">Clear</button>
+                  </div>
                 </div>
-              </template>
-              <template #actions>
-                <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
-                  Refresh preview
-                </button>
-                <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
-                  Save .cho
-                </button>
-                <button class="mini-button" @click="copyToClipboard(chordProText)">Copy source</button>
-              </template>
-            </ChordProEditorPane>
-          </div>
-        </section>
-      </div>
 
-      <div v-else class="panel-body songbook-panel">
-        <section class="panel card fill-card songbook-card">
+                <textarea
+                  v-model="rawInput"
+                  class="input-textarea"
+                  placeholder="Paste the original song text here..."
+                />
+              </section>
+
+              <section v-if="showChordProEditor" class="editor-column">
+                <ChordProEditorPane
+                  :model-value="chordProText"
+                  placeholder="ChordPro source will appear here after generation."
+                  @update:model-value="updateChordPro"
+                >
+                  <template #header>
+                    <div class="editor-heading convert-heading">
+                      <div>
+                        <h3>ChordPro source</h3>
+                      </div>
+                      <div class="header-actions">
+                        <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+                          Refresh
+                        </button>
+                        <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                </ChordProEditorPane>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="panel-shell">
           <div class="panel-header secondary-header">
             <div>
               <p class="eyebrow">Songbook</p>
               <h2>Folder library</h2>
-              <p>Open a folder of `.cho` files, browse the list and edit the selected song.</p>
             </div>
             <div class="panel-actions-stack align-end">
               <div class="header-actions">
                 <button class="mini-button" @click="openSongbookFolder">Open folder</button>
                 <button class="mini-button" :disabled="!songbook" @click="refreshSongbook">Refresh</button>
                 <button class="secondary-button" :disabled="!songbook" @click="clearSongbook">Clear</button>
+                <button class="mini-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
+                  {{ isExportingSongbook ? "Generating songbook..." : "Export Songbook PDF" }}
+                </button>
               </div>
-              <button class="mini-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
-                {{ isExportingSongbook ? "Generating songbook..." : "Export Songbook PDF" }}
-              </button>
               <p v-if="songbookExportWarning" class="action-feedback warning-message">{{ songbookExportWarning }}</p>
               <p v-if="songbookExportError" class="action-feedback error-message">{{ songbookExportError }}</p>
               <p v-else-if="songbookExportMessage" class="action-feedback success-message">{{ songbookExportMessage }}</p>
@@ -210,12 +248,11 @@ onMounted(async () => {
                 {{ songbook?.path || "No songbook folder selected." }}
               </p>
             </div>
-          </div>
-          <div class="songbook-meta">
-            <p v-if="songbookError" class="message error-message">{{ songbookError }}</p>
-          </div>
+            </div>
 
-          <div class="songbook-main">
+          <div class="panel-content songbook-content">
+            <p v-if="songbookError" class="message error-message">{{ songbookError }}</p>
+
             <div v-if="songbook" class="songbook-layout">
               <aside class="song-list-panel">
                 <div class="song-list-header">
@@ -224,17 +261,19 @@ onMounted(async () => {
                     <p>{{ songbook.songs.length }} files</p>
                   </div>
                 </div>
-                <div v-if="songbook.songs.length === 0" class="songbook-empty">
-                  No `.cho` files were found in this folder.
+                <div class="song-list-body">
+                  <div v-if="songbook.songs.length === 0" class="songbook-empty">
+                    No `.cho` files were found in this folder.
+                  </div>
+                  <button
+                    v-for="songEntry in songbook.songs"
+                    :key="songEntry.filePath"
+                    :class="['song-item', { active: selectedSongPath === songEntry.filePath }]"
+                    @click="openSongFile(songEntry.filePath)"
+                  >
+                    {{ songEntry.displayTitle }}
+                  </button>
                 </div>
-                <button
-                  v-for="songEntry in songbook.songs"
-                  :key="songEntry.filePath"
-                  :class="['song-item', { active: selectedSongPath === songEntry.filePath }]"
-                  @click="openSongFile(songEntry.filePath)"
-                >
-                  {{ songEntry.displayTitle }}
-                </button>
               </aside>
 
               <section class="editor-panel card-subsection">
@@ -245,25 +284,24 @@ onMounted(async () => {
                       {{ document.filePath || 'Open a song from the list to edit its `.cho` content.' }}
                     </p>
                   </div>
-                  <span v-if="document.dirty" class="dirty-badge">Unsaved changes</span>
+                  <div class="editor-heading-aside">
+                    <span v-if="document.dirty" class="dirty-badge">Unsaved changes</span>
+                    <div class="header-actions">
+                      <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
+                        Save
+                      </button>
+                      <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <ChordProEditorPane
                   :model-value="chordProText"
-                  :rows="18"
                   placeholder="Open a song from the list to edit it here."
                   @update:model-value="updateChordPro"
-                >
-                  <template #actions>
-                    <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
-                      Save .cho
-                    </button>
-                    <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
-                      Refresh preview
-                    </button>
-                    <button class="mini-button" @click="copyToClipboard(chordProText)">Copy source</button>
-                  </template>
-                </ChordProEditorPane>
+                />
               </section>
             </div>
 
@@ -273,63 +311,70 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-        </section>
-      </div>
-    </section>
-
-    <section class="panel card preview-panel fill-card">
-      <div class="panel-header secondary-header preview-header">
-        <div>
-          <p class="eyebrow">Preview</p>
-          <h2>PDF preview</h2>
-          <p>The preview matches the exported PDF.</p>
         </div>
-        <div class="panel-actions-stack align-end">
-          <div class="header-actions">
-            <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
-              Export PDF (.cho)
-            </button>
+      </section>
+
+      <section class="panel card preview-panel">
+        <div class="panel-header secondary-header preview-header">
+          <div>
+            <p class="eyebrow">Preview</p>
+            <h2>PDF preview</h2>
           </div>
-          <p v-if="exportError" class="action-feedback error-message">{{ exportError }}</p>
-          <p v-else-if="exportMessage" class="action-feedback success-message">{{ exportMessage }}</p>
-        </div>
-      </div>
-
-      <p v-if="previewError" class="message error-message">{{ previewError }}</p>
-      <p v-else-if="!isTauri()" class="message">
-        Preview and export require the Tauri desktop runtime.
-      </p>
-      <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-loading-empty">
-        <div class="preview-loading-card">
-          <span class="loading-spinner" aria-hidden="true" />
-          <p class="message">Generating preview...</p>
-        </div>
-      </div>
-      <p v-else-if="!previewSrc" class="message">
-        Generate or open a song to see the PDF preview.
-      </p>
-
-      <div v-if="previewSrc" class="preview-viewer">
-        <iframe :key="previewSrc" :src="previewSrc" class="preview-frame" title="ChordPro PDF Preview" />
-        <div v-if="isGeneratingPreview" class="preview-loading-overlay">
-          <div class="preview-loading-card">
-            <span class="loading-spinner" aria-hidden="true" />
-            <p class="message">Generating preview...</p>
+          <div class="panel-actions-stack align-end">
+            <div class="header-actions">
+              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
+                Export PDF (.cho)
+              </button>
+            </div>
+            <p v-if="exportError" class="action-feedback error-message">{{ exportError }}</p>
+            <p v-else-if="exportMessage" class="action-feedback success-message">{{ exportMessage }}</p>
           </div>
         </div>
-      </div>
+
+        <div class="panel-content preview-content">
+          <div v-if="previewError" class="preview-state">
+            <p class="message error-message">{{ previewError }}</p>
+          </div>
+          <div v-else-if="!isTauri()" class="preview-state">
+            <p class="message">
+              Preview and export require the Tauri desktop runtime.
+            </p>
+          </div>
+          <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-state preview-loading-empty">
+            <div class="preview-loading-card">
+              <span class="loading-spinner" aria-hidden="true" />
+              <p class="message">Generating preview...</p>
+            </div>
+          </div>
+          <div v-else-if="!previewSrc" class="preview-state">
+            <p class="message">
+              Generate or open a song to see the PDF preview.
+            </p>
+          </div>
+          <div v-else class="preview-viewer">
+            <iframe :key="previewSrc" :src="previewSrc" class="preview-frame" title="ChordPro PDF Preview" />
+            <div v-if="isGeneratingPreview" class="preview-loading-overlay">
+              <div class="preview-loading-card">
+                <span class="loading-spinner" aria-hidden="true" />
+                <p class="message">Generating preview...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </section>
   </main>
 </template>
 
 <style scoped>
 .user-view {
-  display: grid;
-  grid-template-columns: 6rem minmax(0, 1.15fr) minmax(24rem, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   gap: 1rem;
-  min-height: 100%;
-  align-items: stretch;
+  overflow: hidden;
 }
 
 .card {
@@ -339,15 +384,129 @@ onMounted(async () => {
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
 }
 
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.header-copy,
+.header-controls {
+  min-width: 0;
+}
+
+.header-controls {
+  display: grid;
+  gap: 1rem;
+  justify-items: end;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: #f7f0e1;
+}
+
+.view-button {
+  padding: 0.6rem 1rem;
+  border: 0;
+  background: transparent;
+  color: #233127;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.view-button.active {
+  background: linear-gradient(135deg, #1f3124, #37513b);
+  color: #f8f3e8;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+}
+
+.brand-title {
+  color: #182019;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.user-header h1,
+.panel-header h2,
+.panel h3,
+.song-list-header h3,
+.editor-heading h3 {
+  margin: 0;
+}
+
+.panel p,
+.message {
+  margin: 0.4rem 0 0;
+  color: #4a564a;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7a6541;
+}
+
+.user-main,
+.nav-rail,
+.workspace-panel,
+.preview-panel,
+.panel-shell,
+.panel-content,
+.convert-layout,
+.editor-column,
+.songbook-layout,
+.song-list-panel,
+.song-list-body,
+.editor-panel,
+.preview-content,
+.preview-state,
+.preview-viewer,
+.songbook-content,
+.songbook-empty-state {
+  min-height: 0;
+}
+
+.user-main {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1.1fr) minmax(24rem, 1fr);
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .nav-rail {
-  grid-row: 1 / span 2;
   display: grid;
   align-content: start;
   gap: 0.65rem;
   padding: 0.65rem;
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
@@ -387,114 +546,44 @@ onMounted(async () => {
   color: #f8f3e8;
 }
 
-.user-header {
-  grid-column: 2 / -1;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.brand-lockup {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.brand-mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: 0 0 auto;
-}
-
-.brand-title {
-  color: #182019;
-  font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 1.7rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.01em;
-}
-
-.user-header h1,
-.panel-header h2,
-.panel h3,
-.song-list-header h3,
-.editor-heading h3 {
-  margin: 0;
-}
-
-.subtitle,
-.panel p,
-.message {
-  margin: 0.4rem 0 0;
-  color: #4a564a;
-}
-
-.eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #7a6541;
-}
-
-.mode-select {
-  display: grid;
-  gap: 0.25rem;
-  color: #233127;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.mode-select select,
-.input-textarea {
-  border: 1px solid rgba(47, 59, 49, 0.16);
-  background: #fffef9;
-  color: #1f251f;
-}
-
-.mode-select select {
-  min-width: 12rem;
-  padding: 0.55rem 0.65rem;
-  font: inherit;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
-.work-panel,
+.workspace-panel,
 .preview-panel,
-.panel-body,
-.panel,
-.songbook-layout,
+.panel-shell,
+.panel-content,
+.editor-column,
 .song-list-panel,
-.editor-panel {
-  min-height: 0;
+.editor-panel,
+.card-subsection,
+.preview-content,
+.songbook-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.work-panel,
+.panel-shell {
+  gap: 0;
+}
+
+.workspace-panel,
 .preview-panel,
-.panel-body,
-.songbook-card,
-.convert-panel {
-  display: grid;
-  align-content: start;
+.panel-shell,
+.panel-content,
+.preview-content,
+.songbook-content {
+  flex: 1;
 }
 
-.panel,
-.card-subsection {
-  display: grid;
-  gap: 1rem;
-  align-content: start;
+.workspace-panel,
+.preview-panel {
+  overflow: hidden;
 }
 
 .panel-header,
 .secondary-header,
 .editor-heading,
-.song-list-header {
+.song-list-header,
+.editor-heading-aside {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -502,23 +591,55 @@ onMounted(async () => {
 
 .secondary-header,
 .preview-header,
-.editor-heading {
+.editor-heading,
+.editor-heading-aside {
   align-items: flex-start;
 }
 
+.panel-header,
+.song-list-header,
+.editor-heading {
+  flex: 0 0 auto;
+}
+
+.panel-header {
+  margin-bottom: 1.35rem;
+}
+
+.panel-content,
+.songbook-content {
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.convert-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  flex: 1;
+}
+
+.convert-layout.split {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-column {
+  gap: 0.75rem;
+}
+
 .input-textarea {
+  flex: 1;
   width: 100%;
-  min-height: 22rem;
-  resize: vertical;
+  min-height: 0;
+  resize: none;
+  overflow: auto;
   padding: 0.9rem 1rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: #fffef9;
+  color: #1f251f;
   box-sizing: border-box;
   font: inherit;
   line-height: 1.5;
-}
-
-.embedded-editor {
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(24, 32, 25, 0.08);
 }
 
 .panel-actions-stack {
@@ -535,6 +656,10 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 0.65rem;
   align-items: center;
+}
+
+.convert-actions {
+  justify-content: flex-end;
 }
 
 .mini-button,
@@ -629,31 +754,22 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: minmax(13rem, 14rem) minmax(0, 1fr);
   gap: 1rem;
+  flex: 1;
+  overflow: hidden;
 }
 
-.songbook-meta {
-  min-height: 0;
-}
-
-.songbook-main {
-  min-height: 0;
-}
-
-.songbook-empty-state {
-  display: block;
-  min-height: 0;
-}
-
-.song-list-panel {
-  display: grid;
-  align-content: start;
-  gap: 0.75rem;
-}
-
+.song-list-panel,
 .editor-panel {
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.song-list-body {
   display: grid;
   align-content: start;
   gap: 0.75rem;
+  overflow: auto;
+  padding-right: 0.25rem;
 }
 
 .song-item {
@@ -677,13 +793,16 @@ onMounted(async () => {
   color: #4a564a;
 }
 
+.songbook-empty-state {
+  display: flex;
+  flex: 1;
+}
+
 .songbook-empty.large {
-  min-height: 0;
-  height: auto;
-  box-sizing: border-box;
   display: grid;
+  flex: 1;
   justify-items: center;
-  align-content: start;
+  align-content: center;
   text-align: center;
 }
 
@@ -697,37 +816,36 @@ onMounted(async () => {
   letter-spacing: 0.05em;
 }
 
-.preview-panel {
-  align-content: start;
-}
-
 .preview-panel .message {
   text-align: center;
 }
 
-.preview-viewer {
-  position: relative;
-  min-height: 32rem;
-}
-
-.preview-frame {
-  width: 100%;
-  min-height: 32rem;
-  border: 1px solid rgba(47, 59, 49, 0.12);
-  background: #fff;
-}
-
+.preview-state,
 .preview-loading-empty,
 .preview-loading-overlay {
   display: grid;
   place-items: center;
 }
 
-.preview-loading-empty {
-  min-height: 18rem;
+.preview-state {
+  flex: 1;
   border: 1px dashed rgba(47, 59, 49, 0.18);
   background: rgba(255, 255, 255, 0.4);
-  align-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.preview-viewer {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(47, 59, 49, 0.12);
+  background: #fff;
 }
 
 .preview-loading-overlay {
@@ -761,24 +879,24 @@ onMounted(async () => {
 }
 
 @media (max-width: 1180px) {
-  .user-view {
+  .user-main {
     grid-template-columns: 6rem minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .user-header {
-    grid-column: 2;
+  .nav-rail {
+    grid-row: 1 / span 2;
   }
 
   .preview-panel {
-    grid-column: 1 / -1;
+    grid-column: 2;
   }
 }
 
 @media (max-width: 900px) {
-  .user-view {
+  .user-main {
     grid-template-columns: 1fr;
-    grid-template-rows: auto;
+    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .nav-rail {
@@ -787,25 +905,40 @@ onMounted(async () => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .user-header,
-  .work-panel,
+  .workspace-panel,
   .preview-panel {
     grid-column: auto;
   }
 
+  .convert-layout.split {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
   .songbook-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(12rem, 0.8fr) minmax(0, 1.2fr);
   }
 
   .user-header,
   .panel-header,
   .secondary-header,
-  .editor-heading {
+  .editor-heading,
+  .editor-heading-aside {
     flex-direction: column;
+  }
+
+  .header-controls {
+    justify-items: start;
   }
 
   .panel-actions-stack.align-end {
     justify-items: start;
+  }
+
+  .convert-actions,
+  .header-actions {
+    justify-content: flex-start;
   }
 
   .songbook-path {
@@ -813,3 +946,10 @@ onMounted(async () => {
   }
 }
 </style>
+
+
+
+
+
+
+

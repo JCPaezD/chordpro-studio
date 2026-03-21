@@ -39,6 +39,9 @@ Current status:
 - unified save/discard/cancel protection now covers convert replacement, songbook navigation and app close
 - `User` and `Playground` now share a single workspace singleton, so switching views preserves the active document and generated state
 - songbook PDF export is implemented through the bundled ChordPro CLI using the same global style config as preview and single-song export, with provisional bottom keyboard diagrams and project-specific PDF metadata
+- fixed-height User View layout refactor implemented with panel-local scrolling and stable preview sizing
+- `BUG-10` revalidated and resolved after the User View layout refactor
+- manual review and UI consistency pass completed for the User View
 
 ## Completed work
 
@@ -69,15 +72,18 @@ Current status:
 
 13. Allow exporting multiple songs into a single PDF songbook using the ChordPro CLI.
 
-## Current roadmap
-
-### v1 - Finalization
+### Block 5 - Completed User View layout refactor
 
 14. Refactor the app into a fixed-height layout with a non-scrollable header, no global page scroll and panel-local scrolling.
 15. Revalidate `BUG-10` after the layout refactor.
 16. Resolve the remaining User View panel height sync issue tracked as `BUG-10`.
 17. Run a full manual review of the application after the layout refactor.
 18. Apply a UI consistency pass to the User View.
+
+## Current roadmap
+
+### v1 - Finalization
+
 19. Clean up the Playground UI (layout, redundant labels, language consistency).
 
 ### v1.1 - Post-release improvements
@@ -133,3 +139,4 @@ Features:
 - performance mode
 - setlists
 - cloud sync
+
