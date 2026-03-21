@@ -24,16 +24,11 @@ The current release is a Tauri desktop app with an offline-first design for loca
 
 ## Screenshots
 
-Create these screenshots before publishing the repository or release page:
+![Main window](docs/readme-assets/main-window.png)
 
-- `docs/readme-assets/main-window.png`
-  Capture the main desktop window with the overall application shell visible.
-- `docs/readme-assets/convert-view.png`
-  Capture the Convert workflow with raw input, generation controls, and preview visible.
-- `docs/readme-assets/songbook-view.png`
-  Capture the Songbook workflow with the folder-based song list and `.cho` editor visible.
+![Convert view](docs/readme-assets/convert-view.png)
 
-These files are intentionally not embedded yet, so the README does not break if they are missing.
+![Songbook view](docs/readme-assets/songbook-view.png)
 
 ## Installation
 
@@ -101,6 +96,10 @@ Source availability:
 - Vite
 - Tauri
 - ChordPro CLI
+
+## Known Issues (v1.0.0)
+
+- Windows SmartScreen may show a warning because the application is not code-signed.
 
 ## License
 
