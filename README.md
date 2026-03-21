@@ -12,6 +12,9 @@ Core idea:
 
 The current release is a Tauri desktop app with an offline-first design for local files and rendering. Network access is only needed for the LLM conversion step.
 
+This project is primarily a personal tool, shared publicly in its current state.  
+It may evolve over time, but no guarantees are provided.
+
 ## Features
 
 - LLM-assisted conversion from raw chord sheets to valid ChordPro
