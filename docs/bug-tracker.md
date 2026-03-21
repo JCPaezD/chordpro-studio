@@ -355,3 +355,39 @@ Resolved by making `useSongWorkspace()` return a single module-level workspace i
 Priority: High
 Status: Resolved
 
+---
+
+## BUG-15 - Metadata and filename inconsistency after reconversion and save
+
+Layer: UX / state synchronization
+
+Description:
+After reconverting an existing `.cho` file and saving it again, the active editor state, song list state and filesystem state can diverge.
+
+Steps to reproduce:
+1. Open an existing `.cho` file with non-normalized metadata.
+2. Run conversion again so the LLM produces normalized metadata.
+3. Save the file.
+4. Observe the editor metadata, the song list entry and the files in the folder.
+
+Current behavior:
+- the song list may show normalized metadata
+- the editor header may still show old non-normalized metadata
+- the refresh action does not fully synchronize the active document state
+- saving may keep the old filename or create a duplicate file with the normalized name
+
+Expected behavior:
+After reconversion and save:
+- the active document metadata should be updated in the editor
+- the song list and editor should remain consistent
+- saving should not produce unintended duplicates
+- filename behavior should be predictable and consistent
+
+Scope and notes:
+For `v1.1`, filename renaming should remain conservative:
+- do NOT automatically rename existing files based on metadata changes
+- focus on syncing in-memory state and preventing duplicate creation
+
+Priority: Medium-High
+Target: v1.1
+Status: Open
