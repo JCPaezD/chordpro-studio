@@ -25,11 +25,15 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "resources": [
-      "../resources/chordpro/**/*",
-      "../resources/chordpro-studio/**/*"
-    ]
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../resources/chordpro/": "chordpro/",
+      "../resources/chordpro-studio/": "chordpro-studio/"
+    }
   }
 }
-
-

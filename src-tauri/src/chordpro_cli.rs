@@ -6,11 +6,17 @@ use std::{
   path::{Path, PathBuf},
   process::Command,
 };
-use tauri::{AppHandle, Manager};
+use tauri::{path::BaseDirectory, AppHandle, Manager};
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 const PREVIEW_CHO_FILENAME: &str = "preview.cho";
 const PREVIEW_PDF_FILENAME: &str = "preview.pdf";
 const EXPORT_CHO_FILENAME: &str = "export.cho";
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -185,16 +191,17 @@ where
 
   command_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
 
-  let output = Command::new(&binary_path)
-    .args(&command_args)
-    .output()
-    .map_err(|error| ChordProCommandError {
-      code: "CHORDPRO_EXECUTION_ERROR".into(),
-      message: format!("Failed to execute bundled ChordPro CLI: {error}"),
-      stdout: None,
-      stderr: None,
-      details: Some(binary_path.to_string_lossy().into_owned()),
-    })?;
+  let mut command = Command::new(&binary_path);
+  command.args(&command_args);
+  configure_background_command(&mut command);
+
+  let output = command.output().map_err(|error| ChordProCommandError {
+    code: "CHORDPRO_EXECUTION_ERROR".into(),
+    message: format!("Failed to execute bundled ChordPro CLI: {error}"),
+    stdout: None,
+    stderr: None,
+    details: Some(binary_path.to_string_lossy().into_owned()),
+  })?;
 
   if output.status.success() {
     return Ok(());
@@ -219,15 +226,15 @@ fn resolve_chordpro_binary(app: &AppHandle) -> Result<PathBuf, ChordProCommandEr
     "chordpro"
   };
 
-  let binary_path = resolve_chordpro_resource(app, binary_name).ok_or_else(|| {
-    ChordProCommandError {
+  let candidate_paths = chordpro_resource_candidates(app, binary_name);
+  let binary_path =
+    resolve_existing_resource(&candidate_paths).ok_or_else(|| ChordProCommandError {
       code: "CHORDPRO_BINARY_NOT_FOUND".into(),
-      message: "Bundled ChordPro binary was not found.".into(),
+      message: "Bundled ChordPro binary was not found in any expected location.".into(),
       stdout: None,
       stderr: None,
-      details: Some("Expected resources/chordpro/chordpro(.exe)".into()),
-    }
-  })?;
+      details: Some(format_attempted_paths(&candidate_paths)),
+    })?;
 
   if cfg!(target_os = "windows") {
     let binary_dir = binary_path.parent().unwrap_or_else(|| Path::new(""));
@@ -247,9 +254,10 @@ fn resolve_chordpro_binary(app: &AppHandle) -> Result<PathBuf, ChordProCommandEr
         message: "Bundled ChordPro runtime is incomplete on Windows.".into(),
         stdout: None,
         stderr: None,
-        details: Some(
-          "The bundled chordpro.exe requires Perl runtime files such as perl5*.dll in resources/chordpro (and any nested support files).".into(),
-        ),
+        details: Some(format!(
+          "Resolved binary: {}. The bundled chordpro.exe requires Perl runtime files such as perl5*.dll in the same runtime folder.",
+          binary_path.to_string_lossy()
+        )),
       });
     }
   }
@@ -258,20 +266,42 @@ fn resolve_chordpro_binary(app: &AppHandle) -> Result<PathBuf, ChordProCommandEr
 }
 
 fn resolve_chordpro_style_config(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> {
-  resolve_style_resource(app, "style.json").ok_or_else(|| ChordProCommandError {
+  let candidate_paths = chordpro_studio_resource_candidates(app, "style.json");
+
+  resolve_existing_resource(&candidate_paths).ok_or_else(|| ChordProCommandError {
     code: "CHORDPRO_STYLE_NOT_FOUND".into(),
-    message: "Bundled ChordPro Studio style configuration was not found.".into(),
+    message: "Bundled ChordPro Studio style configuration was not found in any expected location."
+      .into(),
     stdout: None,
     stderr: None,
-    details: Some("Expected resources/chordpro-studio/style.json".into()),
+    details: Some(format_attempted_paths(&candidate_paths)),
   })
 }
 
-fn resolve_chordpro_resource(app: &AppHandle, resource_name: &str) -> Option<PathBuf> {
+fn chordpro_resource_candidates(app: &AppHandle, resource_name: &str) -> Vec<PathBuf> {
   let mut candidates = Vec::new();
+
+  push_bundled_resource_candidate(
+    app,
+    PathBuf::from("chordpro").join(resource_name),
+    &mut candidates,
+  );
+  push_bundled_resource_candidate(
+    app,
+    PathBuf::from("..").join("resources").join("chordpro").join(resource_name),
+    &mut candidates,
+  );
 
   if let Ok(resource_dir) = app.path().resource_dir() {
     candidates.push(resource_dir.join("chordpro").join(resource_name));
+    candidates.push(resource_dir.join("resources").join("chordpro").join(resource_name));
+    candidates.push(
+      resource_dir
+        .join("_up_")
+        .join("resources")
+        .join("chordpro")
+        .join(resource_name),
+    );
   }
 
   candidates.push(
@@ -282,15 +312,38 @@ fn resolve_chordpro_resource(app: &AppHandle, resource_name: &str) -> Option<Pat
       .join(resource_name),
   );
 
-  candidates.into_iter().find(|path| path.is_file())
+  dedupe_paths(candidates)
 }
 
-
-fn resolve_style_resource(app: &AppHandle, resource_name: &str) -> Option<PathBuf> {
+fn chordpro_studio_resource_candidates(app: &AppHandle, resource_name: &str) -> Vec<PathBuf> {
   let mut candidates = Vec::new();
+
+  push_bundled_resource_candidate(
+    app,
+    PathBuf::from("chordpro-studio").join(resource_name),
+    &mut candidates,
+  );
+  push_bundled_resource_candidate(
+    app,
+    PathBuf::from("..").join("resources").join("chordpro-studio").join(resource_name),
+    &mut candidates,
+  );
 
   if let Ok(resource_dir) = app.path().resource_dir() {
     candidates.push(resource_dir.join("chordpro-studio").join(resource_name));
+    candidates.push(
+      resource_dir
+        .join("resources")
+        .join("chordpro-studio")
+        .join(resource_name),
+    );
+    candidates.push(
+      resource_dir
+        .join("_up_")
+        .join("resources")
+        .join("chordpro-studio")
+        .join(resource_name),
+    );
   }
 
   candidates.push(
@@ -301,8 +354,52 @@ fn resolve_style_resource(app: &AppHandle, resource_name: &str) -> Option<PathBu
       .join(resource_name),
   );
 
-  candidates.into_iter().find(|path| path.is_file())
+  dedupe_paths(candidates)
 }
+
+fn push_bundled_resource_candidate(
+  app: &AppHandle,
+  resource_path: PathBuf,
+  candidates: &mut Vec<PathBuf>,
+) {
+  if let Ok(resolved_path) = app.path().resolve(&resource_path, BaseDirectory::Resource) {
+    candidates.push(resolved_path);
+  }
+}
+
+#[cfg(target_os = "windows")]
+fn configure_background_command(command: &mut Command) {
+  command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_background_command(_command: &mut Command) {}
+
+fn resolve_existing_resource(candidate_paths: &[PathBuf]) -> Option<PathBuf> {
+  candidate_paths.iter().find(|path| path.is_file()).cloned()
+}
+
+fn dedupe_paths(candidate_paths: Vec<PathBuf>) -> Vec<PathBuf> {
+  let mut deduped = Vec::new();
+
+  for path in candidate_paths {
+    if !deduped.iter().any(|existing| existing == &path) {
+      deduped.push(path);
+    }
+  }
+
+  deduped
+}
+
+fn format_attempted_paths(candidate_paths: &[PathBuf]) -> String {
+  let attempted_paths = candidate_paths
+    .iter()
+    .map(|path| format!("- {}", path.to_string_lossy()))
+    .collect::<Vec<_>>();
+
+  format!("Attempted paths:\n{}", attempted_paths.join("\n"))
+}
+
 fn decode_output(output: Vec<u8>) -> Option<String> {
   let text = String::from_utf8_lossy(&output).trim().to_string();
   if text.is_empty() {
@@ -311,4 +408,3 @@ fn decode_output(output: Vec<u8>) -> Option<String> {
     Some(text)
   }
 }
-
