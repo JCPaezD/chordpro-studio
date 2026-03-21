@@ -72,6 +72,7 @@ Responsibilities:
 - convert cleaned text into ChordPro through an LLM provider
 - validate ChordPro output before parsing
 - normalize title and artist metadata from fresh LLM output before parsing
+- clean chord-only separator lines from fresh LLM output before parsing
 - parse ChordPro into the internal `Song` model
 - load songbook folders and open `.cho` songs
 
@@ -104,6 +105,7 @@ Raw input
 -> `ConversionService`
 -> `ChordProOutputValidator`
 -> metadata normalization (`title`, `artist`)
+-> safe chord-only separator cleanup
 -> `ChordProParser`
 -> internal `Song` model
 

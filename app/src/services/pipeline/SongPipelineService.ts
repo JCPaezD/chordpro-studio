@@ -10,6 +10,9 @@ const METADATA_DIRECTIVE_PATTERNS = {
   artist: /^\{artist:\s*(.*?)\s*\}$/im
 } as const;
 
+const CHORD_ONLY_SEPARATOR_LINE_PATTERN = /^\s*(?:\[[^\]\r\n]+\]|-)\s*(?:(?:\[[^\]\r\n]+\]|-)\s*)*$/;
+const CHORD_TOKEN_PATTERN = /\[[^\]\r\n]+\]/g;
+
 type NormalizableMetadataKey = keyof typeof METADATA_DIRECTIVE_PATTERNS;
 
 function normalizeConvertedChordProMetadata(chordPro: string): string {
@@ -35,6 +38,28 @@ function normalizeConvertedChordProMetadata(chordPro: string): string {
   return normalizedChordPro;
 }
 
+function cleanChordOnlySeparatorLine(line: string): string {
+  if (!CHORD_ONLY_SEPARATOR_LINE_PATTERN.test(line) || !line.includes("-")) {
+    return line;
+  }
+
+  const chordTokens = line.match(CHORD_TOKEN_PATTERN);
+  if (!chordTokens) {
+    return line;
+  }
+
+  return chordTokens.join(" ").trim();
+}
+
+function normalizeConvertedChordPro(chordPro: string): string {
+  const normalizedMetadataChordPro = normalizeConvertedChordProMetadata(chordPro);
+
+  return normalizedMetadataChordPro
+    .split(/\r?\n/)
+    .map((line) => cleanChordOnlySeparatorLine(line))
+    .join("\n");
+}
+
 export class SongPipelineService {
   constructor(
     private readonly cleaningService: CleaningService,
@@ -54,7 +79,7 @@ export class SongPipelineService {
     const cleanedText = this.cleaningService.clean(rawText);
     const conversionResult = await this.conversionService.convert(cleanedText, preferences);
     ChordProOutputValidator.validate(conversionResult.text);
-    const chordPro = normalizeConvertedChordProMetadata(conversionResult.text);
+    const chordPro = normalizeConvertedChordPro(conversionResult.text);
     const song = this.chordProParser.parse(chordPro);
 
     return {

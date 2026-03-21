@@ -193,6 +193,12 @@ the documentation must be updated first.
 - assumption made: metadata normalization should apply only to fresh conversion output by rewriting the converted ChordPro `{title: ...}` and `{artist: ...}` directives before parsing, while existing `.cho` files and later manual metadata edits must remain untouched
 - reason for the assumption: this keeps the change local to the LLM pipeline, aligns parsed metadata with filename suggestions derived from ChordPro tags, and avoids introducing migration or edit-time side effects
 - whether it requires later validation: no, validated on 2026-03-21 with messy metadata conversion tests and unchanged existing `.cho` loading
+
+- date: 2026-03-21
+- context: handling chord-only separator lines such as `[G] - [Am] - [Em]` in LLM-generated ChordPro before parsing
+- assumption made: separator cleanup should run only on lines made exclusively of bracketed chord tokens, `-` separators and whitespace, rewriting them into simple chord-only lines while leaving any mixed lyric/chord content untouched
+- reason for the assumption: this complements the prompt instruction with a minimal safe guardrail, removes separator artifacts without attempting alignment or structural inference, and preserves existing `.cho` loading behavior
+- whether it requires later validation: no, validated on 2026-03-21 with successful chord-only, mixed-content and full-flow manual tests
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
@@ -396,6 +402,4 @@ Future improvements kept explicitly out of this phase:
 - assumption made: the Playground should follow the same fixed-height shell rules as the User view while remaining a DEV-only internal tool, so production UX always starts and stays in `User` mode without exposing the extra toggle, while production User mode also hides the `Workspace` eyebrow that only helps differentiate views in development
 - reason for the assumption: this preserves the debugging workflow during development but removes non-product UI from the release build without duplicating workspace state
 - whether it requires later validation: yes
-
-
 

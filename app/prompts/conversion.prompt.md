@@ -64,6 +64,8 @@ When the input uses separate chord lines above lyric lines, interpret them as mo
 - Do NOT move chords to the beginning of the line unless the chord is already in column 0 of the chord line.
 - Chord lines are alignment guides only and must not appear in the final output as separate lines.
 - The final output must contain clean lyric lines with no artificial indentation caused by alignment spaces.
+- Chord separators such as "-" are NOT lyrics and must NOT appear in the final output.
+- If a line contains only chords separated by "-", treat it as a chord-only line, ignore the separators and keep the chords.
 
 5. Sections
 

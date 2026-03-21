@@ -45,6 +45,7 @@ Current status:
 - Playground cleanup completed with a fixed-height layout, DEV-only visibility, normalized header structure and improved responsive panel distribution
 - frontend `PromptLoader` now loads prompts only from bundled assets, and the Vite `node:fs/promises` warning is resolved
 - LLM-generated `title` and `artist` metadata is now normalized locally before parsing, while existing `.cho` file loading remains unchanged
+- chord-only separator lines such as `[G] - [Am] - [Em]` are now cleaned safely before parsing, while mixed content remains unchanged
 
 ## Completed work
 
@@ -96,7 +97,6 @@ Current status:
 ### v1.1 - Post-release improvements
 
 - real-time preview update for `.cho` edits with debounced regeneration and a lightweight "refreshing" state (no blocking overlay)
-- improve prompt handling of chord sequences with separators (e.g. "[Am] - [F] - [G]") to avoid treating separators as lyrics, complemented by minimal safe post-processing when needed
 - allow aborting an ongoing conversion request from the UI in both `User` and `Playground`
 
 ## v1.x - Additional UX / dev improvements
