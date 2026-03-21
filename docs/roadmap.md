@@ -85,20 +85,24 @@ Current status:
 
 19. Clean up the Playground UI (layout, redundant labels, language consistency, DEV-only gating and responsive panel distribution).
 
-## Current roadmap
-
-### v1 - Finalization
+### Block 7 - Completed release preparation
 
 20. Compile the v1 release build.
 
+## Current roadmap
+
 ### v1.1 - Post-release improvements
 
-- Add a side menu to the Playground with toggles to show or hide panels as a developer-oriented, non-blocking UX improvement.
-- persist the last active view (`User` / `Playground`) across sessions; current behavior should continue to default to `Convert` in `User` view until that is implemented
-- allow aborting an ongoing conversion request from the UI in both `User` and `Playground`; medium priority and not required for v1 completion
-- Improve prompt handling of chord sequences with separators (e.g. "[Am] - [F] - [G]") to avoid treating separators as lyrics, complemented by minimal safe post-processing when needed.
-- Normalize extracted metadata (title, artist, etc.) locally in the application to ensure consistent casing and filename generation.
-- Resolve Vite warning related to `node:fs/promises` usage in PromptLoader.ts.
+- real-time preview update for `.cho` edits with debounced regeneration and a lightweight "refreshing" state (no blocking overlay)
+- improve prompt handling of chord sequences with separators (e.g. "[Am] - [F] - [G]") to avoid treating separators as lyrics, complemented by minimal safe post-processing when needed
+- normalize extracted metadata (title, artist, etc.) locally to ensure consistent casing and filename generation
+- resolve Vite warning related to `node:fs/promises` usage in PromptLoader.ts
+- allow aborting an ongoing conversion request from the UI in both `User` and `Playground`
+
+## v1.x - Additional UX / dev improvements
+
+- persist the last active view (`User` / `Playground`) across sessions
+- add a side menu to the Playground to toggle panel visibility
 
 ## v2 - Core feature expansion
 
@@ -113,6 +117,7 @@ Current status:
 
 ### Export improvements (future)
 
+- preview full songbook before export to PDF
 - Songbook cover support:
   - auto-generated cover (title, date, `Generated with ChordPro Studio`)
   - custom PDF cover support
