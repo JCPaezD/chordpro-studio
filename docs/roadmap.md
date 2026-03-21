@@ -42,6 +42,7 @@ Current status:
 - fixed-height User View layout refactor implemented with panel-local scrolling and stable preview sizing
 - `BUG-10` revalidated and resolved after the User View layout refactor
 - manual review and UI consistency pass completed for the User View
+- Playground cleanup completed with a fixed-height layout, DEV-only visibility, normalized header structure and improved responsive panel distribution
 
 ## Completed work
 
@@ -80,11 +81,14 @@ Current status:
 17. Run a full manual review of the application after the layout refactor.
 18. Apply a UI consistency pass to the User View.
 
+### Block 6 - Completed Playground cleanup
+
+19. Clean up the Playground UI (layout, redundant labels, language consistency, DEV-only gating and responsive panel distribution).
+
 ## Current roadmap
 
 ### v1 - Finalization
 
-19. Clean up the Playground UI (layout, redundant labels, language consistency).
 20. Compile the v1 release build.
 
 ### v1.1 - Post-release improvements

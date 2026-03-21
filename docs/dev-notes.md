@@ -371,3 +371,10 @@ Future improvements kept explicitly out of this phase:
 - assumption made: app configuration should be loaded once at startup, stored in a single frontend composable, and injected into the shared workspace so User mode can block generation before any provider call when `geminiApiKey` is missing
 - reason for the assumption: this keeps config ownership centralized, avoids scattered filesystem reads, and matches the documented local-first desktop architecture
 - whether it requires later validation: yes
+
+- date: 2026-03-21
+- context: cleaning up the developer Playground layout and hiding it in production builds
+- assumption made: the Playground header should align visually with the User header, panel descriptions inside the 5 technical blocks should be removed as redundant UI noise, and the raw input block should be the dominant panel in desktop and two-column responsive layouts while preview keeps a standard panel width
+- assumption made: the Playground should follow the same fixed-height shell rules as the User view while remaining a DEV-only internal tool, so production UX always starts and stays in `User` mode without exposing the extra toggle, while production User mode also hides the `Workspace` eyebrow that only helps differentiate views in development
+- reason for the assumption: this preserves the debugging workflow during development but removes non-product UI from the release build without duplicating workspace state
+- whether it requires later validation: yes

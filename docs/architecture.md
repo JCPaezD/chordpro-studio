@@ -305,4 +305,4 @@ Purpose:
 - regenerate preview directly from editable `.cho`
 - inspect retries and validation failures
 
-It is intended for development and debugging, not for end-user workflow.
+It is intended for development and debugging, not for end-user workflow. The Playground is now exposed only in DEV builds; production builds always open the `User` view, do not render a Playground toggle, and also remove the extra `Workspace` label that only exists to distinguish the two modes during development.

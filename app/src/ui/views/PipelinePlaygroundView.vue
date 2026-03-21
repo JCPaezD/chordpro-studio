@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import { useAppConfig } from "../composables/useAppConfig";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
+
+const props = defineProps<{
+  mode: "user" | "playground";
+}>();
+
+const emit = defineEmits<{
+  "change-mode": [mode: "user" | "playground"];
+}>();
 
 const {
   rawInput,
@@ -29,6 +37,7 @@ const {
   runPipeline: runWorkspacePipeline,
   previewFromChordPro
 } = useSongWorkspace();
+
 const appConfig = useAppConfig();
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
@@ -37,6 +46,7 @@ const availableGeminiModels = ref<string[]>([
 ]);
 const selectedGeminiModel = ref<string | null>(null);
 const geminiModelOverride = ref("");
+const resolvedGeminiModel = computed(() => geminiModelOverride.value || selectedGeminiModel.value);
 
 function readGeminiApiKey(): string | undefined {
   const fromProcess = (
@@ -70,10 +80,6 @@ function readGeminiModelOverride(): string | undefined {
   }
 
   return undefined;
-}
-
-function resolveGeminiModel(): string | null {
-  return geminiModelOverride.value || selectedGeminiModel.value;
 }
 
 function normalizeGeminiModelName(modelName: string): string {
@@ -118,13 +124,11 @@ async function loadGeminiModels(): Promise<void> {
 }
 
 async function runPipeline(): Promise<void> {
-  const model = resolveGeminiModel();
-
-  if (!model) {
+  if (!resolvedGeminiModel.value) {
     return;
   }
 
-  await runWorkspacePipeline({ model, clearBeforeRun: true });
+  await runWorkspacePipeline({ model: resolvedGeminiModel.value, clearBeforeRun: true });
 }
 
 function loadPlaygroundModel(): void {
@@ -156,38 +160,32 @@ onMounted(async () => {
 
 <template>
   <main class="playground">
-    <header class="hero">
-      <div>
+    <header class="card playground-header">
+      <div class="header-copy">
         <div class="brand-lockup">
           <img :src="appLogo" alt="" class="brand-mark" />
           <span class="brand-title">ChordPro Studio</span>
         </div>
-        <p class="eyebrow">Developer Tool</p>
-        <h1>Pipeline Playground</h1>
-        <p class="subtitle">
-          Raw input flows through cleaning, conversion and parsing so you can inspect each
-          intermediate stage without leaving the app.
-        </p>
+        <p class="eyebrow">Playground</p>
+        <h1>Inspect the pipeline and preview output</h1>
+        <p class="header-description">Developer view for pipeline inspection and debugging.</p>
       </div>
 
-      <div class="actions">
-        <label v-if="selectedGeminiModel" class="model-select">
-          <span>Model</span>
-          <select v-model="selectedGeminiModel" :disabled="loading || !!geminiModelOverride" @change="persistPlaygroundModel">
-            <option v-for="model in availableGeminiModels" :key="model" :value="model">
-              {{ model }}
-            </option>
-          </select>
-        </label>
-        <button class="mini-button" :disabled="loading" @click="clearAllState">
-          Clear all
-        </button>
-        <button :disabled="loading || !resolveGeminiModel()" class="run-button" @click="runPipeline">
-          <span :class="['button-content', { loading }]">
-            <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
-            <span class="button-label">{{ loading ? "Running..." : "Run Pipeline" }}</span>
-          </span>
-        </button>
+      <div class="header-controls">
+        <div class="view-toggle" role="tablist" aria-label="View mode">
+          <button
+            :class="['view-button', { active: props.mode === 'user' }]"
+            @click="emit('change-mode', 'user')"
+          >
+            User
+          </button>
+          <button
+            :class="['view-button', { active: props.mode === 'playground' }]"
+            @click="emit('change-mode', 'playground')"
+          >
+            Playground
+          </button>
+        </div>
       </div>
     </header>
 
@@ -195,150 +193,161 @@ onMounted(async () => {
       Gemini model override active via environment: {{ geminiModelOverride }}
     </p>
 
-    <div v-if="error" class="error">
+    <section v-if="error" class="error card-shell">
       <div class="error-content">
         <p>{{ error }}</p>
         <p v-if="validationReason" class="error-reason">Reason: {{ validationReason }}</p>
 
-        <div v-if="validationRawOutput" class="error-raw-output">
-          <div class="error-raw-header">
+        <section v-if="validationRawOutput" class="subpanel raw-output-panel">
+          <div class="subpanel-header">
             <strong>LLM Raw Output</strong>
             <button class="mini-button" @click="copyToClipboard(validationRawOutput)">Copy Raw</button>
           </div>
-          <pre>{{ validationRawOutput }}</pre>
-        </div>
+          <div class="subpanel-content">
+            <pre>{{ validationRawOutput }}</pre>
+          </div>
+        </section>
       </div>
 
       <button class="mini-button" @click="copyToClipboard(error)">Copy Error</button>
-    </div>
+    </section>
 
-    <section class="workspace-layout">
-      <div class="debug-column">
-        <section v-if="retryLog.length > 0" class="retry-log">
-          <div class="retry-log-header">
-            <div>
-              <h2>LLM Retries</h2>
-              <p>Temporary Gemini retry events captured during conversion.</p>
-            </div>
-            <button class="mini-button" @click="copyToClipboard(retryLog.join('\n'))">Copy Retries</button>
-          </div>
-          <pre>{{ retryLog.join("\n") }}</pre>
-        </section>
-
-        <section class="pipeline-grid">
-          <section class="stage stage-input">
-            <div class="stage-header">
-              <span class="stage-index">01</span>
-              <div>
-                <h2>Raw Input</h2>
-                <p>Paste the original chord sheet text here.</p>
-              </div>
-              <div class="panel-actions">
-                <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-                <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
-              </div>
-            </div>
-            <textarea
-              v-model="rawInput"
-              rows="18"
-              placeholder="Paste raw chord sheet text here..."
-            />
-          </section>
-
-          <section class="stage">
-            <div class="stage-header">
-              <span class="stage-index">02</span>
-              <div>
-                <h2>Cleaned Text</h2>
-                <p>Conservative normalization result.</p>
-              </div>
-              <div class="panel-actions">
-                <button class="mini-button" @click="copyToClipboard(cleanedText)">Copy</button>
-              </div>
-            </div>
-            <textarea :value="cleanedText" rows="18" readonly />
-          </section>
-
-          <section class="stage">
-            <div class="stage-header">
-              <span class="stage-index">03</span>
-              <div>
-                <h2>ChordPro Result</h2>
-                <p>Editable `.cho` text used by preview and export.</p>
-              </div>
-              <div class="panel-actions">
-                <button class="mini-button" @click="copyToClipboard(chordProText)">Copy</button>
-              </div>
-            </div>
-            <textarea v-model="chordProText" rows="18" />
-          </section>
-
-          <section class="stage">
-            <div class="stage-header">
-              <span class="stage-index">04</span>
-              <div>
-                <h2>Song JSON</h2>
-                <p>Parsed domain model snapshot.</p>
-              </div>
-              <div class="panel-actions">
-                <button class="mini-button" @click="copyToClipboard(songJson)">Copy</button>
-              </div>
-            </div>
-            <pre>{{ songJson }}</pre>
-          </section>
-        </section>
+    <section v-if="retryLog.length > 0" class="panel retry-panel card-shell">
+      <div class="panel-header retry-log-header">
+        <div>
+          <h2>LLM Retries</h2>
+          <p>Temporary Gemini retry events captured during conversion.</p>
+        </div>
+        <button class="mini-button" @click="copyToClipboard(retryLog.join('\n'))">Copy Retries</button>
       </div>
+      <div class="panel-content">
+        <pre>{{ retryLog.join("\n") }}</pre>
+      </div>
+    </section>
 
-      <aside class="preview-column">
-        <section class="preview-stage">
-          <div class="stage-header">
-            <span class="stage-index">05</span>
-            <div class="stage-copy">
-              <h2>Preview</h2>
-              <p>Rendered by the bundled ChordPro CLI and loaded through the native PDF viewer.</p>
-            </div>
-            <div class="panel-actions">
-              <button
-                class="mini-button"
-                :disabled="loading || !isTauri() || !chordProText"
-                @click="previewFromChordPro"
+    <section class="playground-grid">
+      <section class="panel stage stage-input raw-panel card-shell">
+        <div class="panel-header stage-header raw-header">
+          <span class="stage-index">01</span>
+          <div class="stage-copy">
+            <h2>Raw Input</h2>
+                      </div>
+          <div class="panel-actions raw-actions">
+            <label v-if="selectedGeminiModel" class="model-select">
+              <span>Model</span>
+              <select
+                v-model="selectedGeminiModel"
+                :disabled="loading || !!geminiModelOverride"
+                @change="persistPlaygroundModel"
               >
-                Refresh preview
+                <option v-for="model in availableGeminiModels" :key="model" :value="model">
+                  {{ model }}
+                </option>
+              </select>
+            </label>
+            <button class="mini-button" @click="pasteFromClipboard">Paste</button>
+            <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
+            <button class="mini-button" :disabled="loading" @click="clearAllState">Clear all</button>
+            <button :disabled="loading || !resolvedGeminiModel" class="run-button" @click="runPipeline">
+              <span :class="['button-content', { loading }]">
+                <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
+                <span class="button-label">{{ loading ? "Running..." : "Run Pipeline" }}</span>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <textarea v-model="rawInput" placeholder="Paste raw chord sheet text here..." />
+        </div>
+      </section>
+
+      <section class="panel stage card-shell">
+        <div class="panel-header stage-header">
+          <span class="stage-index">02</span>
+          <div class="stage-copy">
+            <h2>Cleaned Text</h2>
+                      </div>
+          <div class="panel-actions">
+            <button class="mini-button" @click="copyToClipboard(cleanedText)">Copy</button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <textarea :value="cleanedText" readonly />
+        </div>
+      </section>
+
+      <section class="panel stage card-shell">
+        <div class="panel-header stage-header">
+          <span class="stage-index">03</span>
+          <div class="stage-copy">
+            <h2>ChordPro Result</h2>
+                      </div>
+          <div class="panel-actions">
+            <button class="mini-button" @click="copyToClipboard(chordProText)">Copy</button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <textarea v-model="chordProText" />
+        </div>
+      </section>
+
+      <section class="panel stage card-shell">
+        <div class="panel-header stage-header">
+          <span class="stage-index">04</span>
+          <div class="stage-copy">
+            <h2>Song JSON</h2>
+                      </div>
+          <div class="panel-actions">
+            <button class="mini-button" @click="copyToClipboard(songJson)">Copy</button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <pre>{{ songJson }}</pre>
+        </div>
+      </section>
+
+      <section class="panel preview-panel card-shell">
+        <div class="panel-header stage-header">
+          <span class="stage-index">05</span>
+          <div class="stage-copy">
+            <h2>Preview</h2>
+                      </div>
+          <div class="panel-actions preview-actions">
+            <button
+              class="mini-button"
+              :disabled="loading || !isTauri() || !chordProText"
+              @click="previewFromChordPro"
+            >
+              Refresh preview
+            </button>
+            <div class="export-actions">
+              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
+                Export PDF (.cho)
               </button>
-              <div class="export-actions">
-                <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
-                  Export PDF (.cho)
-                </button>
-                <p v-if="exportError" class="action-feedback preview-error">{{ exportError }}</p>
-                <p v-else-if="exportMessage" class="action-feedback preview-success">
-                  {{ exportMessage }}
-                </p>
-              </div>
+              <p v-if="exportError" class="action-feedback preview-error">{{ exportError }}</p>
+              <p v-else-if="exportMessage" class="action-feedback preview-success">{{ exportMessage }}</p>
             </div>
           </div>
-
+        </div>
+        <div class="panel-content preview-panel-content">
           <p v-if="previewPath" class="preview-path">{{ previewPath }}</p>
-          <p v-if="previewError" class="preview-message preview-error">{{ previewError }}</p>
-          <p v-else-if="!isTauri()" class="preview-message">
-            Preview and PDF export require the Tauri desktop runtime.
-          </p>
-          <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-loading-empty">
+          <div v-if="previewError" class="preview-state">
+            <p class="preview-message preview-error">{{ previewError }}</p>
+          </div>
+          <div v-else-if="!isTauri()" class="preview-state">
+            <p class="preview-message">Preview and PDF export require the Tauri desktop runtime.</p>
+          </div>
+          <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-state">
             <div class="preview-loading-card">
               <span class="loading-spinner" aria-hidden="true" />
               <p class="preview-message">Generating preview...</p>
             </div>
           </div>
-          <p v-else-if="!previewSrc" class="preview-message">
-            Run the pipeline to generate a ChordPro CLI preview PDF.
-          </p>
-
-          <div v-if="previewSrc" class="preview-viewer">
-            <iframe
-              :key="previewSrc"
-              :src="previewSrc"
-              class="preview-frame"
-              title="ChordPro PDF Preview"
-            />
+          <div v-else-if="!previewSrc" class="preview-state">
+            <p class="preview-message">Run the pipeline to generate a ChordPro CLI preview PDF.</p>
+          </div>
+          <div v-else class="preview-viewer">
+            <iframe :key="previewSrc" :src="previewSrc" class="preview-frame" title="ChordPro PDF Preview" />
             <div v-if="isGeneratingPreview" class="preview-loading-overlay">
               <div class="preview-loading-card">
                 <span class="loading-spinner" aria-hidden="true" />
@@ -346,28 +355,92 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-        </section>
-      </aside>
+        </div>
+      </section>
     </section>
   </main>
 </template>
 
 <style scoped>
 .playground {
-  display: grid;
-  gap: 1.25rem;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 1rem;
+  overflow: hidden;
   color: #182019;
 }
 
-.hero {
+.card,
+.card-shell {
+  border: 1px solid rgba(24, 32, 25, 0.12);
+  background: rgba(255, 250, 241, 0.92);
+  box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+}
+
+.card {
+  padding: 1.25rem 1.5rem;
+}
+
+.playground-header {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: flex-start;
   gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 250, 241, 0.85);
-  box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+  flex: 0 0 auto;
+}
+
+.header-copy,
+.header-controls,
+.view-toggle,
+.playground-grid,
+.panel,
+.panel-content,
+.preview-panel-content,
+.preview-viewer,
+.preview-state,
+.subpanel-content {
+  min-width: 0;
+  min-height: 0;
+}
+
+.header-copy,
+.header-controls {
+  min-width: 0;
+}
+
+.header-controls {
+  display: grid;
+  gap: 1rem;
+  justify-items: end;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: #f7f0e1;
+}
+
+.view-button {
+  padding: 0.6rem 1rem;
+  border: 0;
+  background: transparent;
+  color: #233127;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.view-button.active {
+  background: linear-gradient(135deg, #1f3124, #37513b);
+  color: #f8f3e8;
 }
 
 .brand-lockup {
@@ -386,64 +459,142 @@ onMounted(async () => {
 .brand-title {
   color: #182019;
   font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 1.7rem;
+  font-size: 1.55rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
 }
 
 .eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #7a6541;
 }
 
-.hero h1 {
+.playground-header h1,
+.panel h2,
+.subpanel strong {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 0.95;
 }
 
-.subtitle {
-  max-width: 52rem;
-  margin: 0.65rem 0 0;
+.playground-header h1 {
+  font-size: 1.18rem;
+}
+
+.header-description {
+  margin: 0.45rem 0 0;
   color: #4a564a;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.model-select {
-  display: grid;
-  gap: 0.25rem;
-  color: #233127;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.model-select select {
-  min-width: 14rem;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid rgba(35, 49, 39, 0.18);
-  background: #f7f0e1;
-  color: #233127;
-  font: inherit;
-  text-transform: none;
-  letter-spacing: normal;
+  font-size: 0.95rem;
 }
 
 .model-override-note {
   margin: 0;
   color: #5f6c60;
   font-size: 0.9rem;
+  flex: 0 0 auto;
+}
+
+.error {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  flex: 0 0 auto;
+  color: #8b1228;
+  background: rgba(255, 236, 239, 0.9);
+  border-color: rgba(176, 0, 32, 0.18);
+}
+
+.error-content,
+.subpanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.error-content {
+  gap: 0.85rem;
+  flex: 1;
+}
+
+.error p,
+.panel p,
+.preview-message,
+.preview-path {
+  margin: 0;
+}
+
+.error-reason,
+.panel p {
+  color: #5f6c60;
+  font-size: 0.92rem;
+}
+
+.subpanel {
+  gap: 0.65rem;
+}
+
+.subpanel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.subpanel-content {
+  display: flex;
+  flex: 1;
+}
+
+.retry-panel {
+  display: flex;
+  flex: 0 0 11rem;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.playground-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 1rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.raw-panel {
+  grid-column: span 2;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem 1rem 0.85rem;
+  flex: 0 0 auto;
+}
+
+.panel-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 1rem 1rem;
+  overflow: hidden;
+}
+
+.raw-header {
+  align-items: center;
 }
 
 .stage-index {
@@ -459,118 +610,100 @@ onMounted(async () => {
   font-weight: 700;
 }
 
-.pipeline-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  align-items: start;
-}
-
-.stage {
-  display: grid;
-  gap: 0.85rem;
-  min-width: 0;
-  padding: 1rem;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 252, 246, 0.9);
-  box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
-}
-
-.workspace-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(22rem, 1fr);
-  gap: 1rem;
-  align-items: start;
-}
-
-.debug-column {
-  display: grid;
-  gap: 1rem;
-}
-
-.preview-column {
+.stage-copy {
   min-width: 0;
 }
 
-.preview-stage {
-  display: grid;
-  gap: 0.85rem;
-  min-width: 0;
-  padding: 1rem;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 252, 246, 0.9);
-  box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
-}
-
-.retry-log {
-  display: grid;
-  gap: 0.85rem;
-  min-width: 0;
-  padding: 1rem;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 252, 246, 0.9);
-  box-shadow: 0 18px 36px rgba(74, 58, 32, 0.08);
-}
-
-.retry-log h2 {
-  margin: 0;
-  font-size: 1.05rem;
-}
-
-.retry-log p {
-  margin: 0.2rem 0 0;
-  color: #5f6c60;
-  font-size: 0.92rem;
-}
-
-.retry-log-header {
+.panel-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
-.retry-log pre {
-  height: 10rem;
-  min-height: 10rem;
+.raw-actions {
+  align-items: end;
+}
+
+.preview-actions {
+  align-items: flex-start;
+}
+
+.model-select {
+  display: grid;
+  gap: 0.25rem;
+  color: #233127;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.model-select select {
+  min-width: 14rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: #f7f0e1;
+  color: #233127;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.export-actions {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.action-feedback {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-align: right;
+  word-break: break-word;
+}
+
+.stage-input {
+  background: linear-gradient(180deg, rgba(255, 249, 237, 0.96), rgba(250, 243, 230, 0.94));
+}
+
+.preview-panel-content {
+  flex: 1;
 }
 
 .preview-path {
-  margin: 0;
   color: #5f6c60;
   font-size: 0.85rem;
   word-break: break-all;
 }
 
-.preview-message {
-  margin: 0;
-  color: #5f6c60;
+.preview-state,
+.preview-viewer {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
-.preview-error {
-  color: #8b1228;
-}
-
-.preview-success {
-  color: #214d2d;
-}
-
-.preview-frame {
-  width: 100%;
-  min-height: 56rem;
-  border: 1px solid rgba(47, 59, 49, 0.16);
+.preview-state {
+  justify-content: center;
+  align-items: center;
+  border: 1px dashed rgba(47, 59, 49, 0.16);
   background: #fffef9;
+  padding: 1rem;
+  text-align: center;
 }
 
 .preview-viewer {
   position: relative;
-  display: block;
 }
 
-.preview-loading-empty {
-  display: grid;
-  place-items: center;
-  min-height: 24rem;
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   border: 1px solid rgba(47, 59, 49, 0.16);
   background: #fffef9;
 }
@@ -594,68 +727,23 @@ onMounted(async () => {
   box-shadow: 0 12px 28px rgba(35, 49, 39, 0.12);
 }
 
-.loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 0.2rem solid rgba(35, 49, 39, 0.16);
-  border-top-color: #233127;
-  border-radius: 999px;
-  animation: spin 0.9s linear infinite;
-}
-
-.stage-header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.stage-copy {
-  min-width: 0;
-}
-
-.stage h2,
-.preview-stage h2 {
-  margin: 0;
-  font-size: 1.05rem;
-}
-
-.panel-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.export-actions {
-  display: grid;
-  gap: 0.35rem;
-  justify-items: end;
-}
-
-.action-feedback {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.3;
-  text-align: right;
-  word-break: break-word;
-}
-
-.stage p,
-.preview-stage p {
-  margin: 0.2rem 0 0;
+.preview-message {
   color: #5f6c60;
-  font-size: 0.92rem;
 }
 
-.stage-input {
-  background: linear-gradient(180deg, rgba(255, 249, 237, 0.96), rgba(250, 243, 230, 0.94));
+.preview-error {
+  color: #8b1228;
+}
+
+.preview-success {
+  color: #214d2d;
 }
 
 textarea,
 pre {
   width: 100%;
-  height: 28rem;
-  min-height: 28rem;
+  flex: 1;
+  min-height: 0;
   border: 1px solid rgba(47, 59, 49, 0.16);
   border-radius: 0;
   background: #fffef9;
@@ -665,21 +753,19 @@ pre {
   line-height: 1.4;
   padding: 0.75rem;
   box-sizing: border-box;
-  resize: vertical;
+  resize: none;
+  overflow: auto;
 }
 
 pre {
   margin: 0;
-  display: block;
   white-space: pre-wrap;
   word-break: break-word;
-  overflow: auto;
 }
 
 .run-button {
-  width: fit-content;
   width: 12.75rem;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   box-sizing: border-box;
   position: relative;
   padding: 0.85rem 1.35rem;
@@ -725,7 +811,7 @@ pre {
 
 .mini-button {
   width: fit-content;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -741,92 +827,54 @@ pre {
   cursor: pointer;
 }
 
-.run-button:disabled {
-  cursor: wait;
+.run-button:disabled,
+.mini-button:disabled,
+.model-select select:disabled {
   opacity: 0.72;
+  cursor: default;
 }
 
-.error {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 1rem;
-  padding: 0.9rem 1rem;
-  margin: 0;
-  border: 1px solid rgba(176, 0, 32, 0.18);
-  background: rgba(255, 236, 239, 0.9);
-  color: #8b1228;
-}
-
-.error p {
-  margin: 0;
-}
-
-.error-content {
-  display: grid;
-  gap: 0.75rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.error-reason {
-  font-size: 0.92rem;
-}
-
-.error-raw-output {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.error-raw-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.error-raw-output pre {
-  height: 12rem;
-  min-height: 12rem;
-  background: rgba(255, 250, 245, 0.96);
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 0.2rem solid rgba(35, 49, 39, 0.16);
+  border-top-color: #233127;
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
 }
 
 @media (max-width: 1200px) {
-  .workspace-layout {
-    grid-template-columns: 1fr;
+  .playground-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
   }
 
-  .pipeline-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .raw-panel {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 800px) {
-  .hero {
-    align-items: start;
+  .playground-header,
+  .error,
+  .retry-log-header,
+  .subpanel-header,
+  .panel-header,
+  .raw-header {
+    display: flex;
     flex-direction: column;
+    align-items: flex-start;
   }
 
-  .pipeline-grid {
-    grid-template-columns: 1fr;
+  .header-controls {
+    justify-items: start;
   }
 
-  .error {
-    align-items: start;
-    flex-direction: column;
-  }
-
-  .retry-log-header {
-    align-items: start;
-    flex-direction: column;
-  }
-
-  .error-raw-header {
-    align-items: start;
-    flex-direction: column;
-  }
-
+  .panel-actions,
+  .raw-actions,
+  .preview-actions,
   .export-actions {
+    justify-content: flex-start;
     justify-items: start;
   }
 
@@ -834,14 +882,13 @@ pre {
     text-align: left;
   }
 
-  textarea,
-  pre {
-    height: 18rem;
-    min-height: 18rem;
+  .playground-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(5, minmax(12rem, 1fr));
   }
 
-  .preview-frame {
-    min-height: 32rem;
+  .raw-panel {
+    grid-column: auto;
   }
 }
 

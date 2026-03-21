@@ -16,6 +16,7 @@ const emit = defineEmits<{
   "change-mode": [mode: "user" | "playground"];
 }>();
 
+const isDev = import.meta.env.DEV;
 const appConfig = useAppConfig();
 const {
   activePanel,
@@ -146,12 +147,12 @@ async function clearApiKey(): Promise<void> {
           <img :src="appLogo" alt="" class="brand-mark" />
           <span class="brand-title">ChordPro Studio</span>
         </div>
-        <p class="eyebrow">Workspace</p>
+        <p v-if="isDev" class="eyebrow">Workspace</p>
         <h1>Convert songs and manage your ChordPro songbook</h1>
       </div>
 
       <div class="header-controls">
-        <div class="view-toggle" role="tablist" aria-label="View mode">
+        <div v-if="isDev" class="view-toggle" role="tablist" aria-label="View mode">
           <button
             :class="['view-button', { active: props.mode === 'user' }]"
             @click="emit('change-mode', 'user')"
@@ -524,7 +525,7 @@ async function clearApiKey(): Promise<void> {
 .brand-title {
   color: #182019;
   font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 1.7rem;
+  font-size: 1.55rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -545,8 +546,8 @@ async function clearApiKey(): Promise<void> {
 }
 
 .eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #7a6541;
