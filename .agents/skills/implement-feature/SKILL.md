@@ -132,7 +132,12 @@ When a feature is confirmed as complete:
    - docs/dev-notes.md
    - docs/roadmap.md
 
-2. Create a Conventional Commit describing the change.
+2. Preserve roadmap history when updating docs:
+   - Current roadmap should reflect pending work only.
+   - When removing an item from pending sections, do not let it disappear without trace.
+   - Record the completed or resolved outcome in Current status or another appropriate completed/historical section.
+
+3. Create a Conventional Commit describing the change.
 
 Do NOT push unless explicitly requested.
 
