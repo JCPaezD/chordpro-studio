@@ -187,6 +187,12 @@ the documentation must be updated first.
 - reason for the assumption: Playground usage prioritizes fast iteration and direct CLI preview debugging, while `gemini-2.5-flash` is a fast but more reliable default than flash-lite for the conversion step and explicit result clearing makes each run easier to inspect
 - whether it requires later validation: yes
 
+
+- date: 2026-03-21
+- context: normalizing LLM-generated `title` and `artist` metadata before parsing in `SongPipelineService`
+- assumption made: metadata normalization should apply only to fresh conversion output by rewriting the converted ChordPro `{title: ...}` and `{artist: ...}` directives before parsing, while existing `.cho` files and later manual metadata edits must remain untouched
+- reason for the assumption: this keeps the change local to the LLM pipeline, aligns parsed metadata with filename suggestions derived from ChordPro tags, and avoids introducing migration or edit-time side effects
+- whether it requires later validation: no, validated on 2026-03-21 with messy metadata conversion tests and unchanged existing `.cho` loading
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
@@ -390,4 +396,6 @@ Future improvements kept explicitly out of this phase:
 - assumption made: the Playground should follow the same fixed-height shell rules as the User view while remaining a DEV-only internal tool, so production UX always starts and stays in `User` mode without exposing the extra toggle, while production User mode also hides the `Workspace` eyebrow that only helps differentiate views in development
 - reason for the assumption: this preserves the debugging workflow during development but removes non-product UI from the release build without duplicating workspace state
 - whether it requires later validation: yes
+
+
 
