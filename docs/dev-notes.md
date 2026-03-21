@@ -71,7 +71,7 @@ the documentation must be updated first.
 - context: implementing `PromptLoader` in `app/src/utils/PromptLoader.ts`
 - assumption made: prompt lookup should support `app/prompts` from repository root and a runtime override via `CHORDPRO_PROMPTS_DIR`; unresolved template variables should remain unchanged in rendered output
 - reason for the assumption: this keeps runtime behavior deterministic across Node/Tauri contexts while avoiding silent data loss from missing render variables
-- whether it requires later validation: yes
+- whether it requires later validation: no, superseded by the 2026-03-21 bundled-only prompt loading change
 
 - date: 2026-03-08
 - context: implementing `OpenAIProvider` and `GeminiProvider` in `app/src/adapters/llm/`
@@ -113,6 +113,12 @@ the documentation must be updated first.
 - context: making PromptLoader compatible with the developer Playground running in the Vue app
 - assumption made: prompt files should be loaded from bundled `app/prompts/*.prompt.md` at runtime in the browser build, with filesystem reads kept only as a fallback for Node-like environments
 - reason for the assumption: static Node imports break Vite browser builds once ConversionService is used from UI code
+- whether it requires later validation: no, superseded by the 2026-03-21 bundled-only prompt loading change
+
+- date: 2026-03-21
+- context: removing the frontend PromptLoader filesystem fallback after validating the embedded prompt path in the release workflow
+- assumption made: the frontend should resolve prompts only from bundled `app/prompts/*.prompt.md` assets, and local filesystem fallback through Node-specific modules is unnecessary for the current desktop app workflow
+- reason for the assumption: this removes the Vite browser warning, keeps prompt loading aligned with the actual packaged runtime, and preserves the validated conversion flow without adding backend complexity
 - whether it requires later validation: yes
 
 - date: 2026-03-08

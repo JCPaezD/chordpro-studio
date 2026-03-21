@@ -43,6 +43,7 @@ Current status:
 - `BUG-10` revalidated and resolved after the User View layout refactor
 - manual review and UI consistency pass completed for the User View
 - Playground cleanup completed with a fixed-height layout, DEV-only visibility, normalized header structure and improved responsive panel distribution
+- frontend `PromptLoader` now loads prompts only from bundled assets, and the Vite `node:fs/promises` warning is resolved
 
 ## Completed work
 
@@ -96,7 +97,6 @@ Current status:
 - real-time preview update for `.cho` edits with debounced regeneration and a lightweight "refreshing" state (no blocking overlay)
 - improve prompt handling of chord sequences with separators (e.g. "[Am] - [F] - [G]") to avoid treating separators as lyrics, complemented by minimal safe post-processing when needed
 - normalize extracted metadata (title, artist, etc.) locally to ensure consistent casing and filename generation
-- resolve Vite warning related to `node:fs/promises` usage in PromptLoader.ts
 - allow aborting an ongoing conversion request from the UI in both `User` and `Playground`
 
 ## v1.x - Additional UX / dev improvements

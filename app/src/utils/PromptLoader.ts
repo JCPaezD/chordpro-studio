@@ -6,15 +6,6 @@ const bundledPrompts = import.meta.glob("../../prompts/*.prompt.md", {
 
 export class PromptLoader {
   private readonly cache = new Map<string, string>();
-  private readonly promptDirectories: string[];
-
-  constructor(promptDirectory?: string) {
-    this.promptDirectories = [
-      ...(promptDirectory ? [promptDirectory] : []),
-      ...this.resolveEnvPromptDirectory(),
-      ...this.resolveCwdPromptDirectory()
-    ];
-  }
 
   async loadPrompt(name: string): Promise<string> {
     const normalizedName = this.normalizePromptName(name);
@@ -56,19 +47,6 @@ export class PromptLoader {
     return normalized;
   }
 
-  private resolveEnvPromptDirectory(): string[] {
-    const envValue = (
-      globalThis as { process?: { env?: Record<string, string | undefined> } }
-    ).process?.env?.CHORDPRO_PROMPTS_DIR;
-
-    return envValue ? [envValue] : [];
-  }
-
-  private resolveCwdPromptDirectory(): string[] {
-    const cwd = (globalThis as { process?: { cwd?: () => string } }).process?.cwd?.();
-    return cwd ? [`${cwd}/app/prompts`] : [];
-  }
-
   private async resolvePromptContent(fileName: string): Promise<string> {
     const bundledKey = Object.keys(bundledPrompts).find((key) =>
       key.endsWith(`/${fileName}`)
@@ -77,31 +55,6 @@ export class PromptLoader {
       return bundledPrompts[bundledKey];
     }
 
-    const fileSystemPrompt = await this.readFromFileSystem(fileName);
-    if (fileSystemPrompt !== undefined) {
-      return fileSystemPrompt;
-    }
-
     throw new Error(`Prompt file "${fileName}" not found.`);
-  }
-
-  private async readFromFileSystem(fileName: string): Promise<string | undefined> {
-    if (this.promptDirectories.length === 0) {
-      return undefined;
-    }
-
-    let fsPromises: typeof import("node:fs/promises");
-    for (const directory of this.promptDirectories) {
-      try {
-        fsPromises ??= await import("node:fs/promises");
-        const fullPath = `${directory.replace(/[\\/]+$/g, "")}/${fileName}`;
-        await fsPromises.access(fullPath);
-        return await fsPromises.readFile(fullPath, "utf8");
-      } catch {
-        // Try next candidate directory.
-      }
-    }
-
-    return undefined;
   }
 }

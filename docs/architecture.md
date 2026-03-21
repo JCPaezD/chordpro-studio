@@ -285,6 +285,11 @@ Prompt variables currently used:
 - `{{song_text}}`
 - `{{user_preferences}}`
 
+Prompt loading behavior:
+
+- frontend `PromptLoader` resolves prompts from bundled `app/prompts/*.prompt.md` assets only
+- no frontend filesystem fallback is used for prompt loading
+
 Current runtime API key handling:
 
 - the Tauri backend owns `config.json` in the app config directory
