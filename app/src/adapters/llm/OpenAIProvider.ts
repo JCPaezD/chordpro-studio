@@ -2,32 +2,14 @@ import type { LLMGenerateResult, LLMProvider } from "./LLMProvider";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 
-function readOpenAiApiKey(): string | undefined {
-  const fromProcess = (
-    globalThis as { process?: { env?: Record<string, string | undefined> } }
-  ).process?.env?.OPENAI_API_KEY;
-
-  if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
-    return fromProcess.trim();
-  }
-
-  const fromVite = import.meta.env?.VITE_OPENAI_API_KEY;
-  if (typeof fromVite === "string" && fromVite.trim().length > 0) {
-    return fromVite.trim();
-  }
-
-  return undefined;
-}
-
 export class OpenAIProvider implements LLMProvider {
-  private readonly apiKey: string;
-
-  constructor(private readonly model: string) {
-    const apiKey = readOpenAiApiKey();
-    if (!apiKey) {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string
+  ) {
+    if (!this.apiKey.trim()) {
       throw new Error("OPENAI_API_KEY is not set.");
     }
-    this.apiKey = apiKey;
   }
 
   async generate(prompt: string): Promise<LLMGenerateResult> {

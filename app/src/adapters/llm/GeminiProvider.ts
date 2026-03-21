@@ -32,32 +32,14 @@ export class GeminiRetryError extends Error {
   }
 }
 
-function readGeminiApiKey(): string | undefined {
-  const fromProcess = (
-    globalThis as { process?: { env?: Record<string, string | undefined> } }
-  ).process?.env?.GEMINI_API_KEY;
-
-  if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
-    return fromProcess.trim();
-  }
-
-  const fromVite = import.meta.env?.VITE_GEMINI_API_KEY;
-  if (typeof fromVite === "string" && fromVite.trim().length > 0) {
-    return fromVite.trim();
-  }
-
-  return undefined;
-}
-
 export class GeminiProvider implements LLMProvider {
-  private readonly apiKey: string;
-
-  constructor(private readonly model: string) {
-    const apiKey = readGeminiApiKey();
-    if (!apiKey) {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string
+  ) {
+    if (!this.apiKey.trim()) {
       throw new Error("GEMINI_API_KEY is not set.");
     }
-    this.apiKey = apiKey;
   }
 
   async generate(prompt: string): Promise<LLMGenerateResult> {

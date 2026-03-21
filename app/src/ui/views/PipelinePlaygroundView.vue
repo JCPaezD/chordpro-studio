@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
-import { ConfigRepository } from "../../adapters/filesystem/ConfigRepository";
+import { useAppConfig } from "../composables/useAppConfig";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const {
@@ -29,7 +29,7 @@ const {
   runPipeline: runWorkspacePipeline,
   previewFromChordPro
 } = useSongWorkspace();
-const configRepository = new ConfigRepository();
+const appConfig = useAppConfig();
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
   "gemini-2.5-pro",
@@ -127,9 +127,8 @@ async function runPipeline(): Promise<void> {
   await runWorkspacePipeline({ model, clearBeforeRun: true });
 }
 
-async function loadPlaygroundModel(): Promise<void> {
-  const config = await configRepository.load();
-  selectedGeminiModel.value = geminiModelOverride.value || (config.playgroundModel ?? "gemini-flash-latest");
+function loadPlaygroundModel(): void {
+  selectedGeminiModel.value = geminiModelOverride.value || (appConfig.playgroundModel.value ?? "gemini-flash-latest");
 }
 
 async function persistPlaygroundModel(): Promise<void> {
@@ -137,13 +136,13 @@ async function persistPlaygroundModel(): Promise<void> {
     return;
   }
 
-  await configRepository.update({ playgroundModel: selectedGeminiModel.value });
+  await appConfig.setPlaygroundModel(selectedGeminiModel.value);
 }
 
 onMounted(async () => {
   geminiModelOverride.value = readGeminiModelOverride() ?? "";
 
-  await loadPlaygroundModel();
+  loadPlaygroundModel();
   await loadGeminiModels();
 
   if (

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
-import { ConfigRepository, type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
+import { type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
+import { useAppConfig } from "../composables/useAppConfig";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   "change-mode": [mode: "user" | "playground"];
 }>();
 
+const appConfig = useAppConfig();
 const {
   activePanel,
   rawInput,
@@ -49,9 +51,16 @@ const {
   setActivePanel
 } = useSongWorkspace();
 
-const configRepository = new ConfigRepository();
-const conversionMode = ref<ConversionMode | null>(null);
 const showChordProEditor = ref(false);
+const showApiKeyModal = ref(false);
+const apiKeyDraft = ref("");
+const apiKeyFeedback = ref("");
+const isSavingApiKey = ref(false);
+
+const conversionMode = computed<ConversionMode>(() => appConfig.conversionMode.value ?? "quality");
+const configLoading = computed(() => appConfig.loading.value);
+const hasApiKey = computed(() => !!appConfig.apiKey.value);
+const canGenerate = computed(() => !configLoading.value && hasApiKey.value && !loading.value);
 
 const selectedModel = computed(() =>
   conversionMode.value === "fast" ? "gemini-flash-lite-latest" : "gemini-flash-latest"
@@ -61,7 +70,13 @@ const conversionModeLabel = computed(() =>
   conversionMode.value === "fast" ? "Fast" : "Quality"
 );
 
+const apiKeyButtonLabel = computed(() => (hasApiKey.value ? "Change API Key" : "Set API Key"));
+
 async function convertSong(): Promise<void> {
+  if (!canGenerate.value) {
+    return;
+  }
+
   setActivePanel("convert");
   await runPipeline({ model: selectedModel.value });
 }
@@ -70,31 +85,57 @@ function updateChordPro(value: string): void {
   setChordProText(value);
 }
 
-async function loadConversionMode(): Promise<void> {
-  const config = await configRepository.load();
-  conversionMode.value = config.conversionMode ?? "quality";
-}
-
-async function persistConversionMode(): Promise<void> {
-  if (!conversionMode.value) {
-    return;
-  }
-
-  await configRepository.update({ conversionMode: conversionMode.value });
-}
-
 async function toggleConversionMode(): Promise<void> {
-  if (!conversionMode.value) {
+  const nextMode: ConversionMode = conversionMode.value === "quality" ? "fast" : "quality";
+  await appConfig.setConversionMode(nextMode);
+}
+
+function openApiKeyModal(): void {
+  apiKeyDraft.value = appConfig.apiKey.value ?? "";
+  apiKeyFeedback.value = "";
+  showApiKeyModal.value = true;
+}
+
+function closeApiKeyModal(): void {
+  if (isSavingApiKey.value) {
     return;
   }
 
-  conversionMode.value = conversionMode.value === "quality" ? "fast" : "quality";
-  await persistConversionMode();
+  showApiKeyModal.value = false;
 }
 
-onMounted(async () => {
-  await loadConversionMode();
-});
+async function saveApiKey(): Promise<void> {
+  if (!apiKeyDraft.value.trim()) {
+    return;
+  }
+
+  isSavingApiKey.value = true;
+  apiKeyFeedback.value = "";
+
+  try {
+    await appConfig.setApiKey(apiKeyDraft.value);
+    showApiKeyModal.value = false;
+  } catch (err) {
+    apiKeyFeedback.value = err instanceof Error ? err.message : "Could not save API key.";
+  } finally {
+    isSavingApiKey.value = false;
+  }
+}
+
+async function clearApiKey(): Promise<void> {
+  isSavingApiKey.value = true;
+  apiKeyFeedback.value = "";
+
+  try {
+    await appConfig.clearApiKey();
+    apiKeyDraft.value = "";
+    showApiKeyModal.value = false;
+  } catch (err) {
+    apiKeyFeedback.value = err instanceof Error ? err.message : "Could not clear API key.";
+  } finally {
+    isSavingApiKey.value = false;
+  }
+}
 </script>
 
 <template>
@@ -162,19 +203,25 @@ onMounted(async () => {
             </div>
             <div class="panel-actions-stack align-end">
               <div class="header-actions convert-actions">
-                <button class="mini-button" :disabled="loading || !conversionMode" @click="toggleConversionMode">
+                <button class="mini-button" :disabled="loading || configLoading" @click="toggleConversionMode">
                   {{ conversionModeLabel }}
+                </button>
+                <button class="mini-button" @click="openApiKeyModal">
+                  {{ apiKeyButtonLabel }}
                 </button>
                 <button class="mini-button" @click="showChordProEditor = !showChordProEditor">
                   {{ showChordProEditor ? "Hide ChordPro editor" : "Show ChordPro editor" }}
                 </button>
-                <button class="primary-button" :disabled="loading || !conversionMode" @click="convertSong">
+                <button class="primary-button" :disabled="!canGenerate" @click="convertSong">
                   <span :class="['button-content', { loading }]">
                     <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
                     <span class="button-label">{{ loading ? "Generating..." : "Generate" }}</span>
                   </span>
                 </button>
               </div>
+              <p v-if="!hasApiKey && !configLoading" class="action-feedback warning-message">
+                API key required to generate
+              </p>
               <p v-if="error" class="action-feedback error-message">{{ error }}</p>
             </div>
           </div>
@@ -363,6 +410,38 @@ onMounted(async () => {
         </div>
       </section>
     </section>
+
+    <div v-if="showApiKeyModal" class="modal-backdrop" @click.self="closeApiKeyModal">
+      <div class="modal-card">
+        <div class="modal-copy">
+          <p class="eyebrow">Gemini</p>
+          <h2>{{ hasApiKey ? "Change API Key" : "Set API Key" }}</h2>
+          <p>Stored locally in the app config and used for new generation requests.</p>
+        </div>
+
+        <label class="modal-field">
+          <span>API Key</span>
+          <input v-model="apiKeyDraft" type="password" autocomplete="off" placeholder="Paste your Gemini API key" />
+        </label>
+
+        <p v-if="apiKeyFeedback" class="action-feedback error-message">{{ apiKeyFeedback }}</p>
+
+        <div class="modal-actions">
+          <button class="secondary-button" :disabled="isSavingApiKey" @click="closeApiKeyModal">Cancel</button>
+          <button
+            v-if="hasApiKey"
+            class="mini-button"
+            :disabled="isSavingApiKey"
+            @click="clearApiKey"
+          >
+            Clear Key
+          </button>
+          <button class="primary-button" :disabled="isSavingApiKey || !apiKeyDraft.trim()" @click="saveApiKey">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 
@@ -878,6 +957,64 @@ onMounted(async () => {
   }
 }
 
+
+.api-key-note {
+  margin-top: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(24, 32, 25, 0.28);
+}
+
+.modal-card {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 28rem);
+  padding: 1.25rem;
+  border: 1px solid rgba(24, 32, 25, 0.12);
+  background: #fffaf1;
+  box-shadow: 0 22px 44px rgba(24, 32, 25, 0.2);
+}
+
+.modal-copy h2,
+.modal-copy p {
+  margin: 0;
+}
+
+.modal-copy {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.modal-field {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 700;
+  color: #233127;
+}
+
+.modal-field input {
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  background: #fffef9;
+  color: #1f251f;
+  font: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
 @media (max-width: 1180px) {
   .user-main {
     grid-template-columns: 6rem minmax(0, 1fr);
@@ -937,7 +1074,8 @@ onMounted(async () => {
   }
 
   .convert-actions,
-  .header-actions {
+  .header-actions,
+  .modal-actions {
     justify-content: flex-start;
   }
 

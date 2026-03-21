@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
+import { useAppConfig } from "./ui/composables/useAppConfig";
 import { useSongWorkspace } from "./ui/composables/useSongWorkspace";
 import UserView from "./ui/views/UserView.vue";
 import PipelinePlaygroundView from "./ui/views/PipelinePlaygroundView.vue";
 
 const mode = ref<"user" | "playground">("user");
-const workspace = useSongWorkspace();
+const appConfig = useAppConfig();
+const configLoading = computed(() => appConfig.loading.value);
+const workspace = useSongWorkspace({ appConfig });
 
 onMounted(async () => {
+  await appConfig.loadConfig();
   await workspace.initialize();
 });
 
@@ -19,37 +23,46 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <div v-show="mode === 'user'" class="view-host">
-      <UserView :mode="mode" @change-mode="mode = $event" />
-    </div>
-
-    <div v-show="mode === 'playground'" class="view-host playground-shell">
-      <header class="mode-bar">
-        <div>
-          <p class="eyebrow">ChordPro Studio</p>
-          <h1>Playground</h1>
-        </div>
-
-        <div class="mode-toggle" role="tablist" aria-label="View mode">
-          <button
-            :class="['mode-button', { active: mode === 'user' }]"
-            @click="mode = 'user'"
-          >
-            User
-          </button>
-          <button
-            :class="['mode-button', { active: mode === 'playground' }]"
-            @click="mode = 'playground'"
-          >
-            Playground
-          </button>
-        </div>
-      </header>
-
-      <div class="playground-host">
-        <PipelinePlaygroundView />
+    <div v-if="configLoading" class="boot-screen">
+      <div class="boot-card">
+        <p class="eyebrow">ChordPro Studio</p>
+        <h1>Loading workspace...</h1>
       </div>
     </div>
+
+    <template v-else>
+      <div v-show="mode === 'user'" class="view-host">
+        <UserView :mode="mode" @change-mode="mode = $event" />
+      </div>
+
+      <div v-show="mode === 'playground'" class="view-host playground-shell">
+        <header class="mode-bar">
+          <div>
+            <p class="eyebrow">ChordPro Studio</p>
+            <h1>Playground</h1>
+          </div>
+
+          <div class="mode-toggle" role="tablist" aria-label="View mode">
+            <button
+              :class="['mode-button', { active: mode === 'user' }]"
+              @click="mode = 'user'"
+            >
+              User
+            </button>
+            <button
+              :class="['mode-button', { active: mode === 'playground' }]"
+              @click="mode = 'playground'"
+            >
+              Playground
+            </button>
+          </div>
+        </header>
+
+        <div class="playground-host">
+          <PipelinePlaygroundView />
+        </div>
+      </div>
+    </template>
   </main>
 </template>
 
@@ -77,6 +90,24 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.boot-screen {
+  display: grid;
+  flex: 1;
+  place-items: center;
+}
+
+.boot-card {
+  padding: 1.5rem 1.75rem;
+  border: 1px solid rgba(24, 32, 25, 0.12);
+  background: rgba(255, 250, 241, 0.92);
+  box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+}
+
+.boot-card h1,
+.mode-bar h1 {
+  margin: 0;
+}
+
 .mode-bar {
   z-index: 20;
   display: flex;
@@ -98,7 +129,6 @@ onBeforeUnmount(() => {
 }
 
 .mode-bar h1 {
-  margin: 0;
   font-size: 1.1rem;
 }
 

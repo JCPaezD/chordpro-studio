@@ -346,8 +346,9 @@ Songbook behavior:
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup without changing the default `Convert` panel on launch
-- AppConfig now also stores `conversionMode` and `playgroundModel` as persisted UI preferences
-- missing `config.json` is treated as an empty config during startup; the AppConfig directory and file are created only when something is explicitly written
+- AppConfig now also stores `conversionMode`, `playgroundModel` and `geminiApiKey`
+- frontend config is loaded once through `useAppConfig()`, kept in memory as the single source of truth, and persisted through Tauri backend commands
+- missing `config.json` now resolves to a default config with `geminiApiKey: null`, and the backend creates the file on first read when needed
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document
 
 Workspace document behavior:
@@ -365,3 +366,8 @@ Future improvements kept explicitly out of this phase:
 - add a filesystem watcher to refresh the songbook automatically when `.cho` files are added, removed or renamed
 - replace the raw `.cho` editor with a structured chord editor that supports lyric/chord dual-line editing
 
+- date: 2026-03-21
+- context: introducing user-managed Gemini API key storage through Tauri config commands and `useAppConfig()`
+- assumption made: app configuration should be loaded once at startup, stored in a single frontend composable, and injected into the shared workspace so User mode can block generation before any provider call when `geminiApiKey` is missing
+- reason for the assumption: this keeps config ownership centralized, avoids scattered filesystem reads, and matches the documented local-first desktop architecture
+- whether it requires later validation: yes

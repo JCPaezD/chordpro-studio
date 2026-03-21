@@ -85,6 +85,7 @@ Current status:
 ### v1 - Finalization
 
 19. Clean up the Playground UI (layout, redundant labels, language consistency).
+20. Compile the v1 release build.
 
 ### v1.1 - Post-release improvements
 
@@ -139,4 +140,3 @@ Features:
 - performance mode
 - setlists
 - cloud sync
-

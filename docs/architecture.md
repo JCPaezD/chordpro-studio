@@ -176,10 +176,11 @@ Current config content:
 - `lastSongbookPath`
 - `conversionMode`
 - `playgroundModel`
+- `geminiApiKey`
 
-`ConfigRepository` owns config persistence. Missing config is treated as an empty partial config during startup, and the AppConfig directory is only created when config is explicitly written.
+`ConfigRepository` persists the full app config through Tauri backend commands. Missing config now resolves to a default object with `geminiApiKey: null`, and the backend creates `config.json` on first read if it does not exist yet.
 
-AppConfig is also the single source of truth for persisted UI preferences such as the User View conversion mode and the Playground model selection.
+`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode and the Playground model selection.
 
 ---
 
@@ -282,19 +283,14 @@ Prompt variables currently used:
 - `{{song_text}}`
 - `{{user_preferences}}`
 
-Current API key resolution:
+Current runtime API key handling:
 
-1. environment variables
-2. Vite-prefixed environment variables in browser development
+- the Tauri backend owns `config.json` in the app config directory
+- frontend config is loaded once through `useAppConfig()` and kept in memory
+- the shared workspace receives the current Gemini API key through dependency injection
+- providers do not read config directly
 
-Future UI phases may add manual entry or persisted user configuration if needed.
-
-Examples:
-
-- `OPENAI_API_KEY`
-- `GEMINI_API_KEY`
-- `VITE_OPENAI_API_KEY`
-- `VITE_GEMINI_API_KEY`
+Environment-based keys may still be used for development-only fallback paths such as explicit OpenAI testing, but the normal User workflow now depends on the persisted Gemini key managed in the app UI.
 
 ---
 

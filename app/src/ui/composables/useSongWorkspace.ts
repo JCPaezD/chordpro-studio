@@ -7,7 +7,7 @@ import { message, open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
 import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
-import { ConfigRepository } from "../../adapters/filesystem/ConfigRepository";
+import type { AppConfigStore } from "./useAppConfig";
 import { SongRepository } from "../../adapters/filesystem/SongRepository";
 import type { Song, SongMetadata } from "../../domain/song";
 import type { Songbook } from "../../domain/songbook";
@@ -79,7 +79,11 @@ export type SongWorkspace = {
   dispose(): void;
 };
 
-function createSongWorkspace(): SongWorkspace {
+type SongWorkspaceDependencies = {
+  appConfig: AppConfigStore;
+};
+
+function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWorkspace {
   const activePanel = ref<"songbook" | "convert">("convert");
   const rawInput = ref("");
   const cleanedText = ref("");
@@ -122,7 +126,6 @@ function createSongWorkspace(): SongWorkspace {
   const parser = new ChordProParser();
   const songRepository = new SongRepository();
   const songbookService = new SongbookService(songRepository, parser);
-  const configRepository = new ConfigRepository();
   let unlistenWindowCloseRequested: null | (() => void) = null;
   let initializePromise: Promise<void> | null = null;
   let hasLoadedInitialConfig = false;
@@ -422,20 +425,45 @@ function createSongWorkspace(): SongWorkspace {
       isExportingSongbook.value = false;
     }
   }
-  function createProvider(model = "gemini-2.5-flash") {
-    try {
-      return new GeminiProvider(model);
-    } catch {
-      try {
-        return new OpenAIProvider("gpt-4.1-mini");
-      } catch {
-        return {
-          async generate() {
-            throw new Error("No LLM API key configured. Set OPENAI_API_KEY or GEMINI_API_KEY.");
-          }
-        };
-      }
+  function readOpenAiApiKeyFromEnvironment(): string | undefined {
+    const fromProcess = (
+      globalThis as { process?: { env?: Record<string, string | undefined> } }
+    ).process?.env?.OPENAI_API_KEY;
+
+    if (typeof fromProcess === "string" && fromProcess.trim().length > 0) {
+      return fromProcess.trim();
     }
+
+    const fromVite = import.meta.env?.VITE_OPENAI_API_KEY;
+    if (typeof fromVite === "string" && fromVite.trim().length > 0) {
+      return fromVite.trim();
+    }
+
+    return undefined;
+  }
+
+  function isOpenAiModel(model: string): boolean {
+    return model.startsWith("gpt-");
+  }
+
+  function createProvider(model = "gemini-2.5-flash") {
+    if (isOpenAiModel(model)) {
+      const openAiApiKey = readOpenAiApiKeyFromEnvironment();
+
+      if (!openAiApiKey) {
+        throw new Error("OPENAI_API_KEY is not set.");
+      }
+
+      return new OpenAIProvider(openAiApiKey, model);
+    }
+
+    const geminiApiKey = appConfig.apiKey.value;
+
+    if (!geminiApiKey) {
+      throw new Error("API key required to generate.");
+    }
+
+    return new GeminiProvider(geminiApiKey, model);
   }
 
   function createPipeline(model?: string): SongPipelineService {
@@ -542,7 +570,7 @@ function createSongWorkspace(): SongWorkspace {
     }
 
     try {
-      await configRepository.update({ lastSongbookPath: songbook.value.path });
+      await appConfig.setLastSongbookPath(songbook.value.path);
     } catch (err) {
       console.error("Could not persist lastSongbookPath.", err);
     }
@@ -555,7 +583,7 @@ function createSongWorkspace(): SongWorkspace {
     clearSongbookExportFeedback();
 
     try {
-      await configRepository.remove("lastSongbookPath");
+      await appConfig.clearLastSongbookPath();
     } catch (err) {
       console.error("Could not clear lastSongbookPath.", err);
     }
@@ -731,15 +759,14 @@ function createSongWorkspace(): SongWorkspace {
         return;
       }
 
-      const config = await configRepository.load();
       hasLoadedInitialConfig = true;
 
-      if (!config.lastSongbookPath || songbook.value) {
+      if (!appConfig.lastSongbookPath.value || songbook.value) {
         return;
       }
 
       try {
-        songbook.value = await songbookService.loadSongbook(config.lastSongbookPath);
+        songbook.value = await songbookService.loadSongbook(appConfig.lastSongbookPath.value);
       } catch {
         songbook.value = null;
       }
@@ -808,9 +835,17 @@ function createSongWorkspace(): SongWorkspace {
   };
 }
 
-const songWorkspace = createSongWorkspace();
+let songWorkspace: SongWorkspace | null = null;
 
-export function useSongWorkspace(): SongWorkspace {
+export function useSongWorkspace(dependencies?: SongWorkspaceDependencies): SongWorkspace {
+  if (!songWorkspace) {
+    if (!dependencies) {
+      throw new Error("Song workspace dependencies are not configured.");
+    }
+
+    songWorkspace = createSongWorkspace(dependencies);
+  }
+
   return songWorkspace;
 }
 
