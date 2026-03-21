@@ -93,6 +93,20 @@ Follow this process:
 5. Ensure the implementation remains consistent with existing code structure.
 
 
+# Editing Strategy And Patch Robustness
+
+When modifying code:
+
+- prefer replacing full logical blocks such as functions, components, or composables when the change is non-trivial
+- avoid string-based or line-by-line replacements when the file may already contain intermediate modifications
+- if a patch fails once or produces an unexpected diff, do not keep retrying the same approach; switch to rewriting the full block
+- re-read the current file content before applying critical edits and assume it may have changed since the initial inspection
+- avoid chained partial patch attempts; repeated small fixes increase the risk of subtle bugs
+- avoid regex-based fixes unless the transformation is trivial and strictly scoped
+- avoid line-index-based edits except as a last resort
+- when changing central or complex logic, prioritize clarity and determinism over the smallest possible diff
+
+
 # UI Changes
 
 When implementing UI features:
