@@ -130,10 +130,9 @@ Preview and export both rely on the same ChordPro renderer.
 Preview flow:
 
 ChordPro text
--> Tauri `generate_preview`
--> temporary `preview.cho`
--> ChordPro CLI
--> `preview.pdf`
+-> hash `chordProText`
+-> check persistent preview cache in `$APPCONFIG/cache/previews/<hash>.pdf`
+-> on cache miss: Tauri `generate_preview` -> temporary `preview.cho` -> ChordPro CLI -> `preview.pdf` -> persist cached PDF
 -> backend returns PDF bytes
 -> frontend `Blob` URL
 -> native WebView PDF viewer
@@ -145,7 +144,7 @@ ChordPro text
 -> if `.pdf`: Tauri `export_pdf` -> ChordPro CLI -> requested PDF
 -> if `.cho`: direct filesystem write without invoking the CLI
 
-This keeps preview and exported PDF aligned on the same renderer.
+This keeps preview and exported PDF aligned on the same renderer. The preview cache only wraps that existing CLI path; it does not introduce a second renderer or an alternative preview pipeline.
 
 All ChordPro CLI executions now also share the same global style configuration.
 

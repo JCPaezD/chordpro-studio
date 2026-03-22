@@ -61,6 +61,7 @@ type PreviewFrameId = "A" | "B";
 
 const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
 const PREVIEW_FRAME_TRANSITION_MS = 180;
+const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 
 const isPerformanceMode = ref(false);
 const showChordProEditor = ref(false);
@@ -112,6 +113,8 @@ const songbookSongs = computed(() => songbook.value?.songs ?? []);
 const songListRef = ref<HTMLElement | null>(null);
 const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const songbookSelectionIndex = ref(-1);
+const showPreviewLoadingIndicator = ref(false);
+let previewLoadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
   return frame === "A" ? "B" : "A";
@@ -230,6 +233,23 @@ function handlePreviewFrameLoad(frame: PreviewFrameId): void {
   }, PREVIEW_FRAME_SWAP_DELAY_MS);
 }
 
+watch(isGeneratingPreview, (value) => {
+  if (previewLoadingIndicatorTimer !== null) {
+    clearTimeout(previewLoadingIndicatorTimer);
+    previewLoadingIndicatorTimer = null;
+  }
+
+  if (value) {
+    previewLoadingIndicatorTimer = setTimeout(() => {
+      showPreviewLoadingIndicator.value = true;
+      previewLoadingIndicatorTimer = null;
+    }, PREVIEW_LOADING_INDICATOR_DELAY_MS);
+    return;
+  }
+
+  showPreviewLoadingIndicator.value = false;
+}, { immediate: true });
+
 watch(previewSrc, (nextUrl) => {
   cancelPendingPreviewSwap();
 
@@ -259,6 +279,12 @@ watch(previewSrc, (nextUrl) => {
 
 onBeforeUnmount(() => {
   emit("immersive-change", false);
+
+  if (previewLoadingIndicatorTimer !== null) {
+    clearTimeout(previewLoadingIndicatorTimer);
+    previewLoadingIndicatorTimer = null;
+  }
+
   clearAllPreviewFrames();
 });
 
@@ -748,7 +774,7 @@ async function clearApiKey(): Promise<void> {
               Preview and export require the Tauri desktop runtime.
             </p>
           </div>
-          <div v-else-if="!hasBufferedPreview && isGeneratingPreview" class="preview-state preview-loading-empty">
+          <div v-else-if="!hasBufferedPreview && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
             <div class="preview-loading-card">
               <span class="loading-spinner" aria-hidden="true" />
               <p class="message">Generating preview...</p>
@@ -780,7 +806,7 @@ async function clearApiKey(): Promise<void> {
             <div v-if="isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
               <span class="preview-refresh-spinner" />
             </div>
-            <div v-if="isGeneratingPreview" class="preview-loading-overlay">
+            <div v-if="showPreviewLoadingIndicator" class="preview-loading-overlay">
               <div class="preview-loading-card">
                 <span class="loading-spinner" aria-hidden="true" />
                 <p class="message">Generating preview...</p>

@@ -56,7 +56,7 @@
             Preview requires the Tauri desktop runtime.
           </p>
         </div>
-        <div v-else-if="!hasBufferedPreview && props.isGeneratingPreview" class="preview-state preview-loading-empty">
+        <div v-else-if="!hasBufferedPreview && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
           <div class="preview-loading-card">
             <span class="loading-spinner" aria-hidden="true" />
             <p class="message">Generating preview...</p>
@@ -108,7 +108,7 @@
               &darr;
             </button>
           </div>
-          <div v-if="props.isGeneratingPreview" class="preview-loading-overlay">
+          <div v-if="showPreviewLoadingIndicator" class="preview-loading-overlay">
             <div class="preview-loading-card">
               <span class="loading-spinner" aria-hidden="true" />
               <p class="message">Generating preview...</p>
@@ -128,6 +128,8 @@ import type { Songbook } from "../../domain/songbook";
 
 type PreviewFrameId = "A" | "B";
 type PdfViewMode = "fith" | "fitv";
+
+const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 
 const props = defineProps<{
   songbook: Songbook | null;
@@ -151,6 +153,8 @@ const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const performanceSelectionIndex = ref(-1);
 const isSongListOpen = ref(true);
 const pdfViewMode = ref<PdfViewMode>("fith");
+const showPreviewLoadingIndicator = ref(false);
+let previewLoadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
 const hasBufferedPreview = computed(() => !!props.previewFrameSrcA || !!props.previewFrameSrcB);
 const songEntries = computed(() => props.songbook?.songs ?? []);
 const canSelectPreviousSong = computed(() => performanceSelectionIndex.value > 0);
@@ -362,6 +366,27 @@ function handleWindowKeydown(event: KeyboardEvent): void {
 }
 
 watch(
+  () => props.isGeneratingPreview,
+  (value) => {
+    if (previewLoadingIndicatorTimer !== null) {
+      clearTimeout(previewLoadingIndicatorTimer);
+      previewLoadingIndicatorTimer = null;
+    }
+
+    if (value) {
+      previewLoadingIndicatorTimer = setTimeout(() => {
+        showPreviewLoadingIndicator.value = true;
+        previewLoadingIndicatorTimer = null;
+      }, PREVIEW_LOADING_INDICATOR_DELAY_MS);
+      return;
+    }
+
+    showPreviewLoadingIndicator.value = false;
+  },
+  { immediate: true }
+);
+
+watch(
   () => [props.songbook, props.selectedSongPath],
   () => {
     syncPerformanceSelection();
@@ -406,6 +431,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleWindowKeydown);
   window.removeEventListener("resize", updatePdfViewMode);
+
+  if (previewLoadingIndicatorTimer !== null) {
+    clearTimeout(previewLoadingIndicatorTimer);
+    previewLoadingIndicatorTimer = null;
+  }
+
   previewViewportObserver?.disconnect();
   previewViewportObserver = null;
 });

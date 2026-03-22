@@ -201,6 +201,12 @@ the documentation must be updated first.
 - whether it requires later validation: no, validated on 2026-03-21 with successful chord-only, mixed-content and full-flow manual tests
 
 - date: 2026-03-22
+- context: adding a persistent preview PDF cache around the existing ChordPro CLI preview flow
+- assumption made: preview caching should stay entirely inside the backend preview command, key cached files by a deterministic `SHA-256(chordProText)` hash under `$APPCONFIG/cache/previews/`, and fall back silently to normal CLI generation whenever cache read or cache write fails
+- reason for the assumption: this improves repeated preview performance across sessions without changing UI contracts, duplicating renderer logic or making cache errors user-visible
+- whether it requires later validation: no, validated on 2026-03-22 with successful cache hits, restart reuse and corrupted-cache fallback tests
+
+- date: 2026-03-22
 - context: refining songbook keyboard navigation in normal Songbook and performance mode
 - assumption made: keyboard-only song navigation should stay local to the UI layer by reusing existing selection state, using native `scrollIntoView()` for visibility, and letting performance mode open or close its overlay through `Enter`, `Esc` and `F11` without adding new workspace-level state
 - reason for the assumption: this improves real usage ergonomics while keeping navigation behavior deterministic and fully decoupled from services, preview generation and domain models
@@ -271,9 +277,11 @@ Preview failure behavior:
 - if preview generation fails, the previous valid preview remains visible
 - the frontend shows the backend error message returned by the failed preview command
 - while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
+- the backend now reuses a persistent preview cache under `$APPCONFIG/cache/previews/`, keyed by `SHA-256(chordProText)`, so unchanged previews can be returned without invoking the CLI again
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
 - User View `.cho` editor now refreshes preview with a debounced non-blocking path and keeps the current iframe/PDF visible while a new blob URL is loading
 - the User View preview now uses a local dual-iframe buffer with a short delayed swap so the next PDF can load before becoming visible, reducing flicker without changing the underlying native viewer approach
+- both `User` and Songbook performance mode now delay the visible `Generating preview...` overlay slightly, so instant cache hits do not produce a distracting loading flicker
 - even with the buffered swap, the native PDF viewer can still introduce small temporary editor stalls while a refreshed document is being loaded into the WebView
 - the current native PDF viewer approach still performs a full document reload when the iframe `src` changes; reducing that further would require a custom viewer outside the current architecture
 - Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and uses a pragmatic PDF fit heuristic (`fith` in tall previews, `fitv` in wide previews) because the native Edge/WebView PDF viewer did not apply `#view=fit` reliably in manual testing

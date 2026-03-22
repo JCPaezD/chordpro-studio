@@ -1,8 +1,10 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::{
   ffi::OsString,
   fs,
+  io,
   path::{Path, PathBuf},
   process::Command,
 };
@@ -14,6 +16,7 @@ use std::os::windows::process::CommandExt;
 const PREVIEW_CHO_FILENAME: &str = "preview.cho";
 const PREVIEW_PDF_FILENAME: &str = "preview.pdf";
 const EXPORT_CHO_FILENAME: &str = "export.cho";
+const PREVIEW_CACHE_FOLDER: &str = "cache/previews";
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -46,9 +49,18 @@ pub fn generate_preview(
   app: AppHandle,
   chordpro_text: String,
 ) -> Result<PreviewResponse, ChordProCommandError> {
-  let cache_dir = ensure_preview_dir(&app)?;
-  let input_path = cache_dir.join(PREVIEW_CHO_FILENAME);
-  let output_path = cache_dir.join(PREVIEW_PDF_FILENAME);
+  let preview_dir = ensure_preview_dir(&app)?;
+  let cache_path = preview_cache_file_path(&app, &chordpro_text)?;
+
+  if let Some(cached_pdf_bytes) = read_valid_cached_preview(&cache_path) {
+    return Ok(PreviewResponse {
+      pdf_path: cache_path.to_string_lossy().into_owned(),
+      pdf_base64: STANDARD.encode(cached_pdf_bytes),
+    });
+  }
+
+  let input_path = preview_dir.join(PREVIEW_CHO_FILENAME);
+  let output_path = preview_dir.join(PREVIEW_PDF_FILENAME);
 
   write_text_file(&input_path, &chordpro_text)?;
   run_chordpro_command(
@@ -60,15 +72,23 @@ pub fn generate_preview(
     ],
   )?;
 
+  let generated_pdf_bytes = fs::read(&output_path).map_err(|error| ChordProCommandError {
+    code: "PREVIEW_READ_ERROR".into(),
+    message: format!("Failed to read generated preview PDF: {error}"),
+    stdout: None,
+    stderr: None,
+    details: Some(output_path.to_string_lossy().into_owned()),
+  })?;
+
+  let response_path = if write_preview_cache_file(&cache_path, &generated_pdf_bytes).is_ok() {
+    cache_path
+  } else {
+    output_path
+  };
+
   Ok(PreviewResponse {
-    pdf_path: output_path.to_string_lossy().into_owned(),
-    pdf_base64: STANDARD.encode(fs::read(&output_path).map_err(|error| ChordProCommandError {
-      code: "PREVIEW_READ_ERROR".into(),
-      message: format!("Failed to read generated preview PDF: {error}"),
-      stdout: None,
-      stderr: None,
-      details: Some(output_path.to_string_lossy().into_owned()),
-    })?),
+    pdf_path: response_path.to_string_lossy().into_owned(),
+    pdf_base64: STANDARD.encode(generated_pdf_bytes),
   })
 }
 
@@ -151,6 +171,90 @@ fn ensure_preview_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> 
   })?;
 
   Ok(cache_dir)
+}
+
+fn ensure_preview_cache_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> {
+  let cache_dir = app
+    .path()
+    .app_config_dir()
+    .map_err(|error| ChordProCommandError {
+      code: "CACHE_DIRECTORY_ERROR".into(),
+      message: format!("Failed to resolve application config directory: {error}"),
+      stdout: None,
+      stderr: None,
+      details: None,
+    })?
+    .join(PREVIEW_CACHE_FOLDER);
+
+  fs::create_dir_all(&cache_dir).map_err(|error| ChordProCommandError {
+    code: "CACHE_DIRECTORY_ERROR".into(),
+    message: format!("Failed to prepare preview cache directory: {error}"),
+    stdout: None,
+    stderr: None,
+    details: Some(cache_dir.to_string_lossy().into_owned()),
+  })?;
+
+  Ok(cache_dir)
+}
+
+fn preview_cache_file_path(
+  app: &AppHandle,
+  chordpro_text: &str,
+) -> Result<PathBuf, ChordProCommandError> {
+  let cache_dir = ensure_preview_cache_dir(app)?;
+  let cache_key = hash_chordpro_text(chordpro_text);
+  Ok(cache_dir.join(format!("{cache_key}.pdf")))
+}
+
+fn hash_chordpro_text(chordpro_text: &str) -> String {
+  let mut hasher = Sha256::new();
+  hasher.update(chordpro_text.as_bytes());
+
+  hasher
+    .finalize()
+    .iter()
+    .map(|byte| format!("{byte:02x}"))
+    .collect()
+}
+
+fn read_valid_cached_preview(cache_path: &Path) -> Option<Vec<u8>> {
+  let metadata = fs::metadata(cache_path).ok()?;
+  if !metadata.is_file() || metadata.len() == 0 {
+    return None;
+  }
+
+  let bytes = fs::read(cache_path).ok()?;
+  if bytes.is_empty() || !bytes.starts_with(b"%PDF-") {
+    return None;
+  }
+
+  Some(bytes)
+}
+
+fn write_preview_cache_file(cache_path: &Path, pdf_bytes: &[u8]) -> io::Result<()> {
+  if pdf_bytes.is_empty() {
+    return Err(io::Error::new(io::ErrorKind::InvalidData, "Preview PDF is empty."));
+  }
+
+  if let Some(parent) = cache_path.parent() {
+    fs::create_dir_all(parent)?;
+  }
+
+  let mut temporary_path = cache_path.to_path_buf();
+  temporary_path.set_extension("pdf.tmp");
+
+  if temporary_path.exists() {
+    let _ = fs::remove_file(&temporary_path);
+  }
+
+  fs::write(&temporary_path, pdf_bytes)?;
+
+  if cache_path.exists() {
+    let _ = fs::remove_file(cache_path);
+  }
+
+  fs::rename(&temporary_path, cache_path)?;
+  Ok(())
 }
 
 fn ensure_output_directory(output_path: &Path) -> Result<(), ChordProCommandError> {
