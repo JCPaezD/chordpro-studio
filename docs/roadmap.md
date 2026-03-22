@@ -104,6 +104,17 @@ Current status:
 
 ## Current roadmap
 
+## v1.4 - Layout & rendering improvements
+
+- improve tab handling in multi-column layouts:
+  - detect `{columns: 2}` in final ChordPro output
+  - adapt `{tab}` blocks to avoid horizontal overflow
+  - preserve content while ensuring compatibility with multi-column rendering
+- unify preview fit behavior across views:
+  - apply automatic fit logic in Songbook view (not only performance mode)
+  - base the decision on the actual preview container size (not full window ratio)
+  - reuse existing fit strategy (`fit` / `fith` / `fitv`) without duplicating logic
+
 ## v1.x - Additional UX / dev improvements
 
 - add a side menu to the Playground to toggle panel visibility
@@ -127,6 +138,16 @@ Current status:
   - song ordering
   - song selection (checkboxes)
   - table of contents configuration
+
+## Distribution & installation (future)
+
+- improve local installation workflow:
+  - use installer-based setup (MSI / NSIS)
+  - allow upgrade over existing installations
+  - support uninstall / repair flows
+- automatic updates (long-term):
+  - evaluate auto-update mechanisms
+  - consider infrastructure and UX implications
 
 ---
 
