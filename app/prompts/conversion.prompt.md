@@ -67,6 +67,22 @@ When the input uses separate chord lines above lyric lines, interpret them as mo
 - Chord separators such as "-" are NOT lyrics and must NOT appear in the final output.
 - If a line contains only chords separated by "-", treat it as a chord-only line, ignore the separators and keep the chords.
 
+4b. Tablature
+
+If the input contains guitar or bass tablature, preserve it.
+
+- Do NOT delete tablature lines.
+- Do NOT convert tablature into lyric lines.
+- Wrap each tablature block using ChordPro tab block tags:
+  {start_of_tab}
+  ...tab lines...
+  {end_of_tab}
+- Keep tab lines in their original order.
+- Preserve the characters inside the tab lines exactly as much as possible.
+- Do NOT insert blank lines inside a tablature block unless they already exist in the source.
+- If the source contains separate tablature groups divided by blank lines, keep them as separate groups instead of merging them into a single continuous tab block.
+- Do NOT rewrite tablature as prose, comments or chord-only lines.
+
 5. Sections
 
 Use ChordPro block tags.

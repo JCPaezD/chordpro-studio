@@ -17,6 +17,8 @@ const PREVIEW_CHO_FILENAME: &str = "preview.cho";
 const PREVIEW_PDF_FILENAME: &str = "preview.pdf";
 const EXPORT_CHO_FILENAME: &str = "export.cho";
 const PREVIEW_CACHE_FOLDER: &str = "cache/previews";
+const DEFAULT_SINGLE_COLUMN_TAB_MAX_CHARS: usize = 70;
+const DEFAULT_MULTI_COLUMN_TAB_MAX_CHARS: usize = 35;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -50,7 +52,8 @@ pub fn generate_preview(
   chordpro_text: String,
 ) -> Result<PreviewResponse, ChordProCommandError> {
   let preview_dir = ensure_preview_dir(&app)?;
-  let cache_path = preview_cache_file_path(&app, &chordpro_text)?;
+  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
+  let cache_path = preview_cache_file_path(&app, &rendered_chordpro_text)?;
 
   if let Some(cached_pdf_bytes) = read_valid_cached_preview(&cache_path) {
     return Ok(PreviewResponse {
@@ -62,7 +65,7 @@ pub fn generate_preview(
   let input_path = preview_dir.join(PREVIEW_CHO_FILENAME);
   let output_path = preview_dir.join(PREVIEW_PDF_FILENAME);
 
-  write_text_file(&input_path, &chordpro_text)?;
+  write_text_file(&input_path, &rendered_chordpro_text)?;
   run_chordpro_command(
     &app,
     [
@@ -101,10 +104,11 @@ pub fn export_pdf(
   let cache_dir = ensure_preview_dir(&app)?;
   let input_path = cache_dir.join(EXPORT_CHO_FILENAME);
   let output_path = PathBuf::from(output_path);
+  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
 
   ensure_output_directory(&output_path)?;
 
-  write_text_file(&input_path, &chordpro_text)?;
+  write_text_file(&input_path, &rendered_chordpro_text)?;
   run_chordpro_command(
     &app,
     [
@@ -138,7 +142,12 @@ pub fn export_songbook_pdf(
   let output_path = PathBuf::from(output_path);
   ensure_output_directory(&output_path)?;
 
-  let mut args: Vec<OsString> = input_paths.into_iter().map(OsString::from).collect();
+  let preview_dir = ensure_preview_dir(&app)?;
+  let prepared_input_paths = prepare_songbook_render_inputs(&preview_dir, &input_paths)?;
+  let mut args: Vec<OsString> = prepared_input_paths
+    .iter()
+    .map(|path| path.as_os_str().to_os_string())
+    .collect();
   args.push(OsString::from("--output"));
   args.push(output_path.as_os_str().to_os_string());
 
@@ -171,6 +180,51 @@ fn ensure_preview_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> 
   })?;
 
   Ok(cache_dir)
+}
+
+fn prepare_songbook_render_inputs(
+  preview_dir: &Path,
+  input_paths: &[String],
+) -> Result<Vec<PathBuf>, ChordProCommandError> {
+  let rendered_inputs_dir = preview_dir.join("songbook-export-inputs");
+
+  if rendered_inputs_dir.exists() {
+    fs::remove_dir_all(&rendered_inputs_dir).map_err(|error| ChordProCommandError {
+      code: "CACHE_DIRECTORY_ERROR".into(),
+      message: format!("Failed to reset songbook export input directory: {error}"),
+      stdout: None,
+      stderr: None,
+      details: Some(rendered_inputs_dir.to_string_lossy().into_owned()),
+    })?;
+  }
+
+  fs::create_dir_all(&rendered_inputs_dir).map_err(|error| ChordProCommandError {
+    code: "CACHE_DIRECTORY_ERROR".into(),
+    message: format!("Failed to prepare songbook export input directory: {error}"),
+    stdout: None,
+    stderr: None,
+    details: Some(rendered_inputs_dir.to_string_lossy().into_owned()),
+  })?;
+
+  let mut prepared_input_paths = Vec::with_capacity(input_paths.len());
+
+  for (index, input_path) in input_paths.iter().enumerate() {
+    let source_path = PathBuf::from(input_path);
+    let chordpro_text = fs::read_to_string(&source_path).map_err(|error| ChordProCommandError {
+      code: "FILE_READ_ERROR".into(),
+      message: format!("Failed to read songbook source file: {error}"),
+      stdout: None,
+      stderr: None,
+      details: Some(source_path.to_string_lossy().into_owned()),
+    })?;
+    let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
+    let rendered_input_path = rendered_inputs_dir.join(format!("{:03}-render.cho", index + 1));
+
+    write_text_file(&rendered_input_path, &rendered_chordpro_text)?;
+    prepared_input_paths.push(rendered_input_path);
+  }
+
+  Ok(prepared_input_paths)
 }
 
 fn ensure_preview_cache_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> {
@@ -257,6 +311,224 @@ fn write_preview_cache_file(cache_path: &Path, pdf_bytes: &[u8]) -> io::Result<(
   Ok(())
 }
 
+fn preprocess_chordpro_for_render(chordpro_text: &str) -> String {
+  std::panic::catch_unwind(|| preprocess_chordpro_for_render_inner(chordpro_text))
+    .ok()
+    .and_then(Result::ok)
+    .unwrap_or_else(|| fallback_to_single_column(chordpro_text))
+}
+
+fn preprocess_chordpro_for_render_inner(chordpro_text: &str) -> Result<String, ()> {
+  let newline = if chordpro_text.contains("\r\n") { "\r\n" } else { "\n" };
+  let normalized = chordpro_text.replace("\r\n", "\n");
+  let had_trailing_newline = normalized.ends_with('\n');
+  let mut output_lines = Vec::new();
+  let mut current_columns = 1usize;
+  let mut tab_lines = Vec::new();
+  let mut in_tab_block = false;
+
+  for line in normalized.lines() {
+    let trimmed = line.trim();
+
+    if in_tab_block {
+      if is_tab_end(trimmed) {
+        output_lines.extend(split_tab_block(&tab_lines, current_columns)?);
+        tab_lines.clear();
+        in_tab_block = false;
+      } else if is_tab_start(trimmed) {
+        return Err(());
+      } else {
+        tab_lines.push(line.to_string());
+      }
+
+      continue;
+    }
+
+    if is_tab_start(trimmed) {
+      in_tab_block = true;
+      tab_lines.clear();
+      continue;
+    }
+
+    if let Some(columns) = parse_columns_directive(trimmed) {
+      current_columns = columns;
+    }
+
+    output_lines.push(line.to_string());
+  }
+
+  if in_tab_block {
+    return Err(());
+  }
+
+  let mut rendered = output_lines.join("\n");
+  if had_trailing_newline {
+    rendered.push('\n');
+  }
+
+  if newline == "\r\n" {
+    rendered = rendered.replace('\n', "\r\n");
+  }
+
+  Ok(rendered)
+}
+
+fn split_tab_block(tab_lines: &[String], columns: usize) -> Result<Vec<String>, ()> {
+  let mut groups: Vec<Vec<String>> = Vec::new();
+  let mut current_group = Vec::new();
+
+  for line in tab_lines {
+    if line.trim().is_empty() {
+      if !current_group.is_empty() {
+        groups.push(current_group);
+        current_group = Vec::new();
+      }
+      continue;
+    }
+
+    current_group.push(line.clone());
+  }
+
+  if !current_group.is_empty() {
+    groups.push(current_group);
+  }
+
+  if groups.is_empty() {
+    return Err(());
+  }
+
+  let mut split_blocks = Vec::new();
+
+  for group in groups {
+    if !split_blocks.is_empty() {
+      split_blocks.push(String::new());
+    }
+
+    split_blocks.extend(split_tab_line_group(&group, columns)?);
+  }
+
+  Ok(split_blocks)
+}
+
+fn split_tab_line_group(tab_lines: &[String], columns: usize) -> Result<Vec<String>, ()> {
+  let max_chars = max_chars_for_columns(columns);
+  let max_line_length = tab_lines
+    .iter()
+    .map(|line| line.chars().count())
+    .max()
+    .unwrap_or_default();
+
+  if max_line_length == 0 {
+    return Err(());
+  }
+
+  if max_line_length <= max_chars {
+    let mut original_block = Vec::with_capacity(tab_lines.len() + 2);
+    original_block.push("{start_of_tab}".into());
+    original_block.extend(tab_lines.iter().cloned());
+    original_block.push("{end_of_tab}".into());
+    return Ok(original_block);
+  }
+
+  let normalized_lines: Vec<Vec<char>> = tab_lines
+    .iter()
+    .map(|line| {
+      let mut chars: Vec<char> = line.chars().collect();
+      while chars.len() < max_line_length {
+        chars.push(' ');
+      }
+      chars
+    })
+    .collect();
+
+  let chunk_count = max_line_length.div_ceil(max_chars);
+  let base_chunk_width = max_line_length / chunk_count;
+  let wider_chunk_count = max_line_length % chunk_count;
+
+  let mut split_blocks = Vec::new();
+  let mut chunk_start = 0usize;
+
+  for chunk_index in 0..chunk_count {
+    if !split_blocks.is_empty() {
+      split_blocks.push(String::new());
+    }
+
+    let chunk_width = base_chunk_width + usize::from(chunk_index < wider_chunk_count);
+    let chunk_end = chunk_start + chunk_width;
+    split_blocks.push("{start_of_tab}".into());
+
+    for line_chars in &normalized_lines {
+      let chunk: String = line_chars[chunk_start..chunk_end].iter().collect();
+      split_blocks.push(chunk.trim_end_matches(' ').to_string());
+    }
+
+    split_blocks.push("{end_of_tab}".into());
+    chunk_start = chunk_end;
+  }
+
+  Ok(split_blocks)
+}
+
+fn max_chars_for_columns(columns: usize) -> usize {
+  match columns {
+    2 => DEFAULT_MULTI_COLUMN_TAB_MAX_CHARS,
+    1 => DEFAULT_SINGLE_COLUMN_TAB_MAX_CHARS,
+    _ => DEFAULT_SINGLE_COLUMN_TAB_MAX_CHARS,
+  }
+}
+
+fn fallback_to_single_column(chordpro_text: &str) -> String {
+  let newline = if chordpro_text.contains("\r\n") { "\r\n" } else { "\n" };
+  let normalized = chordpro_text.replace("\r\n", "\n");
+  let had_trailing_newline = normalized.ends_with('\n');
+  let mut output_lines = Vec::new();
+
+  for line in normalized.lines() {
+    if parse_columns_directive(line.trim()) == Some(2) {
+      output_lines.push("{columns: 1}".to_string());
+    } else {
+      output_lines.push(line.to_string());
+    }
+  }
+
+  let mut rendered = output_lines.join("\n");
+  if had_trailing_newline {
+    rendered.push('\n');
+  }
+
+  if newline == "\r\n" {
+    rendered = rendered.replace('\n', "\r\n");
+  }
+
+  rendered
+}
+
+fn parse_columns_directive(line: &str) -> Option<usize> {
+  let directive = line.strip_prefix('{')?.strip_suffix('}')?.trim();
+  let (name, value) = directive.split_once(':')?;
+
+  if !name.trim().eq_ignore_ascii_case("columns") {
+    return None;
+  }
+
+  value.trim().parse().ok()
+}
+
+fn is_tab_start(line: &str) -> bool {
+  is_directive(line, "start_of_tab") || is_directive(line, "sot") || is_directive(line, "tab")
+}
+
+fn is_tab_end(line: &str) -> bool {
+  is_directive(line, "end_of_tab")
+}
+
+fn is_directive(line: &str, expected: &str) -> bool {
+  line
+    .strip_prefix('{')
+    .and_then(|value| value.strip_suffix('}'))
+    .map(|value| value.trim().eq_ignore_ascii_case(expected))
+    .unwrap_or(false)
+}
 fn ensure_output_directory(output_path: &Path) -> Result<(), ChordProCommandError> {
   if let Some(parent) = output_path.parent() {
     fs::create_dir_all(parent).map_err(|error| ChordProCommandError {
@@ -478,6 +750,198 @@ fn configure_background_command(command: &mut Command) {
 
 #[cfg(not(target_os = "windows"))]
 fn configure_background_command(_command: &mut Command) {}
+
+#[cfg(test)]
+mod tests {
+  use super::preprocess_chordpro_for_render;
+
+  #[test]
+  fn leaves_short_tab_blocks_unchanged_in_two_columns() {
+    let input = "{columns: 2}\n{start_of_tab}\nE|--0--|\nB|--1--|\n{end_of_tab}\n";
+
+    assert_eq!(preprocess_chordpro_for_render(input), input);
+  }
+
+  #[test]
+  fn splits_long_tab_blocks_into_multiple_tab_sections() {
+    let line_a = "A".repeat(45);
+    let line_b = "B".repeat(45);
+    let line_c = "C".repeat(45);
+    let line_d = "D".repeat(45);
+    let input = format!(
+      "{{columns: 2}}
+{{start_of_tab}}
+{line_a}
+{line_b}
+{line_c}
+{line_d}
+{{end_of_tab}}
+"
+    );
+    let expected = format!(
+      "{{columns: 2}}
+{{start_of_tab}}
+{}
+{}
+{}
+{}
+{{end_of_tab}}
+
+{{start_of_tab}}
+{}
+{}
+{}
+{}
+{{end_of_tab}}
+",
+      "A".repeat(23),
+      "B".repeat(23),
+      "C".repeat(23),
+      "D".repeat(23),
+      "A".repeat(22),
+      "B".repeat(22),
+      "C".repeat(22),
+      "D".repeat(22)
+    );
+
+    assert_eq!(preprocess_chordpro_for_render(&input), expected);
+  }
+
+  #[test]
+  fn tracks_the_current_column_mode_per_tab_block() {
+    let long_tab = "X".repeat(50);
+    let input = format!(
+      "{{columns: 1}}
+{{start_of_tab}}
+{long_tab}
+{{end_of_tab}}
+{{columns: 2}}
+{{start_of_tab}}
+{long_tab}
+{{end_of_tab}}
+"
+    );
+    let expected = format!(
+      "{{columns: 1}}
+{{start_of_tab}}
+{long_tab}
+{{end_of_tab}}
+{{columns: 2}}
+{{start_of_tab}}
+{}
+{{end_of_tab}}
+
+{{start_of_tab}}
+{}
+{{end_of_tab}}
+",
+      "X".repeat(25),
+      "X".repeat(25)
+    );
+
+    assert_eq!(preprocess_chordpro_for_render(&input), expected);
+  }
+
+  #[test]
+  fn splits_two_line_tab_example_from_real_input() {
+    let input = "{columns: 2}\n{start_of_tab}\ne----------12--12------------12--12--------------12--12--14--14--12--12--\nb--14--14------------14--14------------14--14---------------------------(x2)\n{end_of_tab}\n";
+    let rendered = preprocess_chordpro_for_render(input);
+
+    assert_eq!(rendered.matches("{start_of_tab}").count(), 3);
+    assert!(rendered.contains("e----------12--12"));
+    assert!(rendered.contains("b--14--14"));
+    assert!(rendered.contains("(x2)"));
+  }
+
+  #[test]
+  fn splits_blank_line_separated_tab_groups_independently() {
+    let input = format!(
+      "{{columns: 2}}
+{{start_of_tab}}
+{}
+{}
+
+{}
+{}
+{{end_of_tab}}
+",
+      "A".repeat(45),
+      "B".repeat(45),
+      "C".repeat(45),
+      "D".repeat(45)
+    );
+    let expected = format!(
+      "{{columns: 2}}
+{{start_of_tab}}
+{}
+{}
+{{end_of_tab}}
+
+{{start_of_tab}}
+{}
+{}
+{{end_of_tab}}
+
+{{start_of_tab}}
+{}
+{}
+{{end_of_tab}}
+
+{{start_of_tab}}
+{}
+{}
+{{end_of_tab}}
+",
+      "A".repeat(23),
+      "B".repeat(23),
+      "A".repeat(22),
+      "B".repeat(22),
+      "C".repeat(23),
+      "D".repeat(23),
+      "C".repeat(22),
+      "D".repeat(22)
+    );
+
+    assert_eq!(preprocess_chordpro_for_render(&input), expected);
+  }
+
+  #[test]
+  fn splits_six_line_tab_example_from_real_input() {
+    let input = "{columns: 2}
+{start_of_tab}
+E|------------------------------------------|
+B|-------------------1---1---1---1----------|
+G|-2---2---2---2-----0---0---0---0----------|
+D|-3---3---3---3-----2---2---2---2----------|
+A|-3---3---3---3-----3-3-3-3-3-3-3-3--------|
+E|-1-1-1-1-1-1-1-1--------------------------|
+{end_of_tab}
+
+{start_of_tab}
+E|------------------------------------------|
+B|-1---1---1---1----------------------------|
+G|-3---3---3---3-----2---2---2---2----------|
+D|-2---2---2---2-----3---3---3---3----------|
+A|-3-3-3-3-3-3-3-3---3---3---3---3----------|
+E|-------------------1-1-1-1-1-1-1-1--------|
+{end_of_tab}
+";
+    let rendered = preprocess_chordpro_for_render(input);
+
+    assert_eq!(rendered.matches("{start_of_tab}").count(), 4);
+    assert!(rendered.contains("E|----------------"));
+    assert!(rendered.contains("A|-3-3-3-3-3-3-3-3"));
+    assert!(rendered.contains("1-1-1-1-1-1-1-1"));
+  }
+
+  #[test]
+  fn falls_back_to_single_column_on_malformed_tab_blocks() {
+    let input = "{columns: 2}\n{start_of_tab}\nE|-----\n";
+    let expected = "{columns: 1}\n{start_of_tab}\nE|-----\n";
+
+    assert_eq!(preprocess_chordpro_for_render(input), expected);
+  }
+}
 
 fn resolve_existing_resource(candidate_paths: &[PathBuf]) -> Option<PathBuf> {
   candidate_paths.iter().find(|path| path.is_file()).cloned()

@@ -144,7 +144,7 @@ ChordPro text
 -> if `.pdf`: Tauri `export_pdf` -> ChordPro CLI -> requested PDF
 -> if `.cho`: direct filesystem write without invoking the CLI
 
-This keeps preview and exported PDF aligned on the same renderer. The preview cache only wraps that existing CLI path; it does not introduce a second renderer or an alternative preview pipeline.
+This keeps preview and exported PDF aligned on the same renderer. Before the CLI runs, the backend now also preprocesses explicit `{start_of_tab}` blocks with heuristic balanced splitting so long tabs fit more safely in one- and two-column layouts for preview, single-song export and songbook export without modifying the source `.cho` files. The preview cache only wraps that existing CLI path; it does not introduce a second renderer or an alternative preview pipeline.
 
 All ChordPro CLI executions now also share the same global style configuration.
 

@@ -56,6 +56,7 @@ Current status:
 - v1.3 songbook navigation now keeps keyboard selection visible with smooth auto-scroll, and performance mode can be entered fully from the keyboard through `F11`, `Enter`, `Esc` and list navigation keys
 - v1.3 preview generation now reuses a persistent PDF cache keyed by `chordProText`, so unchanged previews survive app restarts and cache hits avoid unnecessary ChordPro CLI execution
 - v1.3 light UX refinement completed with clearer Songbook and Preview empty states, a stronger folder-entry call to action, and lower-weight preview guidance without changing the panel layout
+- v1.4 smart tab splitting is now applied to explicit `{start_of_tab}` blocks in preview, single-song PDF export and songbook PDF export, using balanced heuristic chunking for one- and two-column layouts plus a silent single-column fallback for malformed tab blocks
 
 ## Completed work
 
@@ -126,10 +127,6 @@ Current status:
 
 ### Rendering & layout quality
 
-- improve tab handling in multi-column layouts:
-  - detect `{columns: 2}` in final ChordPro output
-  - adapt `{tab}` blocks to avoid horizontal overflow
-  - preserve content without breaking layout
 - unify preview fit behavior across all views:
   - apply automatic fit logic in Songbook and Convert views
   - base decision on preview container (iframe), not window size

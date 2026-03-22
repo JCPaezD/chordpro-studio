@@ -464,3 +464,13 @@ Future improvements kept explicitly out of this phase:
 - assumption made: when the Windows patch/editing infrastructure fails at the tool level, the safest fallback is to stop retrying patch variants and switch to a single deterministic rewrite after re-reading the target file
 - reason for the assumption: this prevents version reuse across rebuilds, keeps installer metadata aligned, avoids fragile edit retries in Windows sessions, and was validated end-to-end with a clean `1.3.1 -> 1.3.2` MSI upgrade that preserved a single installed application entry
 - whether it requires later validation: no
+
+- date: 2026-03-22
+- context: adding a safe pre-render smart split for `{start_of_tab}` blocks before invoking the bundled ChordPro CLI
+- assumption made: preview and single-song PDF export should preprocess only `{start_of_tab}` ... `{end_of_tab}` blocks (accepting common aliases such as `sot` / `tab` on input), track the active `{columns: N}` directive in the current ChordPro text, split blank-line-separated tab groups independently, pad tab lines to equal width, and split long multi-line tab sections horizontally into multiple balanced `{start_of_tab}` blocks when the estimated character width for the current column mode would overflow
+- assumption made: the width limit should stay estimation-based for now (`70` chars in single-column mode, `35` in two-column mode) instead of reading `style.json`, and any malformed tab structure or unexpected preprocessing failure should silently fall back to `{columns: 1}` without trying to rewrite other content
+- reason for the assumption: this keeps the transformation deterministic and localized to render input, avoids touching original `.cho` files, preserves the existing preview/export pipeline, and improves multi-column tab compatibility without adding a style-driven pagination system
+- whether it requires later validation: no, validated on 2026-03-22 with manual preview and export tests in one-column, two-column and songbook-export scenarios, including blank-line-separated tab groups
+- current limitation: preprocessing only applies to explicit `{start_of_tab}` / `{end_of_tab}` blocks and uses estimated width thresholds instead of style-derived measurements
+- current limitation: split tabs preserve original line content and do not synthesize repeated string headers or closing bar fragments when a block is divided
+- future improvement: derive the effective tab width from `style.json` page size, margins, column settings and fonts instead of relying on fixed character estimates
