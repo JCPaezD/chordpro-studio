@@ -201,6 +201,12 @@ the documentation must be updated first.
 - whether it requires later validation: no, validated on 2026-03-21 with successful chord-only, mixed-content and full-flow manual tests
 
 - date: 2026-03-22
+- context: refining songbook keyboard navigation in normal Songbook and performance mode
+- assumption made: keyboard-only song navigation should stay local to the UI layer by reusing existing selection state, using native `scrollIntoView()` for visibility, and letting performance mode open or close its overlay through `Enter`, `Esc` and `F11` without adding new workspace-level state
+- reason for the assumption: this improves real usage ergonomics while keeping navigation behavior deterministic and fully decoupled from services, preview generation and domain models
+- whether it requires later validation: no, validated on 2026-03-22 with successful keyboard navigation, smooth auto-scroll and performance-mode toggle tests
+
+- date: 2026-03-22
 - context: persisting and restoring the last opened song from the songbook at startup
 - assumption made: startup restoration should reuse the normal song-opening flow and only reopen the last song when both the persisted songbook path and the persisted song path are still valid on disk, while missing files should be ignored silently and fall back to an empty Songbook selection
 - reason for the assumption: this improves startup workflow without duplicating parsing or preview logic and keeps stale filesystem state from blocking launch

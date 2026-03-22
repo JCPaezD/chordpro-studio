@@ -285,6 +285,8 @@ The preview panel remains visible while the left panel changes.
 - song list
 - `.cho` editor for the selected song
 - optional performance mode inside `User`, reusing the same workspace and preview pipeline with an overlay song list and maximized PDF viewer
+- song lists in both normal Songbook and performance mode keep the keyboard selection visible through local UI-managed auto-scroll, without adding new shared state or changing workspace behavior
+- performance mode keyboard flow remains local to the view, including list focus handoff through `Enter`, overlay close with `Esc`, and optional `F11` toggle entry when Songbook is available
 
 ---
 

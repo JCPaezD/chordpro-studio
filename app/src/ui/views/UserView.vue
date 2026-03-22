@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
@@ -108,6 +108,10 @@ const songbookEditorSubtitle = computed(() =>
 );
 
 const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
+const songbookSongs = computed(() => songbook.value?.songs ?? []);
+const songListRef = ref<HTMLElement | null>(null);
+const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
+const songbookSelectionIndex = ref(-1);
 
 function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
   return frame === "A" ? "B" : "A";
@@ -288,12 +292,128 @@ watch(isPerformanceMode, (value) => {
   emit("immersive-change", value);
 }, { immediate: true });
 
-async function openSongFromSongbook(filePath: string): Promise<void> {
+onMounted(() => {
+  window.addEventListener("keydown", handleWindowKeydown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleWindowKeydown);
+});
+
+function syncSongbookSelection(): void {
+  const songs = songbookSongs.value;
+
+  if (songs.length === 0) {
+    songbookSelectionIndex.value = -1;
+    return;
+  }
+
+  const selectedIndex = selectedSongPath.value
+    ? songs.findIndex((songEntry) => songEntry.filePath === selectedSongPath.value)
+    : -1;
+
+  if (selectedIndex >= 0) {
+    songbookSelectionIndex.value = selectedIndex;
+    return;
+  }
+
+  if (songbookSelectionIndex.value < 0 || songbookSelectionIndex.value >= songs.length) {
+    songbookSelectionIndex.value = 0;
+  }
+}
+
+function setSongItemRef(index: number) {
+  return (element: Element | null): void => {
+    songItemRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
+  };
+}
+
+function scrollSongbookSelectionIntoView(): void {
+  const index = songbookSelectionIndex.value;
+  if (index < 0) {
+    return;
+  }
+
+  void nextTick(() => {
+    songItemRefs.value[index]?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth"
+    });
+  });
+}
+
+function handleSongbookListFocus(): void {
+  syncSongbookSelection();
+}
+
+function handleSongbookListKeydown(event: KeyboardEvent): void {
+  const songs = songbookSongs.value;
+  if (songs.length === 0) {
+    return;
+  }
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    songbookSelectionIndex.value = Math.min(songbookSelectionIndex.value + 1, songs.length - 1);
+    scrollSongbookSelectionIntoView();
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    songbookSelectionIndex.value = Math.max(songbookSelectionIndex.value - 1, 0);
+    scrollSongbookSelectionIntoView();
+    return;
+  }
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const selectedSong = songs[songbookSelectionIndex.value];
+    if (selectedSong) {
+      void openSongFromSongbook(selectedSong.filePath, { restoreListFocus: true });
+    }
+  }
+}
+
+watch(
+  () => [songbook.value, selectedSongPath.value],
+  () => {
+    syncSongbookSelection();
+    songItemRefs.value = songItemRefs.value.slice(0, songbookSongs.value.length);
+  },
+  { immediate: true }
+);
+
+async function openSongFromSongbook(filePath: string, options?: { restoreListFocus?: boolean }): Promise<void> {
   await openSongFile(filePath);
+
+  if (options?.restoreListFocus) {
+    void nextTick(() => {
+      songListRef.value?.focus();
+    });
+  }
 }
 
 async function openSongInPerformanceMode(filePath: string): Promise<void> {
   await openSongFile(filePath, { bypassUnsavedChanges: true });
+}
+
+function handleWindowKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+    return;
+  }
+
+  if (event.key !== "F11") {
+    return;
+  }
+
+  if (!songbook.value) {
+    return;
+  }
+
+  event.preventDefault();
+  setActivePanel("songbook");
+  isPerformanceMode.value = !isPerformanceMode.value;
 }
 
 async function toggleConversionMode(): Promise<void> {
@@ -544,15 +664,22 @@ async function clearApiKey(): Promise<void> {
                     <p>{{ songbook.songs.length }} files</p>
                   </div>
                 </div>
-                <div class="song-list-body">
+                <div
+                  ref="songListRef"
+                  class="song-list-body"
+                  tabindex="0"
+                  @focus="handleSongbookListFocus"
+                  @keydown="handleSongbookListKeydown"
+                >
                   <div v-if="songbook.songs.length === 0" class="songbook-empty">
                     No `.cho` files were found in this folder.
                   </div>
                   <button
-                    v-for="songEntry in songbook.songs"
+                    v-for="(songEntry, index) in songbook.songs"
                     :key="songEntry.filePath"
-                    :class="['song-item', { active: selectedSongPath === songEntry.filePath }]"
-                    @click="openSongFromSongbook(songEntry.filePath)"
+                    :ref="setSongItemRef(index)"
+                    :class="['song-item', { active: songbookSelectionIndex === index }]"
+                    @click="openSongFromSongbook(songEntry.filePath, { restoreListFocus: true })"
                   >
                     {{ songEntry.displayTitle }}
                   </button>
@@ -1103,6 +1230,12 @@ async function clearApiKey(): Promise<void> {
   gap: 0.75rem;
   overflow: auto;
   padding-right: 0.25rem;
+  outline: none;
+}
+
+.song-list-body:focus-visible {
+  outline: 2px solid rgba(55, 81, 59, 0.35);
+  outline-offset: 0.18rem;
 }
 
 .song-item {

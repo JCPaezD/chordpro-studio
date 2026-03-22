@@ -36,6 +36,7 @@
             <button
               v-for="(songEntry, index) in props.songbook.songs"
               :key="songEntry.filePath"
+              :ref="setSongItemRef(index)"
               :class="['song-item', { active: performanceSelectionIndex === index }]"
               @click="void selectSong(index, true)"
             >
@@ -49,7 +50,7 @@
         </div>
       </aside>
 
-      <div ref="previewViewportRef" class="preview-content">
+      <div ref="previewViewportRef" class="preview-content" tabindex="-1">
         <div v-if="!isTauri()" class="preview-state">
           <p class="message">
             Preview requires the Tauri desktop runtime.
@@ -146,6 +147,7 @@ const props = defineProps<{
 
 const songListRef = ref<HTMLElement | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
+const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const performanceSelectionIndex = ref(-1);
 const isSongListOpen = ref(true);
 const pdfViewMode = ref<PdfViewMode>("fith");
@@ -215,13 +217,43 @@ function focusSongList(): void {
   });
 }
 
+function focusPreviewViewport(): void {
+  void nextTick(() => {
+    previewViewportRef.value?.focus();
+  });
+}
+
+function setSongItemRef(index: number) {
+  return (element: Element | null): void => {
+    songItemRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
+  };
+}
+
+function scrollPerformanceSelectionIntoView(): void {
+  const index = performanceSelectionIndex.value;
+  if (index < 0) {
+    return;
+  }
+
+  void nextTick(() => {
+    songItemRefs.value[index]?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth"
+    });
+  });
+}
+
 function openSongList(): void {
   isSongListOpen.value = true;
   focusSongList();
 }
 
-function closeSongList(): void {
+function closeSongList(options?: { focusPreview?: boolean }): void {
   isSongListOpen.value = false;
+
+  if (options?.focusPreview) {
+    focusPreviewViewport();
+  }
 }
 
 function toggleSongList(): void {
@@ -243,7 +275,7 @@ async function selectSong(index: number, closeListAfterOpen = false): Promise<vo
   await props.openSong(songEntry.filePath);
 
   if (closeListAfterOpen) {
-    closeSongList();
+    closeSongList({ focusPreview: true });
     return;
   }
 
@@ -273,12 +305,14 @@ function handleSongListKeydown(event: KeyboardEvent): void {
   if (event.key === "ArrowDown") {
     event.preventDefault();
     performanceSelectionIndex.value = Math.min(performanceSelectionIndex.value + 1, songs.length - 1);
+    scrollPerformanceSelectionIntoView();
     return;
   }
 
   if (event.key === "ArrowUp") {
     event.preventDefault();
     performanceSelectionIndex.value = Math.max(performanceSelectionIndex.value - 1, 0);
+    scrollPerformanceSelectionIntoView();
     return;
   }
 
@@ -297,11 +331,17 @@ function handleWindowKeydown(event: KeyboardEvent): void {
     event.preventDefault();
 
     if (isSongListOpen.value) {
-      closeSongList();
+      closeSongList({ focusPreview: true });
       return;
     }
 
     props.exitPerformanceMode();
+    return;
+  }
+
+  if (!isSongListOpen.value && event.key === "Enter") {
+    event.preventDefault();
+    openSongList();
     return;
   }
 
@@ -325,6 +365,7 @@ watch(
   () => [props.songbook, props.selectedSongPath],
   () => {
     syncPerformanceSelection();
+    songItemRefs.value = songItemRefs.value.slice(0, songEntries.value.length);
   },
   { immediate: true }
 );
