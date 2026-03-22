@@ -40,6 +40,7 @@ export type SongWorkspace = {
   songJson: Ref<string>;
   loading: Ref<boolean>;
   isGeneratingPreview: Ref<boolean>;
+  isRefreshingPreview: Ref<boolean>;
   isExportingSongbook: Ref<boolean>;
   error: Ref<string>;
   songbookError: Ref<string>;
@@ -62,7 +63,7 @@ export type SongWorkspace = {
   initialize(): Promise<void>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
-  refreshPreview(chordPro: string): Promise<void>;
+  refreshPreview(chordPro: string, options?: { manageLoadingState?: boolean; requestId?: number; refreshingState?: boolean }): Promise<void>;
   clearGeneratedState(): void;
   clearAllState(): void;
   exportCurrent(): Promise<void>;
@@ -90,6 +91,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const songJson = ref("");
   const loading = ref(false);
   const isGeneratingPreview = ref(false);
+  const isRefreshingPreview = ref(false);
   const isExportingSongbook = ref(false);
   const error = ref("");
   const songbookError = ref("");
@@ -129,6 +131,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let unlistenWindowCloseRequested: null | (() => void) = null;
   let initializePromise: Promise<void> | null = null;
   let hasLoadedInitialConfig = false;
+  let previewRefreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let previewRequestId = 0;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -143,20 +147,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   });
 
-  function revokePreviewUrl(): void {
-    if (previewSrc.value.startsWith("blob:")) {
-      URL.revokeObjectURL(previewSrc.value);
+  function revokePreviewUrl(url = previewSrc.value): void {
+    if (url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
     }
   }
 
   function createPdfBlobUrl(pdfBase64: string): string {
-    const binary = atob(pdfBase64);
-    const bytes = new Uint8Array(binary.length);
-
-    for (let index = 0; index < binary.length; index += 1) {
-      bytes[index] = binary.charCodeAt(index);
-    }
-
+    const bytes = Uint8Array.from(atob(pdfBase64), (character) => character.charCodeAt(0));
     return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
   }
 
@@ -194,6 +192,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   function replaceDocument(nextDocument: WorkspaceDocument): void {
+    cancelPendingPreviewRefresh();
     document.value = nextDocument;
     songJson.value = nextDocument.song ? JSON.stringify(nextDocument.song, null, 2) : "";
   }
@@ -217,20 +216,76 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     };
   }
 
-  async function refreshPreview(chordPro: string, manageLoadingState = true): Promise<void> {
+  function cancelPendingPreviewRefresh(): void {
+    previewRequestId += 1;
+
+    if (previewRefreshDebounceTimer !== null) {
+      clearTimeout(previewRefreshDebounceTimer);
+      previewRefreshDebounceTimer = null;
+    }
+
+    isRefreshingPreview.value = false;
+  }
+
+  function syncDocumentSongFromChordPro(chordPro: string): void {
+    try {
+      const parsedSong = parser.parse(chordPro);
+      document.value = {
+        ...document.value,
+        chordProText: chordPro,
+        song: parsedSong
+      };
+      songJson.value = JSON.stringify(parsedSong, null, 2);
+    } catch {
+      document.value = {
+        ...document.value,
+        chordProText: chordPro
+      };
+    }
+  }
+
+  async function refreshPreview(
+    chordPro: string,
+    options?: {
+      manageLoadingState?: boolean;
+      requestId?: number;
+      refreshingState?: boolean;
+    }
+  ): Promise<void> {
+    const manageLoadingState = options?.manageLoadingState ?? true;
+    const requestId = options?.requestId;
+    const refreshingState = options?.refreshingState ?? false;
     previewError.value = "";
 
     if (manageLoadingState) {
       isGeneratingPreview.value = true;
     }
 
+    if (refreshingState) {
+      isRefreshingPreview.value = true;
+    }
+
     try {
       const preview = await chordproAdapter.generatePreview(chordPro);
+
+      if (requestId !== undefined && requestId !== previewRequestId) {
+        return;
+      }
+
       const nextPreviewUrl = createPdfBlobUrl(preview.pdfBase64);
-      revokePreviewUrl();
+
+      if (requestId !== undefined && requestId !== previewRequestId) {
+        URL.revokeObjectURL(nextPreviewUrl);
+        return;
+      }
+
       previewPath.value = preview.pdfPath;
       previewSrc.value = nextPreviewUrl;
     } catch (err) {
+      if (requestId !== undefined && requestId !== previewRequestId) {
+        return;
+      }
+
       const detail = err instanceof Error ? err.message.trim() : "";
       previewError.value = detail
         ? `Preview generation failed: ${detail}`
@@ -239,7 +294,39 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       if (manageLoadingState) {
         isGeneratingPreview.value = false;
       }
+
+      if (refreshingState && requestId === previewRequestId) {
+        isRefreshingPreview.value = false;
+      }
     }
+  }
+
+  function schedulePreviewRefreshFromEditor(chordPro: string): void {
+    if (!isTauri()) {
+      return;
+    }
+
+    if (previewRefreshDebounceTimer !== null) {
+      clearTimeout(previewRefreshDebounceTimer);
+      previewRefreshDebounceTimer = null;
+    }
+
+    if (!chordPro.trim()) {
+      isRefreshingPreview.value = false;
+      return;
+    }
+
+    const requestId = previewRequestId + 1;
+    previewRequestId = requestId;
+
+    previewRefreshDebounceTimer = setTimeout(() => {
+      previewRefreshDebounceTimer = null;
+      void refreshPreview(chordPro, {
+        manageLoadingState: false,
+        requestId,
+        refreshingState: true
+      });
+    }, 750);
   }
 
   function clearGeneratedState(): void {
@@ -569,7 +656,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         })
       );
       retryLog.value = result.retryLog ?? [];
-      await refreshPreview(result.chordPro, false);
+      await refreshPreview(result.chordPro, { manageLoadingState: false });
     } catch (err) {
       if (err instanceof ChordProValidationError) {
         validationReason.value = err.details?.reason ?? "";
@@ -594,6 +681,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   async function previewFromChordPro(): Promise<void> {
+    cancelPendingPreviewRefresh();
     clearOperationMessages();
 
     if (!document.value.chordProText) {
@@ -601,24 +689,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return;
     }
 
-    try {
-      const parsedSong = parser.parse(document.value.chordProText);
-      replaceDocument(
-        createDocumentFromChordPro(document.value.chordProText, {
-          filePath: document.value.filePath,
-          song: parsedSong,
-          dirty: document.value.dirty
-        })
-      );
-    } catch {
-      // Keep the last valid parsed song if the current draft is not parseable.
-    }
-
+    syncDocumentSongFromChordPro(document.value.chordProText);
     await refreshPreview(document.value.chordProText);
   }
 
   function setChordProText(value: string): void {
     chordProText.value = value;
+    syncDocumentSongFromChordPro(value);
+    schedulePreviewRefreshFromEditor(value);
   }
 
   async function refreshSongbook(): Promise<void> {
@@ -860,6 +938,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
   function dispose(): void {
+    cancelPendingPreviewRefresh();
+
     if (unlistenWindowCloseRequested) {
       unlistenWindowCloseRequested();
       unlistenWindowCloseRequested = null;
@@ -876,6 +956,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     songJson,
     loading,
     isGeneratingPreview,
+    isRefreshingPreview,
     isExportingSongbook,
     error,
     songbookError,
@@ -929,7 +1010,5 @@ export function useSongWorkspace(dependencies?: SongWorkspaceDependencies): Song
 
   return songWorkspace;
 }
-
-
 
 

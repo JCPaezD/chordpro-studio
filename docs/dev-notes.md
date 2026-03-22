@@ -254,6 +254,10 @@ Preview failure behavior:
 - the frontend shows the backend error message returned by the failed preview command
 - while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
+- User View `.cho` editor now refreshes preview with a debounced non-blocking path and keeps the current iframe/PDF visible while a new blob URL is loading
+- the User View preview now uses a local dual-iframe buffer with a short delayed swap so the next PDF can load before becoming visible, reducing flicker without changing the underlying native viewer approach
+- even with the buffered swap, the native PDF viewer can still introduce small temporary editor stalls while a refreshed document is being loaded into the WebView
+- the current native PDF viewer approach still performs a full document reload when the iframe `src` changes; reducing that further would require a custom viewer outside the current architecture
 
 Bundled CLI expectation:
 
@@ -413,4 +417,5 @@ Future improvements kept explicitly out of this phase:
 - assumption made: the Playground should follow the same fixed-height shell rules as the User view while remaining a DEV-only internal tool, so production UX always starts and stays in `User` mode without exposing the extra toggle, while production User mode also hides the `Workspace` eyebrow that only helps differentiate views in development
 - reason for the assumption: this preserves the debugging workflow during development but removes non-product UI from the release build without duplicating workspace state
 - whether it requires later validation: yes
+
 

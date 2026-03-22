@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
@@ -24,6 +24,7 @@ const {
   chordProText,
   loading,
   isGeneratingPreview,
+  isRefreshingPreview,
   isExportingSongbook,
   error,
   previewSrc,
@@ -53,11 +54,24 @@ const {
   setActivePanel
 } = useSongWorkspace();
 
+type PreviewFrameId = "A" | "B";
+
+const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
+const PREVIEW_FRAME_TRANSITION_MS = 180;
+
 const showChordProEditor = ref(false);
 const showApiKeyModal = ref(false);
 const apiKeyDraft = ref("");
 const apiKeyFeedback = ref("");
 const isSavingApiKey = ref(false);
+const activePreviewFrame = ref<PreviewFrameId>("A");
+const pendingPreviewFrame = ref<PreviewFrameId | null>(null);
+const previewFrameSrcA = ref("");
+const previewFrameSrcB = ref("");
+let previewFrameCleanupTimerA: ReturnType<typeof setTimeout> | null = null;
+let previewFrameCleanupTimerB: ReturnType<typeof setTimeout> | null = null;
+let previewFrameSwapTimer: ReturnType<typeof setTimeout> | null = null;
+let previewFrameSwapToken = 0;
 
 const conversionMode = computed<ConversionMode>(() => appConfig.conversionMode.value ?? "quality");
 const configLoading = computed(() => appConfig.loading.value);
@@ -88,6 +102,156 @@ const songbookEditorTitle = computed(() => {
 const songbookEditorSubtitle = computed(() =>
   document.value.fileName || "Open a song from the list to edit its `.cho` content."
 );
+
+const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
+
+function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
+  return frame === "A" ? "B" : "A";
+}
+
+function getPreviewFrameSrc(frame: PreviewFrameId): string {
+  return frame === "A" ? previewFrameSrcA.value : previewFrameSrcB.value;
+}
+
+function setPreviewFrameSrc(frame: PreviewFrameId, value: string): void {
+  if (frame === "A") {
+    previewFrameSrcA.value = value;
+    return;
+  }
+
+  previewFrameSrcB.value = value;
+}
+
+function revokeBlobUrl(url: string): void {
+  if (url.startsWith("blob:")) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function clearPreviewFrameCleanup(frame: PreviewFrameId): void {
+  if (frame === "A" && previewFrameCleanupTimerA !== null) {
+    clearTimeout(previewFrameCleanupTimerA);
+    previewFrameCleanupTimerA = null;
+    return;
+  }
+
+  if (frame === "B" && previewFrameCleanupTimerB !== null) {
+    clearTimeout(previewFrameCleanupTimerB);
+    previewFrameCleanupTimerB = null;
+  }
+}
+
+function releasePreviewFrame(frame: PreviewFrameId): void {
+  const url = getPreviewFrameSrc(frame);
+  if (!url) {
+    return;
+  }
+
+  setPreviewFrameSrc(frame, "");
+
+  if (url !== getPreviewFrameSrc(getInactivePreviewFrame(frame))) {
+    revokeBlobUrl(url);
+  }
+}
+
+function cancelPendingPreviewSwap(): void {
+  previewFrameSwapToken += 1;
+
+  if (previewFrameSwapTimer !== null) {
+    clearTimeout(previewFrameSwapTimer);
+    previewFrameSwapTimer = null;
+  }
+}
+
+function schedulePreviewFrameRelease(frame: PreviewFrameId): void {
+  clearPreviewFrameCleanup(frame);
+
+  const timer = setTimeout(() => {
+    releasePreviewFrame(frame);
+
+    if (frame === "A") {
+      previewFrameCleanupTimerA = null;
+    } else {
+      previewFrameCleanupTimerB = null;
+    }
+  }, PREVIEW_FRAME_TRANSITION_MS);
+
+  if (frame === "A") {
+    previewFrameCleanupTimerA = timer;
+    return;
+  }
+
+  previewFrameCleanupTimerB = timer;
+}
+
+function clearAllPreviewFrames(): void {
+  cancelPendingPreviewSwap();
+  clearPreviewFrameCleanup("A");
+  clearPreviewFrameCleanup("B");
+  releasePreviewFrame("A");
+  releasePreviewFrame("B");
+  pendingPreviewFrame.value = null;
+  activePreviewFrame.value = "A";
+}
+
+function handlePreviewFrameLoad(frame: PreviewFrameId): void {
+  if (pendingPreviewFrame.value !== frame) {
+    return;
+  }
+
+  cancelPendingPreviewSwap();
+
+  const previousActiveFrame = activePreviewFrame.value;
+
+  if (previousActiveFrame === frame) {
+    pendingPreviewFrame.value = null;
+    return;
+  }
+
+  const swapToken = previewFrameSwapToken + 1;
+  previewFrameSwapToken = swapToken;
+  previewFrameSwapTimer = setTimeout(() => {
+    if (pendingPreviewFrame.value !== frame || previewFrameSwapToken !== swapToken) {
+      return;
+    }
+
+    activePreviewFrame.value = frame;
+    pendingPreviewFrame.value = null;
+    previewFrameSwapTimer = null;
+    schedulePreviewFrameRelease(previousActiveFrame);
+  }, PREVIEW_FRAME_SWAP_DELAY_MS);
+}
+
+watch(previewSrc, (nextUrl) => {
+  cancelPendingPreviewSwap();
+
+  if (!nextUrl) {
+    clearAllPreviewFrames();
+    return;
+  }
+
+  const activeFrame = activePreviewFrame.value;
+  const inactiveFrame = getInactivePreviewFrame(activeFrame);
+  const activeUrl = getPreviewFrameSrc(activeFrame);
+  const inactiveUrl = getPreviewFrameSrc(inactiveFrame);
+
+  if (nextUrl === activeUrl || nextUrl === inactiveUrl) {
+    return;
+  }
+
+  clearPreviewFrameCleanup(inactiveFrame);
+  setPreviewFrameSrc(inactiveFrame, nextUrl);
+
+  if (inactiveUrl && inactiveUrl !== activeUrl) {
+    revokeBlobUrl(inactiveUrl);
+  }
+
+  pendingPreviewFrame.value = inactiveFrame;
+});
+
+onBeforeUnmount(() => {
+  clearAllPreviewFrames();
+});
 
 async function convertSong(): Promise<void> {
   if (!canGenerate.value) {
@@ -392,31 +556,48 @@ async function clearApiKey(): Promise<void> {
             </div>
             <p v-if="exportError" class="action-feedback error-message">{{ exportError }}</p>
             <p v-else-if="exportMessage" class="action-feedback success-message">{{ exportMessage }}</p>
+            <p v-if="previewError && previewSrc" class="action-feedback error-message">{{ previewError }}</p>
           </div>
         </div>
 
         <div class="panel-content preview-content">
-          <div v-if="previewError" class="preview-state">
-            <p class="message error-message">{{ previewError }}</p>
-          </div>
-          <div v-else-if="!isTauri()" class="preview-state">
+          <div v-if="!isTauri()" class="preview-state">
             <p class="message">
               Preview and export require the Tauri desktop runtime.
             </p>
           </div>
-          <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-state preview-loading-empty">
+          <div v-else-if="!hasBufferedPreview && isGeneratingPreview" class="preview-state preview-loading-empty">
             <div class="preview-loading-card">
               <span class="loading-spinner" aria-hidden="true" />
               <p class="message">Generating preview...</p>
             </div>
           </div>
-          <div v-else-if="!previewSrc" class="preview-state">
+          <div v-else-if="!hasBufferedPreview && previewError" class="preview-state">
+            <p class="message error-message">{{ previewError }}</p>
+          </div>
+          <div v-else-if="!hasBufferedPreview" class="preview-state">
             <p class="message">
               Generate or open a song to see the PDF preview.
             </p>
           </div>
           <div v-else class="preview-viewer">
-            <iframe :key="previewSrc" :src="previewSrc" class="preview-frame" title="ChordPro PDF Preview" />
+            <iframe
+              :src="previewFrameSrcA"
+              class="preview-frame"
+              :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
+              title="ChordPro PDF Preview"
+              @load="handlePreviewFrameLoad('A')"
+            />
+            <iframe
+              :src="previewFrameSrcB"
+              class="preview-frame"
+              :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
+              title="ChordPro PDF Preview"
+              @load="handlePreviewFrameLoad('B')"
+            />
+            <div v-if="isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
+              <span class="preview-refresh-spinner" />
+            </div>
             <div v-if="isGeneratingPreview" class="preview-loading-overlay">
               <div class="preview-loading-card">
                 <span class="loading-spinner" aria-hidden="true" />
@@ -938,10 +1119,46 @@ async function clearApiKey(): Promise<void> {
 }
 
 .preview-frame {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: 1px solid rgba(47, 59, 49, 0.12);
   background: #fff;
+  transition: opacity 180ms ease-in-out;
+}
+
+.preview-frame-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.preview-frame-inactive {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preview-refresh-indicator {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(255, 250, 241, 0.92);
+  box-shadow: 0 10px 20px rgba(24, 32, 25, 0.12);
+  pointer-events: none;
+}
+
+.preview-refresh-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid rgba(55, 81, 59, 0.18);
+  border-top-color: #37513b;
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
 }
 
 .preview-loading-overlay {

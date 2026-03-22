@@ -47,6 +47,7 @@ Current status:
 - LLM-generated `title` and `artist` metadata is now normalized locally before parsing, while existing `.cho` file loading remains unchanged
 - chord-only separator lines such as `[G] - [Am] - [Em]` are now cleaned safely before parsing, while mixed content remains unchanged
 - BUG-15 resolved: reconversion now keeps active song metadata synchronized in the editor and song list, and saving applies conservative safe filename normalization without creating duplicates
+- User View `.cho` editor now refreshes preview automatically with debounced regeneration, request ordering protection, a lightweight non-blocking spinner and a double-buffered iframe swap to reduce visible flicker
 
 ## Completed work
 
@@ -97,7 +98,6 @@ Current status:
 
 ### v1.1 - Post-release improvements
 
-- real-time preview update for `.cho` edits with debounced regeneration and a lightweight "refreshing" state (no blocking overlay)
 - allow aborting an ongoing conversion request from the UI in both `User` and `Playground`
 
 ## v1.x - Additional UX / dev improvements
@@ -150,4 +150,5 @@ Features:
 - performance mode
 - setlists
 - cloud sync
+
 
