@@ -104,36 +104,60 @@ Current status:
 
 ## Current roadmap
 
-## v1.4 - Layout & rendering improvements
+## v1.4 - Rendering quality & UX improvements
+
+### UX improvements
+
+- add feedback when saving `.cho` files (avoid silent save)
+- split export actions into explicit PDF and CHO options
+- auto-scroll song list when entering Songbook view to ensure active item is visible
+- add refresh action that forces preview regeneration (bypass cache)
+- add lightweight loading state on app startup (avoid blank screen)
+
+### Minimal preferences (limited scope)
+
+- introduce simple persistent preferences (1-2 options max)
+- example: toggle chord diagrams visibility in preview/export
+- avoid complex settings UI or large configuration systems
+
+### Rendering & layout quality
 
 - improve tab handling in multi-column layouts:
   - detect `{columns: 2}` in final ChordPro output
   - adapt `{tab}` blocks to avoid horizontal overflow
-  - preserve content while ensuring compatibility with multi-column rendering
+  - preserve content without breaking layout
 - unify preview fit behavior across all views:
   - apply automatic fit logic in Songbook and Convert views
-  - base the decision on the actual preview container (iframe), not the window size
-  - reuse existing fit strategy (`fit` / `fith` / `fitv`) without duplicating logic
+  - base decision on preview container (iframe), not window size
+  - reuse existing fit strategy (`fit` / `fith` / `fitv`)
 - prevent horizontal overflow:
   - ensure chords and long lines never exceed column width
-  - apply safe wrapping or fallback strategies where needed
+  - apply safe wrapping or fallback strategies
 - improve column and page break behavior:
   - reduce undesirable splits in sections (verse, chorus)
-  - avoid breaking blocks when they naturally fit in the remaining space
-  - do not force reflow that introduces large empty gaps
+  - avoid breaking blocks when they naturally fit
 - refine spacing rules:
   - reduce unnecessary empty lines when safe
   - improve vertical compactness without harming readability
 - refine chorus visual alignment:
-  - adjust chorus bar offset/indent to avoid visual misalignment with margins
+  - adjust bar offset / indent to fix visual alignment
   - do NOT modify global page margins
-- validate preview/export consistency:
-  - ensure preview output matches exported PDF
-  - verify both single song and songbook export flows
+
+### Validation
+
+- verify preview matches exported output (single song and songbook)
 
 ## v1.x - Additional UX / dev improvements
 
 - add a side menu to the Playground to toggle panel visibility
+- UI visual refinement (non-layout):
+  - improve colors, typography, spacing and visual hierarchy
+  - introduce icons where appropriate
+  - maintain current layout structure
+- expand preferences system (future):
+  - additional PDF/style options (fonts, spacing, layout tweaks)
+  - instrument selection for chord diagrams
+  - configurable export options
 
 ## v2 - Core feature expansion
 
@@ -141,6 +165,7 @@ Current status:
 - chord analysis
 - layout optimization
 - song library
+- ensure rendering robustness remains compatible with future layout optimization features
 
 ### Export improvements (future)
 
@@ -174,6 +199,10 @@ Features:
 - AI preference learning
 - conversational adjustments
 - automatic layout decisions
+- optional text refinement using LLM:
+  - spelling and punctuation review
+  - non-destructive suggestions (not automatic rewriting)
+  - user-controlled application of changes
 
 ---
 
