@@ -152,6 +152,9 @@ Current status:
   - additional PDF/style options (fonts, spacing, layout tweaks)
   - instrument selection for chord diagrams
   - configurable export options
+- add lightweight automated checks for core deterministic flows
+- introduce small regression tests for parser, cleaning, preview cache and render preprocessing
+- add a one-command local smoke validation workflow
 
 ## v2 - Core feature expansion
 
