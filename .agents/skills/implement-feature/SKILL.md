@@ -100,11 +100,14 @@ When modifying code:
 - prefer replacing full logical blocks such as functions, components, or composables when the change is non-trivial
 - avoid string-based or line-by-line replacements when the file may already contain intermediate modifications
 - if a patch fails once or produces an unexpected diff, do not keep retrying the same approach; switch to rewriting the full block
+- if the patch tool itself fails because of sandbox, setup, or other editing infrastructure issues, do not keep retrying variants of the same patch; re-read the file and switch to a single deterministic rewrite of the affected block or file
 - re-read the current file content before applying critical edits and assume it may have changed since the initial inspection
 - avoid chained partial patch attempts; repeated small fixes increase the risk of subtle bugs
 - avoid regex-based fixes unless the transformation is trivial and strictly scoped
 - avoid line-index-based edits except as a last resort
 - when changing central or complex logic, prioritize clarity and determinism over the smallest possible diff
+- avoid parallel edits or commands that compete for the same file or resource
+- keep git index operations such as `git add` and `git commit` strictly sequential to avoid transient lock conflicts
 
 
 # UI Changes
@@ -161,7 +164,11 @@ Do NOT push unless explicitly requested.
 Version management follows these rules:
 
 - `src-tauri/tauri.conf.json` is the source of truth for the application version
-- `package.json` must be kept in sync with the same version
+- keep these files in sync with the same version:
+  - `package.json`
+  - `app/package.json`
+  - `src-tauri/Cargo.toml`
+- if version-related dependencies are refreshed through Cargo, allow `src-tauri/Cargo.lock` to update as part of the build; do not hand-edit it
 - always update the version before local rebuilds when practical, and before releases without exception
 - use incremental numeric versions such as `1.3.0 -> 1.3.1 -> 1.3.2` for local iterations, and `1.3.x -> 1.4.0` for the next planned version
 
@@ -187,6 +194,7 @@ Two build types are recognized:
 - actions:
   - increment version
   - build the app
+- preferred validation path for installer upgrade testing: use MSI builds consistently
 - not required:
   - release notes
   - release metadata polishing
@@ -199,6 +207,7 @@ Two build types are recognized:
   - ensure metadata is correct
   - generate release notes
   - build the app
+- keep installer type consistent when validating upgrades; compare MSI-to-MSI or NSIS-to-NSIS rather than mixing installer families
 
 
 # Release Notes

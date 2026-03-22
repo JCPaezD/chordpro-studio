@@ -458,3 +458,9 @@ Future improvements kept explicitly out of this phase:
 - reason for the assumption: `releases/` is already ignored by Git, is easier to access manually, and keeps local rebuild outputs consistent across future release and rebuild workflows
 - whether it requires later validation: no
 
+- date: 2026-03-22
+- context: formalizing the local rebuild version workflow and validating Windows installer upgrades after extending the `implement-feature` skill
+- assumption made: local rebuilds should increment the version consistently in `src-tauri/tauri.conf.json`, `package.json`, `app/package.json` and `src-tauri/Cargo.toml`, allow `src-tauri/Cargo.lock` to refresh through Cargo, and validate installer upgrades with the same installer family, preferring MSI-to-MSI checks
+- assumption made: when the Windows patch/editing infrastructure fails at the tool level, the safest fallback is to stop retrying patch variants and switch to a single deterministic rewrite after re-reading the target file
+- reason for the assumption: this prevents version reuse across rebuilds, keeps installer metadata aligned, avoids fragile edit retries in Windows sessions, and was validated end-to-end with a clean `1.3.1 -> 1.3.2` MSI upgrade that preserved a single installed application entry
+- whether it requires later validation: no
