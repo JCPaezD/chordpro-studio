@@ -110,10 +110,26 @@ Current status:
   - detect `{columns: 2}` in final ChordPro output
   - adapt `{tab}` blocks to avoid horizontal overflow
   - preserve content while ensuring compatibility with multi-column rendering
-- unify preview fit behavior across views:
-  - apply automatic fit logic in Songbook view (not only performance mode)
-  - base the decision on the actual preview container size (not full window ratio)
+- unify preview fit behavior across all views:
+  - apply automatic fit logic in Songbook and Convert views
+  - base the decision on the actual preview container (iframe), not the window size
   - reuse existing fit strategy (`fit` / `fith` / `fitv`) without duplicating logic
+- prevent horizontal overflow:
+  - ensure chords and long lines never exceed column width
+  - apply safe wrapping or fallback strategies where needed
+- improve column and page break behavior:
+  - reduce undesirable splits in sections (verse, chorus)
+  - avoid breaking blocks when they naturally fit in the remaining space
+  - do not force reflow that introduces large empty gaps
+- refine spacing rules:
+  - reduce unnecessary empty lines when safe
+  - improve vertical compactness without harming readability
+- refine chorus visual alignment:
+  - adjust chorus bar offset/indent to avoid visual misalignment with margins
+  - do NOT modify global page margins
+- validate preview/export consistency:
+  - ensure preview output matches exported PDF
+  - verify both single song and songbook export flows
 
 ## v1.x - Additional UX / dev improvements
 
