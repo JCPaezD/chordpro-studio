@@ -156,6 +156,17 @@ When a feature is confirmed as complete:
 Do NOT push unless explicitly requested.
 
 
+# Release Artifact Workflow
+
+When builds or release artifacts are requested:
+
+- treat `src-tauri/target/` as transient Tauri output, not as the canonical place to keep final artifacts
+- copy the final human-facing artifacts to `releases/` for easy access
+- when preparing a portable build, prefer a folder in `releases/<name>/` together with a matching `releases/<name>.zip`
+- if installer bundles are needed, copy the generated NSIS/MSI artifacts from `target` into `releases/` with consistent names
+- keep release artifacts untracked in Git and rely on the existing ignore rules instead of staging them
+
+
 # Output Expectations
 
 When finishing implementation:

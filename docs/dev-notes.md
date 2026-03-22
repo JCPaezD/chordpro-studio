@@ -452,3 +452,9 @@ Future improvements kept explicitly out of this phase:
 - whether it requires later validation: yes
 
 
+- date: 2026-03-22
+- context: unifying the location of local build and release artifacts after keeping portable packages in `releases/` and Tauri installers under `src-tauri/target/`
+- assumption made: `releases/` should be the canonical human-facing location for portable folders, zip packages and copied installer artifacts, while `src-tauri/target/` remains transient build output
+- reason for the assumption: `releases/` is already ignored by Git, is easier to access manually, and keeps local rebuild outputs consistent across future release and rebuild workflows
+- whether it requires later validation: no
+
