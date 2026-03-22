@@ -100,9 +100,16 @@ Current status:
 
 ## Current roadmap
 
+## v1.3 - Workflow refinement
+
+- persist last opened song
+- open Songbook view automatically when a songbook is available (fallback to Convert if not)
+- auto-scroll song list to keep active selection visible when navigating with keyboard
+- persistent preview cache (PDF) based on chordProText to avoid unnecessary CLI regeneration across sessions
+- light UX pass (review empty states and minor interaction details without redesign)
+
 ## v1.x - Additional UX / dev improvements
 
-- persist the last active view (`User` / `Playground`) across sessions
 - add a side menu to the Playground to toggle panel visibility
 
 ## v2 - Core feature expansion
@@ -111,10 +118,6 @@ Current status:
 - chord analysis
 - layout optimization
 - song library
-
-### Performance improvements
-
-- Introduce caching for preview PDF generation to avoid unnecessary CLI executions when no changes are detected.
 
 ### Export improvements (future)
 
