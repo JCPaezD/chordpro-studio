@@ -135,6 +135,7 @@ ChordPro text
 -> on cache miss: Tauri `generate_preview` -> temporary `preview.cho` -> ChordPro CLI -> `preview.pdf` -> persist cached PDF
 -> backend returns PDF bytes
 -> frontend `Blob` URL
+-> shared iframe-size-based fit composable computes the viewer URL (`fitv` / `fith` with A4-aware thresholds and a refresh token)
 -> native WebView PDF viewer
 
 Export flow:
@@ -286,6 +287,7 @@ The preview panel remains visible while the left panel changes.
 - optional performance mode inside `User`, reusing the same workspace and preview pipeline with an overlay song list and maximized PDF viewer
 - song lists in both normal Songbook and performance mode keep the keyboard selection visible through local UI-managed auto-scroll, without adding new shared state or changing workspace behavior
 - performance mode keyboard flow remains local to the view, including list focus handoff through `Enter`, overlay close with `Esc`, and optional `F11` toggle entry when Songbook is available
+- normal preview panels reuse the shared buffered preview swap already driven from `UserView`, while performance mode keeps its own local dual-iframe buffer so fit refreshes can pass through a hidden frame and force a real `about:blank -> fitted PDF` navigation without flashing the visible viewer
 
 ---
 

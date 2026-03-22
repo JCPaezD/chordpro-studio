@@ -7,6 +7,7 @@ import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
 import { type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
 import { useAppConfig } from "../composables/useAppConfig";
+import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const props = defineProps<{
@@ -111,6 +112,10 @@ const songbookEditorSubtitle = computed(() =>
 const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
 const songbookSongs = computed(() => songbook.value?.songs ?? []);
 const songListRef = ref<HTMLElement | null>(null);
+const previewViewerRef = ref<HTMLElement | null>(null);
+const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate } = usePdfFit(previewViewerRef);
+const viewerFrameSrcA = computed(() => applyPreviewFit(previewFrameSrcA.value));
+const viewerFrameSrcB = computed(() => applyPreviewFit(previewFrameSrcB.value));
 const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const songbookSelectionIndex = ref(-1);
 const showPreviewLoadingIndicator = ref(false);
@@ -206,6 +211,8 @@ function clearAllPreviewFrames(): void {
 }
 
 function handlePreviewFrameLoad(frame: PreviewFrameId): void {
+  schedulePreviewFitUpdate();
+
   if (pendingPreviewFrame.value !== frame) {
     return;
   }
@@ -251,6 +258,10 @@ watch(isGeneratingPreview, (value) => {
 }, { immediate: true });
 
 watch(previewSrc, (nextUrl) => {
+  if (isPerformanceMode.value) {
+    return;
+  }
+
   cancelPendingPreviewSwap();
 
   if (!nextUrl) {
@@ -314,8 +325,16 @@ function exitPerformanceMode(): void {
   isPerformanceMode.value = false;
 }
 
-watch(isPerformanceMode, (value) => {
+watch(isPerformanceMode, (value, previousValue) => {
   emit("immersive-change", value);
+
+  if (previousValue && !value) {
+    clearAllPreviewFrames();
+
+    if (previewSrc.value) {
+      setPreviewFrameSrc("A", previewSrc.value);
+    }
+  }
 }, { immediate: true });
 
 onMounted(() => {
@@ -506,12 +525,9 @@ async function clearApiKey(): Promise<void> {
       :is-generating-preview="isGeneratingPreview"
       :is-refreshing-preview="isRefreshingPreview"
       :preview-error="previewError"
-      :preview-frame-src-a="previewFrameSrcA"
-      :preview-frame-src-b="previewFrameSrcB"
-      :active-preview-frame="activePreviewFrame"
+      :preview-src="previewSrc"
       :open-song="openSongInPerformanceMode"
       :exit-performance-mode="exitPerformanceMode"
-      :handle-preview-frame-load="handlePreviewFrameLoad"
     />
 
     <template v-else>
@@ -800,16 +816,16 @@ async function clearApiKey(): Promise<void> {
               </p>
             </div>
           </div>
-          <div v-else class="preview-viewer">
+          <div v-else ref="previewViewerRef" class="preview-viewer">
             <iframe
-              :src="previewFrameSrcA"
+              :src="viewerFrameSrcA"
               class="preview-frame"
               :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
               title="ChordPro PDF Preview"
               @load="handlePreviewFrameLoad('A')"
             />
             <iframe
-              :src="previewFrameSrcB"
+              :src="viewerFrameSrcB"
               class="preview-frame"
               :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
               title="ChordPro PDF Preview"

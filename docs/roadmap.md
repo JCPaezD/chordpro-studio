@@ -57,6 +57,7 @@ Current status:
 - v1.3 preview generation now reuses a persistent PDF cache keyed by `chordProText`, so unchanged previews survive app restarts and cache hits avoid unnecessary ChordPro CLI execution
 - v1.3 light UX refinement completed with clearer Songbook and Preview empty states, a stronger folder-entry call to action, and lower-weight preview guidance without changing the panel layout
 - v1.4 smart tab splitting is now applied to explicit `{start_of_tab}` blocks in preview, single-song PDF export and songbook PDF export, using balanced heuristic chunking for one- and two-column layouts plus a silent single-column fallback for malformed tab blocks
+- v1.4 PDF fit behavior is now unified across Convert, Songbook and Performance views through a shared iframe-size-based fit composable, with A4-aware fit decisions, a smooth performance-mode refresh path that forces reliable hidden-frame navigation without visible flicker, and validated preview/export consistency for single-song and songbook flows
 
 ## Completed work
 
@@ -115,7 +116,7 @@ Current status:
 - add refresh action that forces preview regeneration (bypass cache)
 - add lightweight loading state on app startup (avoid blank screen)
 - display app version in window title:
-  - format: `ChordPro Studio — vX.Y.Z`
+  - format: `ChordPro Studio - vX.Y.Z`
   - version must stay synchronized with `tauri.conf.json`
   - avoid hardcoded values
 
@@ -127,10 +128,6 @@ Current status:
 
 ### Rendering & layout quality
 
-- unify preview fit behavior across all views:
-  - apply automatic fit logic in Songbook and Convert views
-  - base decision on preview container (iframe), not window size
-  - reuse existing fit strategy (`fit` / `fith` / `fitv`)
 - prevent horizontal overflow:
   - ensure chords and long lines never exceed column width
   - apply safe wrapping or fallback strategies
@@ -143,10 +140,6 @@ Current status:
 - refine chorus visual alignment:
   - adjust bar offset / indent to fix visual alignment
   - do NOT modify global page margins
-
-### Validation
-
-- verify preview matches exported output (single song and songbook)
 
 ## v1.x - Additional UX / dev improvements
 

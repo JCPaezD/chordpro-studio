@@ -284,7 +284,7 @@ Preview failure behavior:
 - both `User` and Songbook performance mode now delay the visible `Generating preview...` overlay slightly, so instant cache hits do not produce a distracting loading flicker
 - even with the buffered swap, the native PDF viewer can still introduce small temporary editor stalls while a refreshed document is being loaded into the WebView
 - the current native PDF viewer approach still performs a full document reload when the iframe `src` changes; reducing that further would require a custom viewer outside the current architecture
-- Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and uses a pragmatic PDF fit heuristic (`fith` in tall previews, `fitv` in wide previews) because the native Edge/WebView PDF viewer did not apply `#view=fit` reliably in manual testing
+- Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and shares the same iframe-size-based PDF fit composable as Convert and Songbook; the final fit decision is A4-aware, and performance mode refreshes fit through a local hidden-frame swap that forces a real iframe navigation via `about:blank` before loading the next fitted PDF URL because the native Edge/WebView PDF viewer did not reliably reapply rapid hash-only changes
 - keyboard navigation in performance mode intentionally remains best-effort when focus stays in the app; once focus moves inside the native PDF viewer iframe, its own input handling takes precedence and the app does not try to steal focus back
 - User View empty states were refined without changing panel layout: Songbook now uses a clearer no-folder call to action, loaded songbooks show a low-weight selection hint, and the Preview placeholder uses softer two-line guidance that adapts when a songbook is available
 
@@ -474,3 +474,10 @@ Future improvements kept explicitly out of this phase:
 - current limitation: preprocessing only applies to explicit `{start_of_tab}` / `{end_of_tab}` blocks and uses estimated width thresholds instead of style-derived measurements
 - current limitation: split tabs preserve original line content and do not synthesize repeated string headers or closing bar fragments when a block is divided
 - future improvement: derive the effective tab width from `style.json` page size, margins, column settings and fonts instead of relying on fixed character estimates
+
+- date: 2026-03-22
+- context: unifying PDF fit behavior across Convert, Songbook and Performance views
+- assumption made: fit mode should be decided in a shared frontend composable from the actual preview iframe container size instead of the full window or view-specific heuristics, using an A4-aware ratio with a small hysteresis and a lightweight revision token so resize-driven fit refreshes stay consistent across Convert, Songbook and Performance views
+- assumption made: Songbook performance mode should keep a local dual-iframe buffer for fit refreshes and force the hidden frame through `about:blank` before loading the next fitted PDF URL, because rapid hash-only iframe updates did not reliably trigger a real reload in the native Edge/WebView PDF viewer
+- reason for the assumption: this keeps the viewer behavior consistent across layouts, avoids duplicated resize logic in individual views, preserves the existing native PDF viewer integration without introducing new rendering paths or overriding user controls, and removes resize-race bugs without reintroducing visible flicker
+- whether it requires later validation: no, validated on 2026-03-22 with successful frontend build and manual fit checks across Convert, Songbook and Performance layouts at different window sizes, including rapid resize transitions in performance mode

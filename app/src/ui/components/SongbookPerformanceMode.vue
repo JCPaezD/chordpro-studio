@@ -70,20 +70,20 @@
             Open a song to see the PDF preview.
           </p>
         </div>
-        <div v-else class="preview-viewer">
+        <div v-else ref="previewViewerRef" class="preview-viewer">
           <iframe
-            :src="viewerFrameSrcA"
+            :src="bufferedFrameSrcA"
             class="preview-frame"
-            :class="props.activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
+            :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
             title="ChordPro PDF Preview"
-            @load="props.handlePreviewFrameLoad('A')"
+            @load="handlePreviewFrameLoad('A')"
           />
           <iframe
-            :src="viewerFrameSrcB"
+            :src="bufferedFrameSrcB"
             class="preview-frame"
-            :class="props.activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
+            :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
             title="ChordPro PDF Preview"
-            @load="props.handlePreviewFrameLoad('B')"
+            @load="handlePreviewFrameLoad('B')"
           />
           <div v-if="props.isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
             <span class="preview-refresh-spinner" />
@@ -125,11 +125,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 import { isTauri } from "@tauri-apps/api/core";
 import type { Songbook } from "../../domain/songbook";
+import { usePdfFit } from "../composables/usePdfFit";
 
 type PreviewFrameId = "A" | "B";
-type PdfViewMode = "fith" | "fitv";
 
 const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
+const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
+const PREVIEW_FRAME_TRANSITION_MS = 180;
 
 const props = defineProps<{
   songbook: Songbook | null;
@@ -139,55 +141,43 @@ const props = defineProps<{
   isGeneratingPreview: boolean;
   isRefreshingPreview: boolean;
   previewError: string;
-  previewFrameSrcA: string;
-  previewFrameSrcB: string;
-  activePreviewFrame: PreviewFrameId;
+  previewSrc: string;
   openSong: (filePath: string) => Promise<void>;
   exitPerformanceMode: () => void;
-  handlePreviewFrameLoad: (frame: PreviewFrameId) => void;
 }>();
 
 const songListRef = ref<HTMLElement | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
+const previewViewerRef = ref<HTMLElement | null>(null);
 const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const performanceSelectionIndex = ref(-1);
 const isSongListOpen = ref(true);
-const pdfViewMode = ref<PdfViewMode>("fith");
 const showPreviewLoadingIndicator = ref(false);
+const activePreviewFrame = ref<PreviewFrameId>("A");
+const pendingPreviewFrame = ref<PreviewFrameId | null>(null);
+const pendingPreviewUrl = ref("");
+const desiredPreviewUrl = ref("");
+const bufferedFrameSrcA = ref("");
+const bufferedFrameSrcB = ref("");
+const loadedFrameSrcA = ref("");
+const loadedFrameSrcB = ref("");
 let previewLoadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
-const hasBufferedPreview = computed(() => !!props.previewFrameSrcA || !!props.previewFrameSrcB);
+let previewFrameCleanupTimerA: ReturnType<typeof setTimeout> | null = null;
+let previewFrameCleanupTimerB: ReturnType<typeof setTimeout> | null = null;
+let previewFrameNavigationRafA: number | null = null;
+let previewFrameNavigationRafB: number | null = null;
+let previewFrameSwapTimer: ReturnType<typeof setTimeout> | null = null;
+let previewFrameSwapToken = 0;
 const songEntries = computed(() => props.songbook?.songs ?? []);
 const canSelectPreviousSong = computed(() => performanceSelectionIndex.value > 0);
 const canSelectNextSong = computed(() => {
   const songs = songEntries.value;
   return songs.length > 0 && performanceSelectionIndex.value >= 0 && performanceSelectionIndex.value < songs.length - 1;
 });
-const viewerFrameSrcA = computed(() => withViewerFragment(props.previewFrameSrcA));
-const viewerFrameSrcB = computed(() => withViewerFragment(props.previewFrameSrcB));
-
-let previewViewportObserver: ResizeObserver | null = null;
-
-function withViewerFragment(url: string): string {
-  if (!url) {
-    return "";
-  }
-
-  return url.includes("#") ? url : `${url}#view=${pdfViewMode.value}`;
-}
-
-function updatePdfViewMode(): void {
-  const viewport = previewViewportRef.value;
-  if (!viewport) {
-    return;
-  }
-
-  const { width, height } = viewport.getBoundingClientRect();
-  if (width <= 0 || height <= 0) {
-    return;
-  }
-
-  pdfViewMode.value = width > height ? "fitv" : "fith";
-}
+const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
+const activePreviewBaseUrl = computed(() => props.previewSrc);
+const nextRenderedPreviewUrl = computed(() => applyFit(activePreviewBaseUrl.value));
+const hasBufferedPreview = computed(() => !!bufferedFrameSrcA.value || !!bufferedFrameSrcB.value);
 
 function syncPerformanceSelection(): void {
   const songs = songEntries.value;
@@ -258,6 +248,260 @@ function closeSongList(options?: { focusPreview?: boolean }): void {
   if (options?.focusPreview) {
     focusPreviewViewport();
   }
+}
+
+function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
+  return frame === "A" ? "B" : "A";
+}
+
+function getBufferedFrameSrc(frame: PreviewFrameId): string {
+  return frame === "A" ? bufferedFrameSrcA.value : bufferedFrameSrcB.value;
+}
+
+function getLoadedFrameSrc(frame: PreviewFrameId): string {
+  return frame === "A" ? loadedFrameSrcA.value : loadedFrameSrcB.value;
+}
+
+function setLoadedFrameSrc(frame: PreviewFrameId, value: string): void {
+  if (frame === "A") {
+    loadedFrameSrcA.value = value;
+    return;
+  }
+
+  loadedFrameSrcB.value = value;
+}
+
+function setBufferedFrameSrc(frame: PreviewFrameId, value: string): void {
+  if (getBufferedFrameSrc(frame) !== value) {
+    setLoadedFrameSrc(frame, "");
+  }
+
+  if (frame === "A") {
+    bufferedFrameSrcA.value = value;
+    return;
+  }
+
+  bufferedFrameSrcB.value = value;
+}
+
+function clearPreviewFrameCleanup(frame: PreviewFrameId): void {
+  if (frame === "A" && previewFrameCleanupTimerA !== null) {
+    clearTimeout(previewFrameCleanupTimerA);
+    previewFrameCleanupTimerA = null;
+    return;
+  }
+
+  if (frame === "B" && previewFrameCleanupTimerB !== null) {
+    clearTimeout(previewFrameCleanupTimerB);
+    previewFrameCleanupTimerB = null;
+  }
+}
+
+function clearPreviewFrameNavigation(frame: PreviewFrameId): void {
+  if (frame === "A" && previewFrameNavigationRafA !== null) {
+    cancelAnimationFrame(previewFrameNavigationRafA);
+    previewFrameNavigationRafA = null;
+    return;
+  }
+
+  if (frame === "B" && previewFrameNavigationRafB !== null) {
+    cancelAnimationFrame(previewFrameNavigationRafB);
+    previewFrameNavigationRafB = null;
+  }
+}
+
+function schedulePreviewFrameNavigation(frame: PreviewFrameId, nextUrl: string): void {
+  clearPreviewFrameNavigation(frame);
+  clearPreviewFrameCleanup(frame);
+
+  const currentUrl = getBufferedFrameSrc(frame);
+  if (!currentUrl) {
+    setBufferedFrameSrc(frame, nextUrl);
+    return;
+  }
+
+  setBufferedFrameSrc(frame, "about:blank");
+
+  const rafId = requestAnimationFrame(() => {
+    if (frame === "A") {
+      previewFrameNavigationRafA = null;
+    } else {
+      previewFrameNavigationRafB = null;
+    }
+
+    setBufferedFrameSrc(frame, nextUrl);
+  });
+
+  if (frame === "A") {
+    previewFrameNavigationRafA = rafId;
+    return;
+  }
+
+  previewFrameNavigationRafB = rafId;
+}
+
+function releasePreviewFrame(frame: PreviewFrameId): void {
+  setBufferedFrameSrc(frame, "");
+  setLoadedFrameSrc(frame, "");
+}
+
+function cancelPendingPreviewSwap(): void {
+  previewFrameSwapToken += 1;
+
+  if (previewFrameSwapTimer !== null) {
+    clearTimeout(previewFrameSwapTimer);
+    previewFrameSwapTimer = null;
+  }
+}
+
+function schedulePreviewFrameRelease(frame: PreviewFrameId): void {
+  clearPreviewFrameCleanup(frame);
+
+  const timer = setTimeout(() => {
+    releasePreviewFrame(frame);
+
+    if (frame === "A") {
+      previewFrameCleanupTimerA = null;
+    } else {
+      previewFrameCleanupTimerB = null;
+    }
+  }, PREVIEW_FRAME_TRANSITION_MS);
+
+  if (frame === "A") {
+    previewFrameCleanupTimerA = timer;
+    return;
+  }
+
+  previewFrameCleanupTimerB = timer;
+}
+
+function clearAllPreviewFrames(): void {
+  cancelPendingPreviewSwap();
+  clearPreviewFrameNavigation("A");
+  clearPreviewFrameNavigation("B");
+  clearPreviewFrameCleanup("A");
+  clearPreviewFrameCleanup("B");
+  releasePreviewFrame("A");
+  releasePreviewFrame("B");
+  pendingPreviewFrame.value = null;
+  pendingPreviewUrl.value = "";
+  desiredPreviewUrl.value = "";
+  activePreviewFrame.value = "A";
+}
+
+function stagePreviewUrl(nextUrl: string): void {
+  desiredPreviewUrl.value = nextUrl;
+  cancelPendingPreviewSwap();
+
+  if (!nextUrl) {
+    clearAllPreviewFrames();
+    return;
+  }
+
+  const activeFrame = activePreviewFrame.value;
+  const inactiveFrame = getInactivePreviewFrame(activeFrame);
+  const activeUrl = getBufferedFrameSrc(activeFrame);
+  const inactiveUrl = getBufferedFrameSrc(inactiveFrame);
+
+  if (nextUrl === activeUrl) {
+    pendingPreviewFrame.value = null;
+    pendingPreviewUrl.value = "";
+    clearPreviewFrameCleanup(inactiveFrame);
+
+    if (inactiveUrl) {
+      releasePreviewFrame(inactiveFrame);
+    }
+
+    return;
+  }
+
+  if (nextUrl === inactiveUrl) {
+    clearPreviewFrameCleanup(inactiveFrame);
+    pendingPreviewFrame.value = inactiveFrame;
+    pendingPreviewUrl.value = nextUrl;
+
+    if (getLoadedFrameSrc(inactiveFrame) === nextUrl) {
+      queuePreviewFrameSwap(inactiveFrame);
+    }
+
+    return;
+  }
+
+  pendingPreviewFrame.value = inactiveFrame;
+  pendingPreviewUrl.value = nextUrl;
+  schedulePreviewFrameNavigation(inactiveFrame, nextUrl);
+}
+
+function reconcilePreviewUrl(): void {
+  const desiredUrl = desiredPreviewUrl.value;
+  if (!desiredUrl) {
+    return;
+  }
+
+  if (getBufferedFrameSrc(activePreviewFrame.value) === desiredUrl) {
+    return;
+  }
+
+  stagePreviewUrl(desiredUrl);
+}
+
+function queuePreviewFrameSwap(frame: PreviewFrameId): void {
+  cancelPendingPreviewSwap();
+
+  const previousActiveFrame = activePreviewFrame.value;
+  if (previousActiveFrame === frame) {
+    pendingPreviewFrame.value = null;
+    pendingPreviewUrl.value = "";
+    reconcilePreviewUrl();
+    return;
+  }
+
+  const swapToken = previewFrameSwapToken + 1;
+  previewFrameSwapToken = swapToken;
+  previewFrameSwapTimer = setTimeout(() => {
+    if (pendingPreviewFrame.value !== frame || previewFrameSwapToken !== swapToken) {
+      reconcilePreviewUrl();
+      return;
+    }
+
+    const finalFrameUrl = getBufferedFrameSrc(frame);
+    if (!finalFrameUrl || finalFrameUrl !== pendingPreviewUrl.value || finalFrameUrl !== desiredPreviewUrl.value) {
+      previewFrameSwapTimer = null;
+      reconcilePreviewUrl();
+      return;
+    }
+
+    activePreviewFrame.value = frame;
+    pendingPreviewFrame.value = null;
+    pendingPreviewUrl.value = "";
+    previewFrameSwapTimer = null;
+    schedulePreviewFrameRelease(previousActiveFrame);
+    reconcilePreviewUrl();
+  }, PREVIEW_FRAME_SWAP_DELAY_MS);
+}
+
+function handlePreviewFrameLoad(frame: PreviewFrameId): void {
+  scheduleFitUpdate();
+
+  const frameUrl = getBufferedFrameSrc(frame);
+  if (frameUrl) {
+    setLoadedFrameSrc(frame, frameUrl);
+  }
+
+  if (frameUrl === "about:blank") {
+    return;
+  }
+
+  if (pendingPreviewFrame.value !== frame) {
+    return;
+  }
+
+  if (!frameUrl || frameUrl !== pendingPreviewUrl.value || frameUrl !== desiredPreviewUrl.value) {
+    reconcilePreviewUrl();
+    return;
+  }
+
+  queuePreviewFrameSwap(frame);
 }
 
 function toggleSongList(): void {
@@ -402,11 +646,9 @@ watch(isSongListOpen, (isOpen) => {
 });
 
 watch(
-  () => hasBufferedPreview.value,
+  () => [props.previewSrc, fitRevision.value],
   () => {
-    void nextTick(() => {
-      updatePdfViewMode();
-    });
+    stagePreviewUrl(nextRenderedPreviewUrl.value);
   },
   { immediate: true }
 );
@@ -414,31 +656,21 @@ watch(
 onMounted(() => {
   focusSongList();
   window.addEventListener("keydown", handleWindowKeydown);
-  window.addEventListener("resize", updatePdfViewMode);
-  previewViewportObserver = new ResizeObserver(() => {
-    updatePdfViewMode();
-  });
-
-  if (previewViewportRef.value) {
-    previewViewportObserver.observe(previewViewportRef.value);
-  }
 
   void nextTick(() => {
-    updatePdfViewMode();
+    scheduleFitUpdate();
   });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleWindowKeydown);
-  window.removeEventListener("resize", updatePdfViewMode);
 
   if (previewLoadingIndicatorTimer !== null) {
     clearTimeout(previewLoadingIndicatorTimer);
     previewLoadingIndicatorTimer = null;
   }
 
-  previewViewportObserver?.disconnect();
-  previewViewportObserver = null;
+  clearAllPreviewFrames();
 });
 </script>
 
