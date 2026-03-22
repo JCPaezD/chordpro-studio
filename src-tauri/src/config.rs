@@ -11,6 +11,8 @@ pub struct AppConfig {
   pub gemini_api_key: Option<String>,
   #[serde(rename = "lastSongbookPath")]
   pub last_songbook_path: Option<String>,
+  #[serde(rename = "lastOpenedSongPath")]
+  pub last_opened_song_path: Option<String>,
   #[serde(rename = "conversionMode")]
   pub conversion_mode: Option<String>,
   #[serde(rename = "playgroundModel")]

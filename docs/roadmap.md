@@ -52,6 +52,7 @@ Current status:
 - conversion requests can now be aborted safely from both `User` and `Playground`, with real provider cancellation support and stale-response protection in the shared workspace
 - v1.2 performance mode for Songbook is now implemented inside `User`, with immersive app-shell padding, overlay song list, maximized PDF preview, keyboard and button navigation, and adaptive PDF fit behavior based on preview aspect ratio
 - v1.2 PDF style refinements completed through `style.json`, including top-positioned chorus labels, cleaner section comments, stronger chord contrast, unified header/footer layout and improved page spacing
+- v1.3 startup workflow refinement now restores the last opened song when the persisted songbook is available, opens Songbook automatically on startup in that case, and falls back to Convert when no songbook is configured
 
 ## Completed work
 
@@ -102,8 +103,6 @@ Current status:
 
 ## v1.3 - Workflow refinement
 
-- persist last opened song
-- open Songbook view automatically when a songbook is available (fallback to Convert if not)
 - auto-scroll song list to keep active selection visible when navigating with keyboard
 - persistent preview cache (PDF) based on chordProText to avoid unnecessary CLI regeneration across sessions
 - light UX pass (review empty states and minor interaction details without redesign)

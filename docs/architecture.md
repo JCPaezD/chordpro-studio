@@ -185,17 +185,19 @@ Songbook persistence follows this model:
 - `SongbookService` scans the folder for `.cho` files
 - entries are sorted alphabetically by `displayTitle`
 - the last opened songbook path is stored in the Tauri AppConfig directory as `$APPCONFIG/config.json`
+- the last explicitly opened song path is also stored there and restored only when it still exists inside the restored songbook
 
 Current config content:
 
 - `lastSongbookPath`
+- `lastOpenedSongPath`
 - `conversionMode`
 - `playgroundModel`
 - `geminiApiKey`
 
 `ConfigRepository` persists the full app config through Tauri backend commands. Missing config now resolves to a default object with `geminiApiKey: null`, and the backend creates `config.json` on first read if it does not exist yet.
 
-`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode and the Playground model selection.
+`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode, the Playground model selection and the last restored songbook state.
 
 ---
 

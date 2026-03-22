@@ -71,7 +71,7 @@ export type SongWorkspace = {
   openSongbookFolder(): Promise<void>;
   refreshSongbook(): Promise<void>;
   clearSongbook(): Promise<void>;
-  openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean }): Promise<void>;
+  openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<void>;
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
@@ -780,8 +780,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     try {
       await appConfig.clearLastSongbookPath();
+      await appConfig.clearLastOpenedSongPath();
     } catch (err) {
-      console.error("Could not clear lastSongbookPath.", err);
+      console.error("Could not clear persisted songbook state.", err);
     }
   }
 
@@ -882,7 +883,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
 
-  async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean }): Promise<void> {
+  async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<void> {
     if (!options?.bypassUnsavedChanges && !(await ensureDocumentCanBeReplaced())) {
       return;
     }
@@ -906,6 +907,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       validationReason.value = "";
       validationRawOutput.value = "";
       await refreshPreview(loadedSong.chordProText);
+
+      if (options?.persistLastOpenedSong !== false) {
+        try {
+          await appConfig.setLastOpenedSongPath(loadedSong.filePath);
+        } catch (err) {
+          console.error("Could not persist lastOpenedSongPath.", err);
+        }
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Could not open the selected song.";
     }
@@ -928,6 +937,13 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       songs: []
     };
     activePanel.value = "songbook";
+
+    try {
+      await appConfig.clearLastOpenedSongPath();
+    } catch (err) {
+      console.error("Could not clear lastOpenedSongPath for the new songbook.", err);
+    }
+
     await refreshSongbook();
   }
 
@@ -972,14 +988,43 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
       hasLoadedInitialConfig = true;
 
-      if (!appConfig.lastSongbookPath.value || songbook.value) {
+      if (songbook.value) {
+        activePanel.value = "songbook";
+        return;
+      }
+
+      const lastSongbookPath = appConfig.lastSongbookPath.value;
+      if (!lastSongbookPath) {
+        activePanel.value = "convert";
         return;
       }
 
       try {
-        songbook.value = await songbookService.loadSongbook(appConfig.lastSongbookPath.value);
+        const restoredSongbook = await songbookService.loadSongbook(lastSongbookPath);
+        songbook.value = restoredSongbook;
+        activePanel.value = "songbook";
+
+        const lastOpenedSongPath = appConfig.lastOpenedSongPath.value;
+        if (!lastOpenedSongPath) {
+          return;
+        }
+
+        const normalizedLastOpenedSongPath = normalizeCaseInsensitivePath(lastOpenedSongPath);
+        const isSongInRestoredSongbook = restoredSongbook.songs.some((songEntry) =>
+          normalizeCaseInsensitivePath(songEntry.filePath) === normalizedLastOpenedSongPath
+        );
+
+        if (!isSongInRestoredSongbook || !(await songRepository.songExists(lastOpenedSongPath))) {
+          return;
+        }
+
+        await openSongFile(lastOpenedSongPath, {
+          bypassUnsavedChanges: true,
+          persistLastOpenedSong: false
+        });
       } catch {
         songbook.value = null;
+        activePanel.value = "convert";
       }
     })();
 

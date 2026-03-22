@@ -5,12 +5,14 @@ export type ConversionMode = "quality" | "fast";
 export type AppConfig = {
   geminiApiKey: string | null;
   lastSongbookPath?: string;
+  lastOpenedSongPath: string | null;
   conversionMode?: ConversionMode;
   playgroundModel?: string;
 };
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
-  geminiApiKey: null
+  geminiApiKey: null,
+  lastOpenedSongPath: null
 };
 
 function normalizeConfig(config: Partial<AppConfig> | null | undefined): AppConfig {
@@ -19,6 +21,9 @@ function normalizeConfig(config: Partial<AppConfig> | null | undefined): AppConf
     ...(config ?? {}),
     geminiApiKey: typeof config?.geminiApiKey === "string" && config.geminiApiKey.trim().length > 0
       ? config.geminiApiKey.trim()
+      : null,
+    lastOpenedSongPath: typeof config?.lastOpenedSongPath === "string" && config.lastOpenedSongPath.trim().length > 0
+      ? config.lastOpenedSongPath
       : null
   };
 }

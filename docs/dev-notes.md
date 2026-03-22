@@ -201,6 +201,12 @@ the documentation must be updated first.
 - whether it requires later validation: no, validated on 2026-03-21 with successful chord-only, mixed-content and full-flow manual tests
 
 - date: 2026-03-22
+- context: persisting and restoring the last opened song from the songbook at startup
+- assumption made: startup restoration should reuse the normal song-opening flow and only reopen the last song when both the persisted songbook path and the persisted song path are still valid on disk, while missing files should be ignored silently and fall back to an empty Songbook selection
+- reason for the assumption: this improves startup workflow without duplicating parsing or preview logic and keeps stale filesystem state from blocking launch
+- whether it requires later validation: no, validated on 2026-03-22 with successful restart restoration and missing-file fallback tests
+
+- date: 2026-03-22
 - context: fixing BUG-15 around metadata synchronization and filename normalization after reconversion and save
 - assumption made: the active `WorkspaceDocument` should remain the single source of truth after reconversion, while saving an existing `.cho` should only rename conservatively when the normalized target path is available and conflict-free
 - reason for the assumption: this resolves editor/song list desynchronization without introducing aggressive auto-rename behavior, and keeps Windows case-only normalization safe through a temporary rename step plus Tauri `fs:allow-rename`
@@ -393,8 +399,9 @@ Songbook behavior:
 - a songbook is a user-selected folder scanned for `.cho` files only
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
-- the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup without changing the default `Convert` panel on launch
-- AppConfig now also stores `conversionMode`, `playgroundModel` and `geminiApiKey`
+- the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
+- when that persisted songbook is available, startup now also restores the last explicitly opened song if the file still exists; otherwise Songbook opens with no active selection and no startup error
+- AppConfig now also stores `lastOpenedSongPath`, `conversionMode`, `playgroundModel` and `geminiApiKey`
 - frontend config is loaded once through `useAppConfig()`, kept in memory as the single source of truth, and persisted through Tauri backend commands
 - missing `config.json` now resolves to a default config with `geminiApiKey: null`, and the backend creates the file on first read when needed
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document

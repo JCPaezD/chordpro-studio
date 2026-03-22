@@ -13,6 +13,7 @@ export type AppConfigStore = {
   conversionMode: ComputedRef<ConversionMode | undefined>;
   playgroundModel: ComputedRef<string | undefined>;
   lastSongbookPath: ComputedRef<string | undefined>;
+  lastOpenedSongPath: ComputedRef<string | null>;
   loadConfig(): Promise<void>;
   setApiKey(key: string): Promise<void>;
   clearApiKey(): Promise<void>;
@@ -20,6 +21,8 @@ export type AppConfigStore = {
   setPlaygroundModel(model: string): Promise<void>;
   setLastSongbookPath(path: string): Promise<void>;
   clearLastSongbookPath(): Promise<void>;
+  setLastOpenedSongPath(path: string): Promise<void>;
+  clearLastOpenedSongPath(): Promise<void>;
 };
 
 const repository = new ConfigRepository();
@@ -90,6 +93,15 @@ async function clearLastSongbookPath(): Promise<void> {
   await persistConfig(nextConfig);
 }
 
+async function setLastOpenedSongPath(path: string): Promise<void> {
+  const normalizedPath = path.trim();
+  await updateConfig({ lastOpenedSongPath: normalizedPath.length > 0 ? normalizedPath : null });
+}
+
+async function clearLastOpenedSongPath(): Promise<void> {
+  await updateConfig({ lastOpenedSongPath: null });
+}
+
 export function useAppConfig(): AppConfigStore {
   return {
     apiKey: computed(() => config.value.geminiApiKey),
@@ -97,12 +109,15 @@ export function useAppConfig(): AppConfigStore {
     conversionMode: computed(() => config.value.conversionMode),
     playgroundModel: computed(() => config.value.playgroundModel),
     lastSongbookPath: computed(() => config.value.lastSongbookPath),
+    lastOpenedSongPath: computed(() => config.value.lastOpenedSongPath),
     loadConfig,
     setApiKey,
     clearApiKey,
     setConversionMode,
     setPlaygroundModel,
     setLastSongbookPath,
-    clearLastSongbookPath
+    clearLastSongbookPath,
+    setLastOpenedSongPath,
+    clearLastOpenedSongPath
   };
 }
