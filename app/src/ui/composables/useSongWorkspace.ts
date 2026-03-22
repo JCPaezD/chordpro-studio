@@ -75,6 +75,7 @@ export type SongWorkspace = {
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
+  abortConversion(): void;
   runPipeline(options?: RunPipelineOptions): Promise<void>;
   previewFromChordPro(): Promise<void>;
   dispose(): void;
@@ -133,6 +134,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let hasLoadedInitialConfig = false;
   let previewRefreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   let previewRequestId = 0;
+  let currentPipelineRequestId = 0;
+  let currentAbortController: AbortController | null = null;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -625,6 +628,30 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     );
   }
 
+  function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === "AbortError";
+  }
+
+  function clearCurrentAbortController(controller?: AbortController | null): void {
+    if (!controller || currentAbortController !== controller) {
+      return;
+    }
+
+    currentAbortController = null;
+  }
+
+  function abortConversion(): void {
+    currentPipelineRequestId += 1;
+    loading.value = false;
+    isGeneratingPreview.value = false;
+    cancelPendingPreviewRefresh();
+
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+  }
+
   async function runPipeline(options?: RunPipelineOptions): Promise<void> {
     if (!(await ensureDocumentCanBeReplaced())) {
       return;
@@ -640,13 +667,24 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       clearOperationMessages();
     }
 
+    const localRequestId = currentPipelineRequestId + 1;
+    currentPipelineRequestId = localRequestId;
+    const abortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+    currentAbortController = abortController;
     loading.value = true;
     isGeneratingPreview.value = true;
 
     try {
       const activeFilePath = document.value.filePath;
       const pipeline = createPipeline(options?.model);
-      const result = await pipeline.process(rawInput.value, options?.preferences);
+      const result = await pipeline.process(rawInput.value, options?.preferences, {
+        signal: abortController?.signal
+      });
+
+      if (localRequestId !== currentPipelineRequestId) {
+        return;
+      }
+
       cleanedText.value = result.cleanedText;
       replaceDocument(
         createDocumentFromChordPro(result.chordPro, {
@@ -656,8 +694,18 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         })
       );
       retryLog.value = result.retryLog ?? [];
-      await refreshPreview(result.chordPro, { manageLoadingState: false });
+
+      const previewRequestIdForRun = previewRequestId + 1;
+      previewRequestId = previewRequestIdForRun;
+      await refreshPreview(result.chordPro, {
+        manageLoadingState: false,
+        requestId: previewRequestIdForRun
+      });
     } catch (err) {
+      if (localRequestId !== currentPipelineRequestId || isAbortError(err)) {
+        return;
+      }
+
       if (err instanceof ChordProValidationError) {
         validationReason.value = err.details?.reason ?? "";
         validationRawOutput.value = err.details?.rawOutput ?? "";
@@ -675,8 +723,12 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
       error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
     } finally {
-      loading.value = false;
-      isGeneratingPreview.value = false;
+      clearCurrentAbortController(abortController);
+
+      if (localRequestId === currentPipelineRequestId) {
+        loading.value = false;
+        isGeneratingPreview.value = false;
+      }
     }
   }
 
@@ -938,7 +990,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
   function dispose(): void {
-    cancelPendingPreviewRefresh();
+    abortConversion();
 
     if (unlistenWindowCloseRequested) {
       unlistenWindowCloseRequested();
@@ -991,6 +1043,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     saveDocument,
     setChordProText,
     setActivePanel,
+    abortConversion,
     runPipeline,
     previewFromChordPro,
     dispose

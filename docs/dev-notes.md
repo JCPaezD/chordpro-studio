@@ -206,6 +206,12 @@ the documentation must be updated first.
 - reason for the assumption: this resolves editor/song list desynchronization without introducing aggressive auto-rename behavior, and keeps Windows case-only normalization safe through a temporary rename step plus Tauri `fs:allow-rename`
 - whether it requires later validation: no, validated on 2026-03-22 with successful editor save, unsaved-changes modal save and Preview `.cho` export tests
 
+- date: 2026-03-22
+- context: adding user-driven conversion abort support in `User` and `Playground`
+- assumption made: conversion cancellation should use real `AbortController` support in the LLM providers when available, while the shared workspace still invalidates late responses through a request id so aborted or stale results never affect UI state
+- reason for the assumption: this keeps the feature safe even if transport cancellation is delayed, avoids extra pipeline refactors, and gives both views a single source of truth for active conversion state
+- whether it requires later validation: no, validated on 2026-03-22 with successful abort, late-response ignore, rerun and repeated-click manual tests
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:

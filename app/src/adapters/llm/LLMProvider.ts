@@ -3,6 +3,10 @@ export interface LLMGenerateResult {
   retryLog?: string[];
 }
 
+export interface LLMGenerateOptions {
+  signal?: AbortSignal;
+}
+
 export interface LLMProvider {
-  generate(prompt: string): Promise<LLMGenerateResult>;
+  generate(prompt: string, options?: LLMGenerateOptions): Promise<LLMGenerateResult>;
 }

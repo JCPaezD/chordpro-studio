@@ -1,11 +1,41 @@
-import type { LLMGenerateResult, LLMProvider } from "./LLMProvider";
+import type { LLMGenerateOptions, LLMGenerateResult, LLMProvider } from "./LLMProvider";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAYS_MS = [500, 1000, 2000];
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+function createAbortError(): Error {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("Gemini request was aborted.", "AbortError");
+  }
+
+  const error = new Error("Gemini request was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      signal?.removeEventListener("abort", handleAbort);
+      resolve();
+    }, ms);
+
+    function handleAbort(): void {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener("abort", handleAbort);
+      reject(createAbortError());
+    }
+
+    signal?.addEventListener("abort", handleAbort, { once: true });
   });
 }
 
@@ -42,7 +72,7 @@ export class GeminiProvider implements LLMProvider {
     }
   }
 
-  async generate(prompt: string): Promise<LLMGenerateResult> {
+  async generate(prompt: string, options?: LLMGenerateOptions): Promise<LLMGenerateResult> {
     const endpoint =
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent` +
       `?key=${encodeURIComponent(this.apiKey)}`;
@@ -63,7 +93,8 @@ export class GeminiProvider implements LLMProvider {
                 parts: [{ text: prompt }]
               }
             ]
-          })
+          }),
+          signal: options?.signal
         });
 
         if (!response.ok) {
@@ -97,6 +128,10 @@ export class GeminiProvider implements LLMProvider {
           return retryLog.length > 0 ? { text, retryLog } : { text };
         }
       } catch (error) {
+        if (isAbortError(error)) {
+          throw error;
+        }
+
         if (error instanceof Error && error.message.startsWith("Gemini request failed (")) {
           lastError = error;
 
@@ -125,7 +160,7 @@ export class GeminiProvider implements LLMProvider {
         const retryMessage = `Retry ${retryCount}/${MAX_RETRIES} after Gemini error ${retryLabel}`;
         retryLog.push(retryMessage);
         console.warn(retryMessage);
-        await delay(RETRY_DELAYS_MS[attempt]);
+        await delay(RETRY_DELAYS_MS[attempt], options?.signal);
         continue;
       }
 

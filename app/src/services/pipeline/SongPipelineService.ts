@@ -1,3 +1,4 @@
+import type { LLMGenerateOptions } from "../../adapters/llm/LLMProvider";
 import type { Song } from "../../domain/song";
 import { normalizeMetadata } from "../../domain/song/normalizeMetadata";
 import { ChordProOutputValidator } from "../../domain/validation/ChordProOutputValidator";
@@ -69,7 +70,8 @@ export class SongPipelineService {
 
   async process(
     rawText: string,
-    preferences?: Record<string, unknown>
+    preferences?: Record<string, unknown>,
+    options?: LLMGenerateOptions
   ): Promise<{
     cleanedText: string;
     chordPro: string;
@@ -77,7 +79,7 @@ export class SongPipelineService {
     song: Song;
   }> {
     const cleanedText = this.cleaningService.clean(rawText);
-    const conversionResult = await this.conversionService.convert(cleanedText, preferences);
+    const conversionResult = await this.conversionService.convert(cleanedText, preferences, options);
     ChordProOutputValidator.validate(conversionResult.text);
     const chordPro = normalizeConvertedChordPro(conversionResult.text);
     const song = this.chordProParser.parse(chordPro);

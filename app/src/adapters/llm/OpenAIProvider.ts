@@ -1,4 +1,4 @@
-import type { LLMGenerateResult, LLMProvider } from "./LLMProvider";
+import type { LLMGenerateOptions, LLMGenerateResult, LLMProvider } from "./LLMProvider";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 
@@ -12,7 +12,7 @@ export class OpenAIProvider implements LLMProvider {
     }
   }
 
-  async generate(prompt: string): Promise<LLMGenerateResult> {
+  async generate(prompt: string, options?: LLMGenerateOptions): Promise<LLMGenerateResult> {
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
@@ -22,7 +22,8 @@ export class OpenAIProvider implements LLMProvider {
       body: JSON.stringify({
         model: this.model,
         input: prompt
-      })
+      }),
+      signal: options?.signal
     });
 
     if (!response.ok) {

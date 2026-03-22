@@ -44,6 +44,7 @@ const {
   exportCurrent,
   exportSongbookPdf,
   runPipeline,
+  abortConversion,
   previewFromChordPro,
   openSongbookFolder,
   refreshSongbook,
@@ -393,10 +394,14 @@ async function clearApiKey(): Promise<void> {
                 <button class="mini-button" @click="showChordProEditor = !showChordProEditor">
                   {{ showChordProEditor ? "Hide ChordPro editor" : "Show ChordPro editor" }}
                 </button>
-                <button class="primary-button" :disabled="!canGenerate" @click="convertSong">
-                  <span :class="['button-content', { loading }]">
-                    <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
-                    <span class="button-label">{{ loading ? "Generating..." : "Generate" }}</span>
+                <button v-if="loading" class="primary-button" @click="abortConversion">
+                  <span class="button-content">
+                    <span class="button-label">Abort</span>
+                  </span>
+                </button>
+                <button v-else class="primary-button" :disabled="!canGenerate" @click="convertSong">
+                  <span class="button-content">
+                    <span class="button-label">Generate</span>
                   </span>
                 </button>
               </div>

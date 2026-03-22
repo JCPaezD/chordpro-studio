@@ -48,6 +48,7 @@ Current status:
 - chord-only separator lines such as `[G] - [Am] - [Em]` are now cleaned safely before parsing, while mixed content remains unchanged
 - BUG-15 resolved: reconversion now keeps active song metadata synchronized in the editor and song list, and saving applies conservative safe filename normalization without creating duplicates
 - User View `.cho` editor now refreshes preview automatically with debounced regeneration, request ordering protection, a lightweight non-blocking spinner and a double-buffered iframe swap to reduce visible flicker
+- conversion requests can now be aborted safely from both `User` and `Playground`, with real provider cancellation support and stale-response protection in the shared workspace
 
 ## Completed work
 
@@ -98,7 +99,6 @@ Current status:
 
 ### v1.1 - Post-release improvements
 
-- allow aborting an ongoing conversion request from the UI in both `User` and `Playground`
 
 ## v1.x - Additional UX / dev improvements
 

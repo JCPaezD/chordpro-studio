@@ -35,6 +35,7 @@ const {
   clearAllState,
   exportCurrent,
   runPipeline: runWorkspacePipeline,
+  abortConversion,
   previewFromChordPro
 } = useSongWorkspace();
 
@@ -248,10 +249,14 @@ onMounted(async () => {
             <button class="mini-button" @click="pasteFromClipboard">Paste</button>
             <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
             <button class="mini-button" :disabled="loading" @click="clearAllState">Clear all</button>
-            <button :disabled="loading || !resolvedGeminiModel" class="run-button" @click="runPipeline">
-              <span :class="['button-content', { loading }]">
-                <span :class="['button-spinner', { 'is-hidden': !loading }]" aria-hidden="true" />
-                <span class="button-label">{{ loading ? "Running..." : "Run Pipeline" }}</span>
+            <button v-if="loading" class="run-button" @click="abortConversion">
+              <span class="button-content">
+                <span class="button-label">Abort</span>
+              </span>
+            </button>
+            <button v-else :disabled="!resolvedGeminiModel" class="run-button" @click="runPipeline">
+              <span class="button-content">
+                <span class="button-label">Run Pipeline</span>
               </span>
             </button>
           </div>

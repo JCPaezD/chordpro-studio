@@ -91,6 +91,7 @@ Responsibilities:
 - HTTP access to LLM APIs
 - desktop preview and PDF export through Tauri commands
 - filesystem reads and writes for `.cho` files and config persistence
+- request cancellation support for LLM-backed conversions through `AbortController`
 
 ---
 
@@ -214,6 +215,7 @@ The workspace owns:
 - current preview state
 - export feedback
 - current songbook state
+- the active conversion request lifecycle, including cancellation and stale-response invalidation
 
 `WorkspaceDocument` represents the active song in the workspace.
 
