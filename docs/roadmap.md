@@ -113,6 +113,10 @@ Current status:
 - auto-scroll song list when entering Songbook view to ensure active item is visible
 - add refresh action that forces preview regeneration (bypass cache)
 - add lightweight loading state on app startup (avoid blank screen)
+- display app version in window title:
+  - format: `ChordPro Studio — vX.Y.Z`
+  - version must stay synchronized with `tauri.conf.json`
+  - avoid hardcoded values
 
 ### Minimal preferences (limited scope)
 
