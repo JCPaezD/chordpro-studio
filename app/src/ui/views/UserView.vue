@@ -688,6 +688,7 @@ async function clearApiKey(): Promise<void> {
                   <div>
                     <h3>Songs</h3>
                     <p>{{ songbook.songs.length }} files</p>
+                    <p class="song-list-hint">Select a song to preview</p>
                   </div>
                 </div>
                 <div
@@ -742,8 +743,14 @@ async function clearApiKey(): Promise<void> {
             </div>
 
             <div v-else class="songbook-empty-state">
-              <div class="songbook-empty large">
-                Open a folder to build a simple songbook from its `.cho` files.
+              <div class="songbook-empty large songbook-start-state">
+                <div class="empty-state-copy">
+                  <h3>Open a folder to get started</h3>
+                  <p>Build your songbook from .cho files</p>
+                </div>
+                <button class="mini-button empty-state-button" @click="openSongbookFolder">
+                  Open folder
+                </button>
               </div>
             </div>
           </div>
@@ -783,10 +790,15 @@ async function clearApiKey(): Promise<void> {
           <div v-else-if="!hasBufferedPreview && previewError" class="preview-state">
             <p class="message error-message">{{ previewError }}</p>
           </div>
-          <div v-else-if="!hasBufferedPreview" class="preview-state">
-            <p class="message">
-              Generate or open a song to see the PDF preview.
-            </p>
+          <div v-else-if="!hasBufferedPreview" class="preview-state preview-empty-state">
+            <div class="empty-state-copy preview-empty-copy">
+              <p class="message preview-empty-title">
+                Generate or open a song to see the PDF preview
+              </p>
+              <p class="empty-state-subtitle">
+                {{ songbook ? "Select a song from the list or convert a new song" : "Convert a new song to get started" }}
+              </p>
+            </div>
           </div>
           <div v-else class="preview-viewer">
             <iframe
@@ -1285,6 +1297,36 @@ async function clearApiKey(): Promise<void> {
   color: #4a564a;
 }
 
+.song-list-hint,
+.empty-state-subtitle {
+  color: rgba(74, 86, 74, 0.78);
+  font-size: 0.92rem;
+  font-weight: 400;
+}
+
+.song-list-hint {
+  margin-top: 0.35rem;
+}
+
+.empty-state-copy {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+}
+
+.empty-state-copy h3,
+.empty-state-copy p {
+  margin: 0;
+}
+
+.empty-state-copy h3 {
+  color: #233127;
+}
+
+.empty-state-button {
+  margin-top: 0.35rem;
+}
+
 .songbook-empty-state {
   display: flex;
   flex: 1;
@@ -1298,6 +1340,10 @@ async function clearApiKey(): Promise<void> {
   text-align: center;
 }
 
+.songbook-start-state {
+  gap: 0.85rem;
+}
+
 .dirty-badge {
   padding: 0.35rem 0.55rem;
   background: #f0dfb9;
@@ -1309,7 +1355,23 @@ async function clearApiKey(): Promise<void> {
 }
 
 .preview-panel .message {
+  margin: 0;
   text-align: center;
+}
+
+.preview-empty-state {
+  color: rgba(74, 86, 74, 0.82);
+}
+
+.preview-empty-copy {
+  gap: 0.45rem;
+  max-width: 28rem;
+}
+
+.preview-empty-title {
+  color: #314034;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .preview-state,
@@ -1533,5 +1595,3 @@ async function clearApiKey(): Promise<void> {
   }
 }
 </style>
-
-

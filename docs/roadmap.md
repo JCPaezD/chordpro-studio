@@ -55,6 +55,7 @@ Current status:
 - v1.3 startup workflow refinement now restores the last opened song when the persisted songbook is available, opens Songbook automatically on startup in that case, and falls back to Convert when no songbook is configured
 - v1.3 songbook navigation now keeps keyboard selection visible with smooth auto-scroll, and performance mode can be entered fully from the keyboard through `F11`, `Enter`, `Esc` and list navigation keys
 - v1.3 preview generation now reuses a persistent PDF cache keyed by `chordProText`, so unchanged previews survive app restarts and cache hits avoid unnecessary ChordPro CLI execution
+- v1.3 light UX refinement completed with clearer Songbook and Preview empty states, a stronger folder-entry call to action, and lower-weight preview guidance without changing the panel layout
 
 ## Completed work
 
@@ -103,10 +104,6 @@ Current status:
 
 ## Current roadmap
 
-## v1.3 - Workflow refinement
-
-- light UX pass (review empty states and minor interaction details without redesign)
-
 ## v1.x - Additional UX / dev improvements
 
 - add a side menu to the Playground to toggle panel visibility
@@ -152,5 +149,3 @@ Features:
 - performance mode
 - setlists
 - cloud sync
-
-

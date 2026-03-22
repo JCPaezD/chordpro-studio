@@ -286,6 +286,7 @@ Preview failure behavior:
 - the current native PDF viewer approach still performs a full document reload when the iframe `src` changes; reducing that further would require a custom viewer outside the current architecture
 - Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and uses a pragmatic PDF fit heuristic (`fith` in tall previews, `fitv` in wide previews) because the native Edge/WebView PDF viewer did not apply `#view=fit` reliably in manual testing
 - keyboard navigation in performance mode intentionally remains best-effort when focus stays in the app; once focus moves inside the native PDF viewer iframe, its own input handling takes precedence and the app does not try to steal focus back
+- User View empty states were refined without changing panel layout: Songbook now uses a clearer no-folder call to action, loaded songbooks show a low-weight selection hint, and the Preview placeholder uses softer two-line guidance that adapts when a songbook is available
 
 Bundled CLI expectation:
 
