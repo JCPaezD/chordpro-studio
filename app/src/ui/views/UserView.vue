@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
+import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
 import { type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
 import { useAppConfig } from "../composables/useAppConfig";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
@@ -14,6 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "change-mode": [mode: "user" | "playground"];
+  "immersive-change": [value: boolean];
 }>();
 
 const isDev = import.meta.env.DEV;
@@ -60,6 +62,7 @@ type PreviewFrameId = "A" | "B";
 const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
 const PREVIEW_FRAME_TRANSITION_MS = 180;
 
+const isPerformanceMode = ref(false);
 const showChordProEditor = ref(false);
 const showApiKeyModal = ref(false);
 const apiKeyDraft = ref("");
@@ -251,6 +254,7 @@ watch(previewSrc, (nextUrl) => {
 });
 
 onBeforeUnmount(() => {
+  emit("immersive-change", false);
   clearAllPreviewFrames();
 });
 
@@ -265,6 +269,31 @@ async function convertSong(): Promise<void> {
 
 function updateChordPro(value: string): void {
   setChordProText(value);
+}
+
+function enterPerformanceMode(): void {
+  if (!songbook.value) {
+    return;
+  }
+
+  setActivePanel("songbook");
+  isPerformanceMode.value = true;
+}
+
+function exitPerformanceMode(): void {
+  isPerformanceMode.value = false;
+}
+
+watch(isPerformanceMode, (value) => {
+  emit("immersive-change", value);
+}, { immediate: true });
+
+async function openSongFromSongbook(filePath: string): Promise<void> {
+  await openSongFile(filePath);
+}
+
+async function openSongInPerformanceMode(filePath: string): Promise<void> {
+  await openSongFile(filePath, { bypassUnsavedChanges: true });
 }
 
 async function toggleConversionMode(): Promise<void> {
@@ -322,6 +351,24 @@ async function clearApiKey(): Promise<void> {
 
 <template>
   <main class="user-view">
+    <SongbookPerformanceMode
+      v-if="isPerformanceMode"
+      :songbook="songbook"
+      :songbook-error="songbookError"
+      :selected-song-path="selectedSongPath"
+      :current-song-title="songbookEditorTitle"
+      :is-generating-preview="isGeneratingPreview"
+      :is-refreshing-preview="isRefreshingPreview"
+      :preview-error="previewError"
+      :preview-frame-src-a="previewFrameSrcA"
+      :preview-frame-src-b="previewFrameSrcB"
+      :active-preview-frame="activePreviewFrame"
+      :open-song="openSongInPerformanceMode"
+      :exit-performance-mode="exitPerformanceMode"
+      :handle-preview-frame-load="handlePreviewFrameLoad"
+    />
+
+    <template v-else>
     <header class="card user-header">
       <div class="header-copy">
         <div class="brand-lockup">
@@ -473,6 +520,9 @@ async function clearApiKey(): Promise<void> {
                 <button class="mini-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
                   {{ isExportingSongbook ? "Generating songbook..." : "Export Songbook PDF" }}
                 </button>
+                <button class="mini-button" :disabled="!songbook" @click="enterPerformanceMode">
+                  Performance mode
+                </button>
               </div>
               <p v-if="songbookExportWarning" class="action-feedback warning-message">{{ songbookExportWarning }}</p>
               <p v-if="songbookExportError" class="action-feedback error-message">{{ songbookExportError }}</p>
@@ -502,7 +552,7 @@ async function clearApiKey(): Promise<void> {
                     v-for="songEntry in songbook.songs"
                     :key="songEntry.filePath"
                     :class="['song-item', { active: selectedSongPath === songEntry.filePath }]"
-                    @click="openSongFile(songEntry.filePath)"
+                    @click="openSongFromSongbook(songEntry.filePath)"
                   >
                     {{ songEntry.displayTitle }}
                   </button>
@@ -613,6 +663,7 @@ async function clearApiKey(): Promise<void> {
         </div>
       </section>
     </section>
+    </template>
 
     <div v-if="showApiKeyModal" class="modal-backdrop" @click.self="closeApiKeyModal">
       <div class="modal-card">

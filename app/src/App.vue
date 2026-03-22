@@ -8,6 +8,7 @@ import PipelinePlaygroundView from "./ui/views/PipelinePlaygroundView.vue";
 
 const isDev = import.meta.env.DEV;
 const mode = ref<"user" | "playground">("user");
+const isImmersive = ref(false);
 const appConfig = useAppConfig();
 const configLoading = computed(() => appConfig.loading.value);
 const workspace = useSongWorkspace({ appConfig });
@@ -23,7 +24,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="app-shell">
+  <main :class="['app-shell', { immersive: isImmersive }]">
     <div v-if="configLoading" class="boot-screen">
       <div class="boot-card">
         <p class="eyebrow">ChordPro Studio</p>
@@ -33,7 +34,7 @@ onBeforeUnmount(() => {
 
     <template v-else>
       <div v-show="mode === 'user' || !isDev" class="view-host">
-        <UserView :mode="mode" @change-mode="mode = $event" />
+        <UserView :mode="mode" @change-mode="mode = $event" @immersive-change="isImmersive = $event" />
       </div>
 
       <div v-if="isDev" v-show="mode === 'playground'" class="view-host">
@@ -57,6 +58,10 @@ onBeforeUnmount(() => {
     linear-gradient(180deg, #f7f2e8 0%, #efe6d6 100%);
   color: #182019;
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.app-shell.immersive {
+  padding: 0.3rem;
 }
 
 :global(html),
@@ -103,6 +108,10 @@ onBeforeUnmount(() => {
 @media (max-width: 800px) {
   .app-shell {
     padding: 1rem;
+  }
+
+  .app-shell.immersive {
+    padding: 0.2rem;
   }
 }
 </style>

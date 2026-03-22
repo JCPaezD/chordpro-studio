@@ -71,7 +71,7 @@ export type SongWorkspace = {
   openSongbookFolder(): Promise<void>;
   refreshSongbook(): Promise<void>;
   clearSongbook(): Promise<void>;
-  openSongFile(filePath: string): Promise<void>;
+  openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean }): Promise<void>;
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
@@ -882,8 +882,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
 
-  async function openSongFile(filePath: string): Promise<void> {
-    if (!(await ensureDocumentCanBeReplaced())) {
+  async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean }): Promise<void> {
+    if (!options?.bypassUnsavedChanges && !(await ensureDocumentCanBeReplaced())) {
       return;
     }
 

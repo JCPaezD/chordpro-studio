@@ -238,6 +238,8 @@ Current protected actions are:
 - triggering a new conversion from `Convert`
 - closing the application window
 
+Songbook performance mode keeps reusing that same workspace state. It does not create a second reader-specific store; it only changes layout and navigation rules in `User`, and deliberately bypasses unsaved-change blocking while browsing songs in that consumption-focused mode.
+
 ---
 
 ## UI Layout
@@ -252,6 +254,7 @@ Layout rules:
 - each panel manages its own internal scrolling
 - UI states such as empty, loading and content must not change panel height
 - content components such as textareas, PDF preview frames and lists must not define layout height
+- `User` may temporarily switch the shared app shell into an immersive low-padding variant for Songbook performance mode without changing application architecture
 
 ---
 
@@ -279,6 +282,7 @@ The preview panel remains visible while the left panel changes.
 - folder toolbar
 - song list
 - `.cho` editor for the selected song
+- optional performance mode inside `User`, reusing the same workspace and preview pipeline with an overlay song list and maximized PDF viewer
 
 ---
 

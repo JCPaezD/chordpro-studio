@@ -264,6 +264,8 @@ Preview failure behavior:
 - the User View preview now uses a local dual-iframe buffer with a short delayed swap so the next PDF can load before becoming visible, reducing flicker without changing the underlying native viewer approach
 - even with the buffered swap, the native PDF viewer can still introduce small temporary editor stalls while a refreshed document is being loaded into the WebView
 - the current native PDF viewer approach still performs a full document reload when the iframe `src` changes; reducing that further would require a custom viewer outside the current architecture
+- Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and uses a pragmatic PDF fit heuristic (`fith` in tall previews, `fitv` in wide previews) because the native Edge/WebView PDF viewer did not apply `#view=fit` reliably in manual testing
+- keyboard navigation in performance mode intentionally remains best-effort when focus stays in the app; once focus moves inside the native PDF viewer iframe, its own input handling takes precedence and the app does not try to steal focus back
 
 Bundled CLI expectation:
 
