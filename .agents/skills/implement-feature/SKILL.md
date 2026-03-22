@@ -156,6 +156,64 @@ When a feature is confirmed as complete:
 Do NOT push unless explicitly requested.
 
 
+# Versioning Rules
+
+Version management follows these rules:
+
+- `src-tauri/tauri.conf.json` is the source of truth for the application version
+- `package.json` must be kept in sync with the same version
+- always update the version before local rebuilds when practical, and before releases without exception
+- use incremental numeric versions such as `1.3.0 -> 1.3.1 -> 1.3.2` for local iterations, and `1.3.x -> 1.4.0` for the next planned version
+
+Never:
+
+- reuse the same version for multiple builds
+- change the bundle identifier
+- change the product name
+
+Purpose:
+
+- ensure installer upgrades work correctly
+- avoid version conflicts between builds
+
+
+# Build Types
+
+Two build types are recognized:
+
+### Rebuild (local use)
+
+- purpose: personal testing or iteration
+- actions:
+  - increment version
+  - build the app
+- not required:
+  - release notes
+  - release metadata polishing
+
+### Release (version milestone)
+
+- purpose: stable version or distribution milestone
+- actions:
+  - increment version
+  - ensure metadata is correct
+  - generate release notes
+  - build the app
+
+
+# Release Notes
+
+For release builds:
+
+- generate a structured summary of changes since the last release
+- use commits, roadmap changes, and dev-notes when relevant as source material
+- keep the notes concise and user-oriented
+- group changes by type when it improves readability, such as features, improvements, and fixes
+- avoid low-level implementation details unless they matter to users
+
+Do not generate release notes for local rebuilds.
+
+
 # Release Artifact Workflow
 
 When builds or release artifacts are requested:
