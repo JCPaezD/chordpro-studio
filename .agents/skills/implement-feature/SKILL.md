@@ -93,6 +93,28 @@ Follow this process:
 5. Ensure the implementation remains consistent with existing code structure.
 
 
+# Bug Diagnosis And Debugging
+
+When a bug resists the first reasonable implementation attempts:
+
+- do not keep iterating blindly on hypotheses with no new evidence
+- pause and inspect the real runtime behavior before making more structural changes
+- add temporary, scoped diagnostics when needed, such as logs, counters, or state traces
+- prefer structured debug output that makes event order and state transitions easy to follow
+- use diagnostics for any stubborn bug class, not only UI issues:
+  - rendering and layout bugs
+  - async or timing bugs
+  - cache invalidation problems
+  - process or CLI integration issues
+  - desynchronization between logical state and visible behavior
+- once the actual cause is identified, remove the temporary diagnostics before closing the task
+
+Escalation guideline:
+
+- after a small number of reasonable attempts, switch from trial-and-error to evidence-driven debugging
+- favor one good diagnostic pass over many speculative fixes
+
+
 # Editing Strategy And Patch Robustness
 
 When modifying code:
