@@ -280,6 +280,9 @@ Bundled CLI expectation:
 - the config is resolved from Tauri bundled resources at runtime, with the repository `resources/chordpro-studio/style.json` path used during development
 - the current provisional project style enables keyboard chord diagrams at the bottom of the page and uses project-specific PDF metadata instead of the original preset labels
 - future user preferences should make chord diagrams configurable per user, including visibility, instrument and placement
+- the current project style now renders chorus labels through `pdf.labels.comment`, so labels such as `Estribillo` appear above the section while the chorus bar remains active in the content area
+- PDF headers now use centered title plus artist lines with shared footer layout on first and subsequent pages, and the style keeps extra top spacing reserved on all pages to avoid header overlap in multi-page songs
+- chord and section comment fonts were strengthened for readability (`sans bold 11`) while boxed or shaded section labels remain disabled
 
 - date: 2026-03-21
 - context: replacing the locally copied ChordPro runtime with an official redistributable Windows release before making the repository public

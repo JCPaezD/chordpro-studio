@@ -40,7 +40,7 @@ contents : [
 
     // The format of the table's lines.
     // You can use all song metadata.
-    line : "%{artist} — %{title}"
+    line : "%{artist} - %{title}"
 
     // The format for the page number in the table.
     // You can use all song metadata.
@@ -76,7 +76,7 @@ pdf {
   columnspace : 20
 
   // Page top margin, excluding `headspace`.
-  margintop : 88
+  margintop : 84
 
   // Page bottom margin, excluding `footspace`.
   marginbottom : 40
@@ -87,30 +87,45 @@ pdf {
   // Page right margin.
   marginright : 40
 
-  // Space for page titles.
-  headspace : 57
+  // Space reserved for titles on all pages.
+  headspace : 66
 
   // Space for page footers.
   footspace : 20
 
-  // Heading on first page only, add the headspace to the other pages so they become larger.
-
-  head-first-only : true
+  // Keep the same header model on all pages.
+  head-first-only : false
 
   // Baseline distances as a factor of the font size.
   spacing {
 
     // Spacing for page titles.
-    title : 1.5
+    title : 1.15
 
     // Spacing between songlines (grouped chords + lyrics).
-    lyrics : 1
+    lyrics : 1.2
 
     // Spacing between chords and lyrics in songlines.
-    chords : 1
+    chords : 1.1
 
     // Spacing for empty (blank) lines.
     empty : 1.7
+  }
+
+  // Appearance of chorus sections.
+  chorus {
+    indent : 0
+    bar {
+      offset : 8
+      width  : 1
+      color  : foreground
+    }
+  }
+
+  // Render section labels above the section instead of in the margin.
+  labels {
+    width   : auto
+    comment : "comment"
   }
 
   // Appearance of chord diagrams for string instruments.
@@ -123,30 +138,44 @@ pdf {
     show : bottom
   }
 
-// Page formats.
+  // Page formats.
   formats {
-    default.title : [ "" "%{title}" "" ]
-    first.title   : [ "" "%{title}" "" ]
+    default.title    : [ "" "%{title}" "" ]
+    default.subtitle : [ "" "%{artist}" "" ]
+    default.footer   : [ "%{artist}" "%{page}" "%{title}" ]
 
-    title.footer  : [ "%{artist}" "%{page}" "%{title}" ]
-    first.footer  : [ "%{artist}" "%{page}" "%{title}" ]
-    
+    first.title      : [ "" "%{title}" "" ]
+    first.subtitle   : [ "" "%{artist}" "" ]
+    first.footer     : [ "%{artist}" "%{page}" "%{title}" ]
+
+    title.title      : [ "" "%{title}" "" ]
+    title.subtitle   : [ "" "%{artist}" "" ]
+    title.footer     : [ "%{artist}" "%{page}" "%{title}" ]
   }
 
   // `fonts` maps output elements to fonts as defined in `fontconfig`.
   fonts {
+    title {
+      description : "serif bold 16"
+    }
 
-    // The font used for page titles.
-    title : "Times-Roman 17"
+    subtitle {
+      description : "serif 12"
+      color       : foreground-medium
+    }
 
-    // The font used for chords above the lyrics.
-    chord : "Helvetica-Oblique 9"
+    chord {
+      description : "sans bold 11"
+      color       : foreground
+    }
 
-    // The font used for comments. If not set, falls back on the `text` font.
-    comment: "Times-Roman 12; background=foreground-light"
+    comment {
+      description : "sans bold 11"
+      color       : foreground-medium
+      background  : none
+    }
 
-    // The font used for the table of contents. If not set, falls back on the `text` font.
-    toc: "Times-Roman 15"
+    toc : "Times-Roman 15"
   }
 
   songbook.dual-pages : false

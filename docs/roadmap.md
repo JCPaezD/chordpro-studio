@@ -51,6 +51,7 @@ Current status:
 - User View `.cho` editor now refreshes preview automatically with debounced regeneration, request ordering protection, a lightweight non-blocking spinner and a double-buffered iframe swap to reduce visible flicker
 - conversion requests can now be aborted safely from both `User` and `Playground`, with real provider cancellation support and stale-response protection in the shared workspace
 - v1.2 performance mode for Songbook is now implemented inside `User`, with immersive app-shell padding, overlay song list, maximized PDF preview, keyboard and button navigation, and adaptive PDF fit behavior based on preview aspect ratio
+- v1.2 PDF style refinements completed through `style.json`, including top-positioned chorus labels, cleaner section comments, stronger chord contrast, unified header/footer layout and improved page spacing
 
 ## Completed work
 
@@ -98,10 +99,6 @@ Current status:
 20. Compile the v1 release build.
 
 ## Current roadmap
-
-### v1.2 - UX improvements
-
-- remove `Estribillo` label in PDF export, keeping only the vertical bar for chorus sections
 
 ## v1.x - Additional UX / dev improvements
 
