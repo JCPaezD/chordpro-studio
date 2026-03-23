@@ -455,7 +455,9 @@ Future improvements kept explicitly out of this phase:
 - date: 2026-03-22
 - context: unifying the location of local build and release artifacts after keeping portable packages in `releases/` and Tauri installers under `src-tauri/target/`
 - assumption made: `releases/` should be the canonical human-facing location for portable folders, zip packages and copied installer artifacts, while `src-tauri/target/` remains transient build output
-- reason for the assumption: `releases/` is already ignored by Git, is easier to access manually, and keeps local rebuild outputs consistent across future release and rebuild workflows
+- refinement applied later: top-level `releases/` should stay tidy by grouping every rebuild or release under a version folder such as `releases/vX.Y.Z/`, with portable folder, zip and installer files kept together inside that folder
+- naming rule: those version folders should always use full three-segment semantic versioning, even for `.0` releases (for example `v1.1.0`)
+- reason for the assumption: `releases/` is already ignored by Git, is easier to access manually, and grouping artifacts by version makes local rebuild outputs easier to browse and use without mixing files from different releases
 - whether it requires later validation: no
 
 - date: 2026-03-22

@@ -251,8 +251,11 @@ When builds or release artifacts are requested:
 
 - treat `src-tauri/target/` as transient Tauri output, not as the canonical place to keep final artifacts
 - copy the final human-facing artifacts to `releases/` for easy access
-- when preparing a portable build, prefer a folder in `releases/<name>/` together with a matching `releases/<name>.zip`
-- if installer bundles are needed, copy the generated NSIS/MSI artifacts from `target` into `releases/` with consistent names
+- group each release or rebuild under a semantic version subfolder such as `releases/vX.Y.Z/`
+- keep the version folder name aligned with full three-segment versioning even for `.0` releases (for example `v1.1.0`, not `v1.1`)
+- inside each version folder, keep the portable folder, matching zip, and installer artifacts together
+- when preparing a portable build, prefer a folder and zip pair inside that version folder rather than placing artifacts loose at the top level
+- if installer bundles are needed, copy the generated NSIS/MSI artifacts from `target` into the same version folder with consistent names
 - keep release artifacts untracked in Git and rely on the existing ignore rules instead of staging them
 
 
