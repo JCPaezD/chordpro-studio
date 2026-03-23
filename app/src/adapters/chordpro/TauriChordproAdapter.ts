@@ -37,14 +37,15 @@ function formatTauriError(error: unknown): Error {
 }
 
 export class TauriChordproAdapter implements ChordproAdapter {
-  async generatePreview(chordproText: string): Promise<PreviewResult> {
+  async generatePreview(chordproText: string, options?: { bypassCache?: boolean }): Promise<PreviewResult> {
     if (!isTauri()) {
       throw new Error("Preview generation requires the Tauri desktop runtime.");
     }
 
     try {
       const response = await invoke<GeneratePreviewResponse>("generate_preview", {
-        chordproText
+        chordproText,
+        bypassCache: options?.bypassCache ?? false
       });
 
       return {

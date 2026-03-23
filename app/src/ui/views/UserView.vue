@@ -28,6 +28,7 @@ const {
   loading,
   isGeneratingPreview,
   isRefreshingPreview,
+  isManualPreviewRefresh,
   isExportingSongbook,
   error,
   previewSrc,
@@ -152,13 +153,17 @@ function clearPreviewFrameCleanup(frame: PreviewFrameId): void {
   }
 }
 
-function releasePreviewFrame(frame: PreviewFrameId): void {
+function releasePreviewFrame(frame: PreviewFrameId, options?: { preserveUrl?: string }): void {
   const url = getPreviewFrameSrc(frame);
   if (!url) {
     return;
   }
 
   setPreviewFrameSrc(frame, "");
+
+  if (url === options?.preserveUrl) {
+    return;
+  }
 
   if (url !== getPreviewFrameSrc(getInactivePreviewFrame(frame))) {
     revokeBlobUrl(url);
@@ -195,16 +200,15 @@ function schedulePreviewFrameRelease(frame: PreviewFrameId): void {
   previewFrameCleanupTimerB = timer;
 }
 
-function clearAllPreviewFrames(): void {
+function clearAllPreviewFrames(options?: { preserveUrl?: string }): void {
   cancelPendingPreviewSwap();
   clearPreviewFrameCleanup("A");
   clearPreviewFrameCleanup("B");
-  releasePreviewFrame("A");
-  releasePreviewFrame("B");
+  releasePreviewFrame("A", options);
+  releasePreviewFrame("B", options);
   pendingPreviewFrame.value = null;
   activePreviewFrame.value = "A";
 }
-
 function handlePreviewFrameLoad(frame: PreviewFrameId): void {
   schedulePreviewFitUpdate();
 
@@ -242,6 +246,11 @@ watch(isGeneratingPreview, (value) => {
   }
 
   if (value) {
+    if (isManualPreviewRefresh.value) {
+      showPreviewLoadingIndicator.value = true;
+      return;
+    }
+
     previewLoadingIndicatorTimer = setTimeout(() => {
       showPreviewLoadingIndicator.value = true;
       previewLoadingIndicatorTimer = null;
@@ -324,10 +333,13 @@ watch(isPerformanceMode, (value, previousValue) => {
   emit("immersive-change", value);
 
   if (previousValue && !value) {
-    clearAllPreviewFrames();
+    const preservedPreviewUrl = previewSrc.value;
+    clearAllPreviewFrames({ preserveUrl: preservedPreviewUrl });
 
-    if (previewSrc.value) {
-      setPreviewFrameSrc("A", previewSrc.value);
+    if (preservedPreviewUrl) {
+      const entryFrame = getInactivePreviewFrame(activePreviewFrame.value);
+      setPreviewFrameSrc(entryFrame, preservedPreviewUrl);
+      pendingPreviewFrame.value = entryFrame;
     }
   }
 }, { immediate: true });
@@ -705,7 +717,7 @@ async function clearApiKey(): Promise<void> {
                         <h3>ChordPro source</h3>
                       </div>
                       <div class="header-actions">
-                        <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+                        <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
                           Refresh
                         </button>
                         <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
@@ -792,7 +804,7 @@ async function clearApiKey(): Promise<void> {
                       <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
                         Save
                       </button>
-                      <button class="mini-button" :disabled="loading || !isTauri() || !chordProText" @click="previewFromChordPro">
+                      <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
                         Refresh
                       </button>
                     </div>

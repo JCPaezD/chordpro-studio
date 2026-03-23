@@ -44,6 +44,7 @@ export type SongWorkspace = {
   loading: Ref<boolean>;
   isGeneratingPreview: Ref<boolean>;
   isRefreshingPreview: Ref<boolean>;
+  isManualPreviewRefresh: Ref<boolean>;
   isExportingSongbook: Ref<boolean>;
   error: Ref<string>;
   songbookError: Ref<string>;
@@ -64,7 +65,7 @@ export type SongWorkspace = {
   initialize(): Promise<void>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
-  refreshPreview(chordPro: string, options?: { manageLoadingState?: boolean; requestId?: number; refreshingState?: boolean }): Promise<void>;
+  refreshPreview(chordPro: string, options?: { manageLoadingState?: boolean; requestId?: number; refreshingState?: boolean; bypassCache?: boolean }): Promise<void>;
   clearGeneratedState(): void;
   clearAllState(): void;
   requestClearAllState(): Promise<void>;
@@ -98,6 +99,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const loading = ref(false);
   const isGeneratingPreview = ref(false);
   const isRefreshingPreview = ref(false);
+  const isManualPreviewRefresh = ref(false);
   const isExportingSongbook = ref(false);
   const error = ref("");
   const songbookError = ref("");
@@ -234,6 +236,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     isRefreshingPreview.value = false;
+    isManualPreviewRefresh.value = false;
   }
 
   function syncDocumentSongFromChordPro(chordPro: string): void {
@@ -259,11 +262,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       manageLoadingState?: boolean;
       requestId?: number;
       refreshingState?: boolean;
+      bypassCache?: boolean;
     }
   ): Promise<void> {
     const manageLoadingState = options?.manageLoadingState ?? true;
     const requestId = options?.requestId;
     const refreshingState = options?.refreshingState ?? false;
+    const bypassCache = options?.bypassCache ?? false;
+    const requestStillActive = () => requestId === undefined || requestId === previewRequestId;
     previewError.value = "";
 
     if (manageLoadingState) {
@@ -275,15 +281,15 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     try {
-      const preview = await chordproAdapter.generatePreview(chordPro);
+      const preview = await chordproAdapter.generatePreview(chordPro, { bypassCache });
 
-      if (requestId !== undefined && requestId !== previewRequestId) {
+      if (!requestStillActive()) {
         return;
       }
 
       const nextPreviewUrl = createPdfBlobUrl(preview.pdfBase64);
 
-      if (requestId !== undefined && requestId !== previewRequestId) {
+      if (!requestStillActive()) {
         URL.revokeObjectURL(nextPreviewUrl);
         return;
       }
@@ -291,7 +297,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       previewPath.value = preview.pdfPath;
       previewSrc.value = nextPreviewUrl;
     } catch (err) {
-      if (requestId !== undefined && requestId !== previewRequestId) {
+      if (!requestStillActive()) {
         return;
       }
 
@@ -304,8 +310,12 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         isGeneratingPreview.value = false;
       }
 
-      if (refreshingState && requestId === previewRequestId) {
+      if (refreshingState && requestStillActive()) {
         isRefreshingPreview.value = false;
+      }
+
+      if (manageLoadingState && requestStillActive()) {
+        isManualPreviewRefresh.value = false;
       }
     }
   }
@@ -322,6 +332,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     if (!chordPro.trim()) {
       isRefreshingPreview.value = false;
+      isManualPreviewRefresh.value = false;
       return;
     }
 
@@ -337,7 +348,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       });
     }, 750);
   }
-
   function clearGeneratedState(): void {
     cleanedText.value = "";
     songJson.value = "";
@@ -793,13 +803,19 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     cancelPendingPreviewRefresh();
     clearOperationMessages();
 
-    if (!document.value.chordProText) {
+    if (isGeneratingPreview.value || isRefreshingPreview.value) {
+      return;
+    }
+
+    if (!document.value.chordProText.trim()) {
+      isManualPreviewRefresh.value = false;
       previewError.value = "Preview generation failed.";
       return;
     }
 
     syncDocumentSongFromChordPro(document.value.chordProText);
-    await refreshPreview(document.value.chordProText);
+    isManualPreviewRefresh.value = true;
+    await refreshPreview(document.value.chordProText, { bypassCache: true });
   }
 
   function setChordProText(value: string): void {
@@ -1166,6 +1182,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     loading,
     isGeneratingPreview,
     isRefreshingPreview,
+    isManualPreviewRefresh,
     isExportingSongbook,
     error,
     songbookError,

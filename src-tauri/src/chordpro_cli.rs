@@ -50,16 +50,19 @@ pub struct ExportPdfResponse {
 pub fn generate_preview(
   app: AppHandle,
   chordpro_text: String,
+  bypass_cache: bool,
 ) -> Result<PreviewResponse, ChordProCommandError> {
   let preview_dir = ensure_preview_dir(&app)?;
   let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
   let cache_path = preview_cache_file_path(&app, &rendered_chordpro_text)?;
 
-  if let Some(cached_pdf_bytes) = read_valid_cached_preview(&cache_path) {
-    return Ok(PreviewResponse {
-      pdf_path: cache_path.to_string_lossy().into_owned(),
-      pdf_base64: STANDARD.encode(cached_pdf_bytes),
-    });
+  if !bypass_cache {
+    if let Some(cached_pdf_bytes) = read_valid_cached_preview(&cache_path) {
+      return Ok(PreviewResponse {
+        pdf_path: cache_path.to_string_lossy().into_owned(),
+        pdf_base64: STANDARD.encode(cached_pdf_bytes),
+      });
+    }
   }
 
   let input_path = preview_dir.join(PREVIEW_CHO_FILENAME);
@@ -94,7 +97,6 @@ pub fn generate_preview(
     pdf_base64: STANDARD.encode(generated_pdf_bytes),
   })
 }
-
 #[tauri::command]
 pub fn export_pdf(
   app: AppHandle,

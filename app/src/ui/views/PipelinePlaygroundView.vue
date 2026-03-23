@@ -318,7 +318,7 @@ onMounted(async () => {
           <div class="panel-actions preview-actions">
             <button
               class="mini-button"
-              :disabled="loading || !isTauri() || !chordProText"
+              :disabled="loading || isGeneratingPreview || !isTauri() || !chordProText"
               @click="previewFromChordPro"
             >
               Refresh preview

@@ -62,6 +62,7 @@ Current status:
 - v1.4 preview export now uses explicit Export PDF and Export CHO actions, while the save dialog still allows overriding the final file type before saving
 - v1.4 destructive clear actions now protect unsaved Convert and Playground content with a shared app-level Save / Discard / Cancel confirmation modal, reusing current metadata when available and skipping the prompt when content is already safely persisted
 - v1.4 Songbook now keeps the active song visible when entering the panel, preserves auto-scroll during keyboard navigation, and allows ArrowUp / ArrowDown / Enter navigation across the view while ignoring interactive controls
+- v1.4 manual Refresh now forces preview regeneration through the existing preview pipeline with cache bypass, keeps normal preview loads cached, shows loading immediately for the explicit refresh action, and preserves smooth preview transitions when entering or exiting Songbook performance mode
 
 ## Completed work
 
@@ -114,7 +115,6 @@ Current status:
 
 ### UX improvements
 
-- add refresh action that forces preview regeneration (bypass cache)
 - add lightweight loading state on app startup (avoid blank screen)
 - display app version in window title:
   - format: `ChordPro Studio - vX.Y.Z`
