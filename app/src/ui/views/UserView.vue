@@ -674,8 +674,8 @@ async function clearApiKey(): Promise<void> {
                 <button class="mini-button" @click="openSongbookFolder">Open folder</button>
                 <button class="mini-button" :disabled="!songbook" @click="refreshSongbook">Refresh</button>
                 <button class="secondary-button" :disabled="!songbook" @click="clearSongbook">Clear</button>
-                <button class="mini-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
-                  {{ isExportingSongbook ? "Generating songbook..." : "Export Songbook PDF" }}
+                <button class="mini-button songbook-export-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
+                  {{ isExportingSongbook ? "Creating PDF..." : "Songbook PDF" }}
                 </button>
                 <button class="mini-button" :disabled="!songbook" @click="enterPerformanceMode">
                   Performance mode
@@ -1194,6 +1194,14 @@ async function clearApiKey(): Promise<void> {
 .primary-button:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+.songbook-export-button {
+  width: 10rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .button-content {
