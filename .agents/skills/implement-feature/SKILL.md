@@ -195,6 +195,8 @@ When a feature is confirmed as complete:
 
 2. Preserve roadmap history when updating docs:
    - Current roadmap should reflect pending work only.
+   - During active implementation, avoid moving roadmap items from pending sections to completed/current-status sections before the feature is reviewed and ready to close.
+   - Move roadmap items out of pending sections during the closing or pre-commit phase, not during early implementation, unless the user explicitly asks for it.
    - When removing an item from pending sections, do not let it disappear without trace.
    - Record the completed or resolved outcome in Current status or another appropriate completed/historical section.
 
