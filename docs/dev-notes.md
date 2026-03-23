@@ -1,4 +1,4 @@
-# Development Notes
+﻿# Development Notes
 
 This document records development-time decisions, assumptions and items that require later review.
 
@@ -45,7 +45,7 @@ the documentation must be updated first.
 
 - date: 2026-03-08
 - context: moving the conversion runtime prompt from `docs/prompts.md` to `app/prompts/conversion.prompt.md`
-- assumption made: the runtime prompt content starts at `Actúa...` and ends at `[PEGA AQUÍ TU CANCIÓN]`, excluding the `prompts.md` heading and `## Prompt Storage Strategy` section
+- assumption made: the runtime prompt content starts at `ActÃºa...` and ends at `[PEGA AQUÃ TU CANCIÃ“N]`, excluding the `prompts.md` heading and `## Prompt Storage Strategy` section
 - reason for the assumption: those parts are documentation metadata and storage guidance, not runtime prompt text
 - whether it requires later validation: yes
 
@@ -467,6 +467,13 @@ Future improvements kept explicitly out of this phase:
 - reason for the assumption: this prevents version reuse across rebuilds, keeps installer metadata aligned, avoids fragile edit retries in Windows sessions, and was validated end-to-end with a clean `1.3.1 -> 1.3.2` MSI upgrade that preserved a single installed application entry
 - whether it requires later validation: no
 
+- date: 2026-03-23
+- context: replacing inline save/export feedback rendered under action buttons with a lighter global feedback mechanism
+- assumption made: a small singleton toast composable mounted once at app root is enough for current save/export UX and is preferable to adding a full notification system
+- reason for the assumption: the existing inline messages caused layout noise, while save/export feedback is simple, short-lived and shared across multiple views
+- scope boundary: only one message at a time, no queue, no history, auto-dismiss for success/info, manual dismiss for errors
+- future note: this toast is intentionally minimal but can serve as a base if broader notification needs appear later
+- whether it requires later validation: yes
 - date: 2026-03-22
 - context: adding a safe pre-render smart split for `{start_of_tab}` blocks before invoking the bundled ChordPro CLI
 - assumption made: preview and single-song PDF export should preprocess only `{start_of_tab}` ... `{end_of_tab}` blocks (accepting common aliases such as `sot` / `tab` on input), track the active `{columns: N}` directive in the current ChordPro text, split blank-line-separated tab groups independently, pad tab lines to equal width, and split long multi-line tab sections horizontally into multiple balanced `{start_of_tab}` blocks when the estimated character width for the current column mode would overflow
@@ -483,3 +490,4 @@ Future improvements kept explicitly out of this phase:
 - assumption made: Songbook performance mode should keep a local dual-iframe buffer for fit refreshes and force the hidden frame through `about:blank` before loading the next fitted PDF URL, because rapid hash-only iframe updates did not reliably trigger a real reload in the native Edge/WebView PDF viewer
 - reason for the assumption: this keeps the viewer behavior consistent across layouts, avoids duplicated resize logic in individual views, preserves the existing native PDF viewer integration without introducing new rendering paths or overriding user controls, and removes resize-race bugs without reintroducing visible flicker
 - whether it requires later validation: no, validated on 2026-03-22 with successful frontend build and manual fit checks across Convert, Songbook and Performance layouts at different window sizes, including rapid resize transitions in performance mode
+

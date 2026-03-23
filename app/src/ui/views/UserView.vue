@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
@@ -32,11 +32,6 @@ const {
   error,
   previewSrc,
   previewError,
-  exportError,
-  exportMessage,
-  songbookExportWarning,
-  songbookExportError,
-  songbookExportMessage,
   document,
   songMetadata,
   songbook,
@@ -686,9 +681,6 @@ async function clearApiKey(): Promise<void> {
                   Performance mode
                 </button>
               </div>
-              <p v-if="songbookExportWarning" class="action-feedback warning-message">{{ songbookExportWarning }}</p>
-              <p v-if="songbookExportError" class="action-feedback error-message">{{ songbookExportError }}</p>
-              <p v-else-if="songbookExportMessage" class="action-feedback success-message">{{ songbookExportMessage }}</p>
               <p class="action-feedback songbook-path" :title="songbook?.path || 'No folder selected'">
                 {{ songbook?.path || "No songbook folder selected." }}
               </p>
@@ -785,8 +777,6 @@ async function clearApiKey(): Promise<void> {
                 Export PDF (.cho)
               </button>
             </div>
-            <p v-if="exportError" class="action-feedback error-message">{{ exportError }}</p>
-            <p v-else-if="exportMessage" class="action-feedback success-message">{{ exportMessage }}</p>
             <p v-if="previewError && previewSrc" class="action-feedback error-message">{{ previewError }}</p>
           </div>
         </div>
@@ -1611,3 +1601,5 @@ async function clearApiKey(): Promise<void> {
   }
 }
 </style>
+
+

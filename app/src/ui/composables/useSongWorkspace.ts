@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from "vue";
+﻿import { computed, ref, type ComputedRef, type Ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
@@ -17,6 +17,7 @@ import { ConversionService } from "../../services/conversion";
 import { ChordProParser } from "../../services/parser/ChordProParser";
 import { SongPipelineService } from "../../services/pipeline/SongPipelineService";
 import { SongbookService } from "../../services/songbook/SongbookService";
+import { useFeedback } from "./useFeedback";
 
 type WorkspaceDocument = {
   filePath: string;
@@ -50,11 +51,6 @@ export type SongWorkspace = {
   previewPath: Ref<string>;
   previewSrc: Ref<string>;
   previewError: Ref<string>;
-  exportError: Ref<string>;
-  exportMessage: Ref<string>;
-  songbookExportWarning: Ref<string>;
-  songbookExportError: Ref<string>;
-  songbookExportMessage: Ref<string>;
   songMetadata: ComputedRef<SongMetadata>;
   document: Ref<WorkspaceDocument>;
   songbook: Ref<Songbook | null>;
@@ -102,11 +98,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const previewPath = ref("");
   const previewSrc = ref("");
   const previewError = ref("");
-  const exportError = ref("");
-  const exportMessage = ref("");
-  const songbookExportWarning = ref("");
-  const songbookExportError = ref("");
-  const songbookExportMessage = ref("");
   const document = ref<WorkspaceDocument>({
     filePath: "",
     fileName: "",
@@ -129,6 +120,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const parser = new ChordProParser();
   const songRepository = new SongRepository();
   const songbookService = new SongbookService(songRepository, parser);
+  const feedback = useFeedback();
   let unlistenWindowCloseRequested: null | (() => void) = null;
   let initializePromise: Promise<void> | null = null;
   let hasLoadedInitialConfig = false;
@@ -145,8 +137,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         chordProText: value,
         dirty: true
       };
-      exportMessage.value = "";
-      exportError.value = "";
     }
   });
 
@@ -163,13 +153,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   function clearOperationMessages(): void {
     previewError.value = "";
-    exportError.value = "";
-    exportMessage.value = "";
-  }
-
-  function clearSongbookExportFeedback(): void {
-    songbookExportError.value = "";
-    songbookExportMessage.value = "";
   }
 
   function setActivePanel(panel: "songbook" | "convert"): void {
@@ -463,12 +446,12 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     return songbook.value?.path ? join(songbook.value.path, fileName) : fileName;
   }
   async function exportCurrent(): Promise<void> {
-    exportError.value = "";
-    exportMessage.value = "";
-
     try {
       if (!document.value.chordProText) {
-        exportError.value = "Export failed.";
+        feedback.showFeedback({
+          type: "error",
+          message: "Export failed."
+        });
         return;
       }
 
@@ -495,7 +478,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         ? selectedPath
         : selectedPath.toLowerCase().endsWith(".pdf")
           ? selectedPath
-          : `${selectedPath}.pdf`;
+          : selectedPath + ".pdf";
 
       if (normalizedPath.toLowerCase().endsWith(".cho")) {
         let finalPath = normalizedPath;
@@ -520,25 +503,38 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         if (songbook.value) {
           await refreshSongbook();
         }
-        exportMessage.value = `Saved to: ${getFilenameFromPath(finalPath)}`;
+        feedback.showFeedback({
+          type: "success",
+          message: "Saved to: " + getFilenameFromPath(finalPath)
+        });
         return;
       }
 
       const exportedPath = await chordproAdapter.exportPdf(document.value.chordProText, normalizedPath);
-      exportMessage.value = `Saved to: ${getFilenameFromPath(exportedPath)}`;
-    } catch (err) {
-      exportError.value = "Export failed.";
+      feedback.showFeedback({
+        type: "success",
+        message: "Saved to: " + getFilenameFromPath(exportedPath)
+      });
+    } catch {
+      feedback.showFeedback({
+        type: "error",
+        message: "Export failed."
+      });
     }
   }
-
   async function exportSongbookPdf(): Promise<void> {
-    songbookExportWarning.value = document.value.filePath && document.value.dirty
-      ? "You have unsaved changes. The export will use the last saved versions."
-      : "";
-    clearSongbookExportFeedback();
+    if (document.value.filePath && document.value.dirty) {
+      feedback.showFeedback({
+        type: "info",
+        message: "You have unsaved changes. The export will use the last saved versions."
+      });
+    }
 
     if (!songbook.value?.path) {
-      songbookExportError.value = "No songbook folder selected.";
+      feedback.showFeedback({
+        type: "error",
+        message: "No songbook folder selected."
+      });
       return;
     }
 
@@ -548,7 +544,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       const songFiles = await songbookService.listSongFiles(songbook.value.path);
 
       if (songFiles.length === 0) {
-        songbookExportError.value = "No songs found.";
+        feedback.showFeedback({
+          type: "error",
+          message: "No songs found."
+        });
         return;
       }
 
@@ -569,12 +568,18 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
       const normalizedPath = selectedPath.toLowerCase().endsWith(".pdf")
         ? selectedPath
-        : `${selectedPath}.pdf`;
+        : selectedPath + ".pdf";
 
       await chordproAdapter.exportSongbookPdf(songFiles, normalizedPath);
-      songbookExportMessage.value = "Songbook exported.";
+      feedback.showFeedback({
+        type: "success",
+        message: "Songbook exported."
+      });
     } catch (err) {
-      songbookExportError.value = err instanceof Error ? err.message : "Songbook export failed.";
+      feedback.showFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Songbook export failed."
+      });
     } finally {
       isExportingSongbook.value = false;
     }
@@ -775,9 +780,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   async function clearSongbook(): Promise<void> {
     songbook.value = null;
     songbookError.value = "";
-    songbookExportWarning.value = "";
-    clearSongbookExportFeedback();
-
     try {
       await appConfig.clearLastSongbookPath();
       await appConfig.clearLastOpenedSongPath();
@@ -852,7 +854,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           return false;
         }
 
-        targetPath = selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : `${selectedPath}.cho`;
+        targetPath = selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : selectedPath + ".cho";
         await songbookService.saveSong(targetPath, document.value.chordProText);
       } else {
         await songbookService.saveSong(targetPath, document.value.chordProText);
@@ -874,15 +876,20 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         await refreshSongbook();
       }
 
+      feedback.showFeedback({
+        type: "success",
+        message: "Saved to: " + getFilenameFromPath(targetPath)
+      });
+
       return true;
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      error.value = detail;
-      songbookError.value = detail;
+      feedback.showFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Could not save file."
+      });
       return false;
     }
   }
-
   async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<void> {
     if (!options?.bypassUnsavedChanges && !(await ensureDocumentCanBeReplaced())) {
       return;
@@ -1063,11 +1070,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     previewPath,
     previewSrc,
     previewError,
-    exportError,
-    exportMessage,
-    songbookExportWarning,
-    songbookExportError,
-    songbookExportMessage,
     songMetadata,
     document,
     songbook,
@@ -1108,5 +1110,8 @@ export function useSongWorkspace(dependencies?: SongWorkspaceDependencies): Song
 
   return songWorkspace;
 }
+
+
+
 
 

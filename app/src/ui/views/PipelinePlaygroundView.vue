@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
@@ -28,8 +28,6 @@ const {
   previewPath,
   previewSrc,
   previewError,
-  exportError,
-  exportMessage,
   copyToClipboard,
   pasteFromClipboard,
   clearAllState,
@@ -329,8 +327,6 @@ onMounted(async () => {
               <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
                 Export PDF (.cho)
               </button>
-              <p v-if="exportError" class="action-feedback preview-error">{{ exportError }}</p>
-              <p v-else-if="exportMessage" class="action-feedback preview-success">{{ exportMessage }}</p>
             </div>
           </div>
         </div>
@@ -907,3 +903,5 @@ pre {
   }
 }
 </style>
+
+
