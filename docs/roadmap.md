@@ -111,6 +111,10 @@ Current status:
 
 ### UX improvements
 
+- confirm before clearing current sheet in Convert view:
+  - trigger modal on `New Sheet`
+  - options: Save / Discard / Cancel
+  - prevent accidental loss of generated content
 - split export actions into explicit PDF and CHO options
 - auto-scroll song list when entering Songbook view to ensure active item is visible
 - add refresh action that forces preview regeneration (bypass cache)
@@ -152,6 +156,10 @@ Current status:
   - additional PDF/style options (fonts, spacing, layout tweaks)
   - instrument selection for chord diagrams
   - configurable export options
+- allow running the pipeline from intermediate steps in Playground:
+  - trigger pipeline execution from any block
+  - allow manual editing of intermediate outputs
+  - useful for debugging and validation of pipeline stages
 - add lightweight automated checks for core deterministic flows
 - introduce small regression tests for parser, cleaning, preview cache and render preprocessing
 - add a one-command local smoke validation workflow
