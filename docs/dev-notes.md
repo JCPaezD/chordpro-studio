@@ -69,6 +69,12 @@ Only record assumptions here when they materially affect behavior, UX, architect
   impact: high
   revisitable: no
 
+## Local rebuild notes
+
+- local rebuild `v1.3.3` was produced after syncing version metadata across `package.json`, `app/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and the Cargo-generated lockfile update
+- final human-facing artifacts for the rebuild were collected under `releases/v1.3.3/`, keeping `src-tauri/target/` as transient build output only
+- MSI upgrade was validated locally over the previous installed version, and the rebuilt app launched showing `ChordPro Studio - v1.3.3` in the window title
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:

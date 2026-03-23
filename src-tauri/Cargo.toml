@@ -1,6 +1,6 @@
 [package]
 name = "chordpro-studio"
-version = "1.3.2"
+version = "1.3.3"
 description = "Desktop-first ChordPro Studio"
 authors = ["ChordPro Studio"]
 license = ""
