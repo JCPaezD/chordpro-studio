@@ -1,4 +1,4 @@
-﻿# Roadmap
+# Roadmap
 
 ## Phase 1 - MVP
 
@@ -59,7 +59,7 @@ Current status:
 - v1.4 smart tab splitting is now applied to explicit `{start_of_tab}` blocks in preview, single-song PDF export and songbook PDF export, using balanced heuristic chunking for one- and two-column layouts plus a silent single-column fallback for malformed tab blocks
 - v1.4 PDF fit behavior is now unified across Convert, Songbook and Performance views through a shared iframe-size-based fit composable, with A4-aware fit decisions, a smooth performance-mode refresh path that forces reliable hidden-frame navigation without visible flicker, and validated preview/export consistency for single-song and songbook flows
 - v1.4 save and export feedback now uses a small reusable toast mounted at app level, replacing inline success/error messages under action buttons without introducing a full notification system
-- v1.4 destructive clear actions now protect unsaved Convert and Playground content with a shared Save / Discard / Cancel confirmation modal, reusing current metadata when available and skipping the prompt when content is already safely persisted
+- v1.4 destructive clear actions now protect unsaved Convert and Playground content with a shared app-level Save / Discard / Cancel confirmation modal, reusing current metadata when available and skipping the prompt when content is already safely persisted
 
 ## Completed work
 

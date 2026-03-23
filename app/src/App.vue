@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import FeedbackToast from "./ui/components/FeedbackToast.vue";
@@ -62,7 +62,6 @@ onBeforeUnmount(() => {
     radial-gradient(circle at top right, rgba(133, 165, 129, 0.2), transparent 24%),
     linear-gradient(180deg, #f7f2e8 0%, #efe6d6 100%);
   color: #182019;
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
 .app-shell.immersive {
@@ -75,6 +74,7 @@ onBeforeUnmount(() => {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
 .boot-screen {
@@ -120,3 +120,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+

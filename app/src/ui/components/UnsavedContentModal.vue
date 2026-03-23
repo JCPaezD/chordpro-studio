@@ -1,10 +1,10 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const workspace = useSongWorkspace();
-const cancelButtonRef = ref<HTMLButtonElement | null>(null);
+const saveButtonRef = ref<HTMLButtonElement | null>(null);
 
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape" && workspace.showUnsavedContentModal.value) {
@@ -18,7 +18,7 @@ watch(
   async (visible) => {
     if (visible) {
       await nextTick();
-      cancelButtonRef.value?.focus();
+      saveButtonRef.value?.focus();
       window.addEventListener("keydown", handleKeydown);
       return;
     }
@@ -44,20 +44,23 @@ onBeforeUnmount(() => {
           <div class="modal-copy">
             <p class="eyebrow">Unsaved content</p>
             <h2>You have unsaved content.</h2>
-            <p v-if="workspace.unsavedContentMetadataLine.value" class="modal-meta">
+          </div>
+
+          <div v-if="workspace.unsavedContentMetadataLine.value" class="modal-context">
+            <p class="modal-meta">
               {{ workspace.unsavedContentMetadataLine.value }}
             </p>
-            <p>What do you want to do?</p>
           </div>
+          <p class="modal-question">What do you want to do?</p>
 
           <div class="modal-actions">
             <button
-              ref="cancelButtonRef"
-              class="secondary-button"
+              ref="saveButtonRef"
+              class="primary-button"
               :disabled="workspace.isResolvingUnsavedContent.value"
-              @click="workspace.confirmUnsavedContentCancel()"
+              @click="workspace.confirmUnsavedContentSave()"
             >
-              Cancel
+              Save
             </button>
             <button
               class="mini-button"
@@ -67,11 +70,11 @@ onBeforeUnmount(() => {
               Discard
             </button>
             <button
-              class="primary-button"
+              class="secondary-button"
               :disabled="workspace.isResolvingUnsavedContent.value"
-              @click="workspace.confirmUnsavedContentSave()"
+              @click="workspace.confirmUnsavedContentCancel()"
             >
-              Save
+              Cancel
             </button>
           </div>
         </div>
@@ -99,16 +102,30 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.95);
   box-shadow: 0 24px 48px rgba(44, 33, 16, 0.18);
+  font: inherit;
 }
 
 .modal-copy {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.35rem;
 }
 
 .modal-copy h2,
 .modal-copy p {
   margin: 0;
+}
+
+.modal-context {
+  display: grid;
+  width: fit-content;
+  max-width: calc(100% - 1.1rem);
+  justify-self: start;
+  gap: 0.1rem;
+  margin: 0.85rem 0.55rem 0;
+  padding: 0.42rem 1.15rem 0.42rem 0.95rem;
+  border-radius: 16px;
+  background: rgba(247, 239, 224, 0.72);
+  border: 1px solid rgba(35, 49, 39, 0.08);
 }
 
 .eyebrow {
@@ -120,7 +137,15 @@ onBeforeUnmount(() => {
 
 .modal-meta {
   color: #6a755f;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  padding-left: 0.35rem;
+}
+
+.modal-question {
+  margin: 0.68rem 0 0 1.25rem;
+  color: #233127;
+  font-weight: 600;
 }
 
 .modal-actions {
@@ -187,3 +212,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+

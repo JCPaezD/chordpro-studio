@@ -190,7 +190,7 @@ When documentation files are manually edited by the user, Codex should treat the
 
 ## Unsaved content safeguard
 
-- destructive clear actions in Convert (`New Sheet`) and Playground (`Clear all`) now reuse a shared Save / Discard / Cancel confirmation modal instead of clearing immediately
+- destructive clear actions in Convert (`New Sheet`) and Playground (`Clear all`) now reuse a shared app-level Save / Discard / Cancel confirmation modal instead of clearing immediately
 - the safeguard uses a lightweight detection rule: prompt only when content is present and not already safely persisted, with raw input treated as unsaved content even before ChordPro is saved
 - when metadata is already available through the existing workspace parsing/metadata path, the modal shows `Title - Artist` (or the single available value) as a secondary line
 - `Save` reuses the existing save flow and only clears content after a successful save; failed or cancelled saves leave the content intact
@@ -255,3 +255,4 @@ Future improvements kept explicitly out of this phase:
 
 - add a filesystem watcher to refresh the songbook automatically when `.cho` files are added, removed or renamed
 - replace the raw `.cho` editor with a structured chord editor that supports lyric/chord dual-line editing
+
