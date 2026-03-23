@@ -181,6 +181,7 @@ When documentation files are manually edited by the user, Codex should treat the
 - editable source asset: `app/src/ui/assets/master-icon.png`
 - current UI headers import `app/src/ui/assets/logo-64.png`
 - current Tauri development/package icon set lives in `src-tauri/icons/`
+- the window title now appends the runtime app version as `ChordPro Studio - vX.Y.Z`, resolved from Tauri package metadata at startup instead of hardcoded frontend strings, so the visible title stays synchronized with `tauri.conf.json`
 
 ## UI Layout Notes
 

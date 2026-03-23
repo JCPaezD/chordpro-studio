@@ -63,6 +63,7 @@ Current status:
 - v1.4 destructive clear actions now protect unsaved Convert and Playground content with a shared app-level Save / Discard / Cancel confirmation modal, reusing current metadata when available and skipping the prompt when content is already safely persisted
 - v1.4 Songbook now keeps the active song visible when entering the panel, preserves auto-scroll during keyboard navigation, and allows ArrowUp / ArrowDown / Enter navigation across the view while ignoring interactive controls
 - v1.4 manual Refresh now forces preview regeneration through the existing preview pipeline with cache bypass, keeps normal preview loads cached, shows loading immediately for the explicit refresh action, and preserves smooth preview transitions when entering or exiting Songbook performance mode
+- v1.4 window title now shows the runtime app version as `ChordPro Studio - vX.Y.Z`, sourced from Tauri package metadata instead of hardcoded frontend values
 
 ## Completed work
 
@@ -116,10 +117,6 @@ Current status:
 ### UX improvements
 
 - add lightweight loading state on app startup (avoid blank screen)
-- display app version in window title:
-  - format: `ChordPro Studio - vX.Y.Z`
-  - version must stay synchronized with `tauri.conf.json`
-  - avoid hardcoded values
 
 ### Minimal preferences (limited scope)
 
