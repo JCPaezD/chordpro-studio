@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
@@ -324,8 +324,11 @@ onMounted(async () => {
               Refresh preview
             </button>
             <div class="export-actions">
-              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
-                Export PDF (.cho)
+              <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('pdf')">
+                Export PDF
+              </button>
+              <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('cho')">
+                Export CHO
               </button>
             </div>
           </div>
@@ -336,7 +339,7 @@ onMounted(async () => {
             <p class="preview-message preview-error">{{ previewError }}</p>
           </div>
           <div v-else-if="!isTauri()" class="preview-state">
-            <p class="preview-message">Preview and PDF export require the Tauri desktop runtime.</p>
+            <p class="preview-message">Preview and export require the Tauri desktop runtime.</p>
           </div>
           <div v-else-if="!previewSrc && isGeneratingPreview" class="preview-state">
             <div class="preview-loading-card">
@@ -654,9 +657,17 @@ onMounted(async () => {
 }
 
 .export-actions {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
-  justify-items: end;
+  justify-content: flex-end;
+}
+
+.export-action-button {
+  min-width: 7.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-feedback {
@@ -903,5 +914,3 @@ pre {
   }
 }
 </style>
-
-

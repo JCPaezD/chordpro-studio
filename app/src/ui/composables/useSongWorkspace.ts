@@ -1,4 +1,4 @@
-﻿import { computed, ref, type ComputedRef, type Ref } from "vue";
+import { computed, ref, type ComputedRef, type Ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
@@ -68,7 +68,7 @@ export type SongWorkspace = {
   clearGeneratedState(): void;
   clearAllState(): void;
   requestClearAllState(): Promise<void>;
-  exportCurrent(): Promise<void>;
+  exportCurrent(defaultExtension?: "pdf" | "cho"): Promise<void>;
   exportSongbookPdf(): Promise<void>;
   openSongbookFolder(): Promise<void>;
   refreshSongbook(): Promise<void>;
@@ -484,7 +484,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     return songbook.value?.path ? join(songbook.value.path, fileName) : fileName;
   }
-  async function exportCurrent(): Promise<void> {
+  async function exportCurrent(defaultExtension: "pdf" | "cho" = "pdf"): Promise<void> {
     try {
       if (!document.value.chordProText) {
         feedback.showFeedback({
@@ -494,19 +494,32 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         return;
       }
 
+      const filters = defaultExtension === "pdf"
+        ? [
+            {
+              name: "PDF file",
+              extensions: ["pdf"]
+            },
+            {
+              name: "ChordPro file",
+              extensions: ["cho"]
+            }
+          ]
+        : [
+            {
+              name: "ChordPro file",
+              extensions: ["cho"]
+            },
+            {
+              name: "PDF file",
+              extensions: ["pdf"]
+            }
+          ];
+
       const selectedPath = await save({
-        title: "Export ChordPro output",
-        defaultPath: await buildSuggestedExportPath("pdf"),
-        filters: [
-          {
-            name: "PDF file",
-            extensions: ["pdf"]
-          },
-          {
-            name: "ChordPro file",
-            extensions: ["cho"]
-          }
-        ]
+        title: defaultExtension === "pdf" ? "Export PDF" : "Export ChordPro output",
+        defaultPath: await buildSuggestedExportPath(defaultExtension),
+        filters
       });
 
       if (!selectedPath) {
@@ -517,7 +530,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         ? selectedPath
         : selectedPath.toLowerCase().endsWith(".pdf")
           ? selectedPath
-          : selectedPath + ".pdf";
+          : selectedPath + `.${defaultExtension}`;
 
       if (normalizedPath.toLowerCase().endsWith(".cho")) {
         let finalPath = normalizedPath;
@@ -1209,8 +1222,3 @@ export function useSongWorkspace(dependencies?: SongWorkspaceDependencies): Song
 
   return songWorkspace;
 }
-
-
-
-
-

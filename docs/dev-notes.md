@@ -106,6 +106,7 @@ frontend songbook action
 Export feedback behavior:
 
 - save and export feedback now appears through a small global toast mounted once at app root instead of inline messages under action buttons
+- preview export now exposes explicit Export PDF and Export CHO actions for clarity, while the save dialog still lets the user override the final file type before saving
 - only one toast is shown at a time, so newer feedback replaces older feedback instead of queueing
 - success and info messages auto-dismiss, while errors remain visible until manually dismissed
 - success messages use the saved filename when available
@@ -255,4 +256,3 @@ Future improvements kept explicitly out of this phase:
 
 - add a filesystem watcher to refresh the songbook automatically when `.cho` files are added, removed or renamed
 - replace the raw `.cho` editor with a structured chord editor that supports lyric/chord dual-line editing
-

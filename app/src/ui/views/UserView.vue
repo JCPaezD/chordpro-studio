@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
@@ -772,9 +772,12 @@ async function clearApiKey(): Promise<void> {
             <h2>PDF preview</h2>
           </div>
           <div class="panel-actions-stack align-end">
-            <div class="header-actions">
-              <button class="mini-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent">
-                Export PDF (.cho)
+            <div class="header-actions export-split-actions">
+              <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('pdf')">
+                Export PDF
+              </button>
+              <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('cho')">
+                Export CHO
               </button>
             </div>
             <p v-if="previewError && previewSrc" class="action-feedback error-message">{{ previewError }}</p>
@@ -1196,6 +1199,17 @@ async function clearApiKey(): Promise<void> {
   cursor: default;
 }
 
+.export-split-actions {
+  justify-content: flex-end;
+}
+
+.export-action-button {
+  min-width: 7.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .songbook-export-button {
   width: 10rem;
   display: inline-flex;
@@ -1609,5 +1623,3 @@ async function clearApiKey(): Promise<void> {
   }
 }
 </style>
-
-
