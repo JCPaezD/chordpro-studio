@@ -37,10 +37,10 @@ Main stack:
 Core pipeline:
 
 Raw text  
-→ cleaning rules  
-→ LLM conversion  
-→ ChordPro text  
-→ preview/export via ChordPro CLI
+-> cleaning rules  
+-> LLM conversion  
+-> ChordPro text  
+-> preview/export via ChordPro CLI
 
 
 # Architecture Rules
@@ -68,7 +68,7 @@ Preview system:
 
 Preview generation must reuse the existing mechanism:
 
-ChordPro CLI → preview.pdf → returned bytes → Blob URL → WebView PDF viewer
+ChordPro CLI -> preview.pdf -> returned bytes -> Blob URL -> WebView PDF viewer
 
 Do not introduce new PDF viewers or preview systems.
 
@@ -92,6 +92,28 @@ Follow this process:
 4. Implement the minimal change required to complete the feature.
 5. Ensure the implementation remains consistent with existing code structure.
 
+
+# Assumptions Tracking (Filtered)
+
+When implementing a feature:
+
+- identify only meaningful assumptions:
+  - behavior decisions not explicitly defined
+  - fallback strategies
+  - heuristics or threshold choices
+  - simplifications caused by missing data or missing inputs
+  - non-obvious UX decisions
+- do not track:
+  - trivial implementation details
+  - naming choices
+  - obvious or easily reversible decisions
+- do not log assumptions continuously during execution
+- collect them during implementation and surface them only in the final summary under `Assumptions made`
+- use this format when reporting them:
+  - `[assumption] short description`
+    `impact: low | medium | high`
+    `revisitable: yes | no`
+- if an assumption matters long-term, update `docs/dev-notes.md` selectively; do not flood the file with temporary or low-signal entries
 
 # Bug Diagnosis And Debugging
 
@@ -267,6 +289,8 @@ Explain briefly:
 
 - files modified
 - architectural decisions taken
+- assumptions made (only meaningful ones, using the same format as `docs/dev-notes.md`)
 - verification steps performed
 
 Ensure build checks pass before finishing.
+
