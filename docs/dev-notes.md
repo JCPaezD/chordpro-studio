@@ -128,6 +128,7 @@ Preview failure behavior:
 - Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and shares the same iframe-size-based PDF fit composable as Convert and Songbook; the final fit decision is A4-aware, and performance mode refreshes fit through a local hidden-frame swap that forces a real iframe navigation via `about:blank` before loading the next fitted PDF URL because the native Edge/WebView PDF viewer did not reliably reapply rapid hash-only changes
 - keyboard navigation in performance mode intentionally remains best-effort when focus stays in the app; once focus moves inside the native PDF viewer iframe, its own input handling takes precedence and the app does not try to steal focus back
 - User View empty states were refined without changing panel layout: Songbook now uses a clearer no-folder call to action, loaded songbooks show a low-weight selection hint, and the Preview placeholder uses softer two-line guidance that adapts when a songbook is available
+- Songbook view now keeps the active song visible when entering the panel, reuses the existing selection auto-scroll during keyboard navigation, and extends ArrowUp / ArrowDown / Enter handling across the view only when focus is outside interactive controls such as buttons, inputs, textareas, contenteditable areas and the PDF viewer
 
 Bundled CLI expectation:
 

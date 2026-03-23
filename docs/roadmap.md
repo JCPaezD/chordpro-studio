@@ -61,6 +61,7 @@ Current status:
 - v1.4 save and export feedback now uses a small reusable toast mounted at app level, replacing inline success/error messages under action buttons without introducing a full notification system
 - v1.4 preview export now uses explicit Export PDF and Export CHO actions, while the save dialog still allows overriding the final file type before saving
 - v1.4 destructive clear actions now protect unsaved Convert and Playground content with a shared app-level Save / Discard / Cancel confirmation modal, reusing current metadata when available and skipping the prompt when content is already safely persisted
+- v1.4 Songbook now keeps the active song visible when entering the panel, preserves auto-scroll during keyboard navigation, and allows ArrowUp / ArrowDown / Enter navigation across the view while ignoring interactive controls
 
 ## Completed work
 
@@ -113,7 +114,6 @@ Current status:
 
 ### UX improvements
 
-- auto-scroll song list when entering Songbook view to ensure active item is visible
 - add refresh action that forces preview regeneration (bypass cache)
 - add lightweight loading state on app startup (avoid blank screen)
 - display app version in window title:

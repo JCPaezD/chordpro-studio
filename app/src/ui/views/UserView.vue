@@ -368,7 +368,7 @@ function setSongItemRef(index: number) {
   };
 }
 
-function scrollSongbookSelectionIntoView(): void {
+function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
   const index = songbookSelectionIndex.value;
   if (index < 0) {
     return;
@@ -377,7 +377,7 @@ function scrollSongbookSelectionIntoView(): void {
   void nextTick(() => {
     songItemRefs.value[index]?.scrollIntoView({
       block: "nearest",
-      behavior: "smooth"
+      behavior
     });
   });
 }
@@ -386,7 +386,19 @@ function handleSongbookListFocus(): void {
   syncSongbookSelection();
 }
 
-function handleSongbookListKeydown(event: KeyboardEvent): void {
+function isInteractiveElement(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (element.isContentEditable) {
+    return true;
+  }
+
+  return !!element.closest("input, textarea, button, select, option, iframe, a[href], summary, [contenteditable='true'], [contenteditable='']");
+}
+
+function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { restoreListFocus?: boolean }): void {
   const songs = songbookSongs.value;
   if (songs.length === 0) {
     return;
@@ -394,6 +406,7 @@ function handleSongbookListKeydown(event: KeyboardEvent): void {
 
   if (event.key === "ArrowDown") {
     event.preventDefault();
+    event.stopPropagation();
     songbookSelectionIndex.value = Math.min(songbookSelectionIndex.value + 1, songs.length - 1);
     scrollSongbookSelectionIntoView();
     return;
@@ -401,6 +414,7 @@ function handleSongbookListKeydown(event: KeyboardEvent): void {
 
   if (event.key === "ArrowUp") {
     event.preventDefault();
+    event.stopPropagation();
     songbookSelectionIndex.value = Math.max(songbookSelectionIndex.value - 1, 0);
     scrollSongbookSelectionIntoView();
     return;
@@ -408,11 +422,16 @@ function handleSongbookListKeydown(event: KeyboardEvent): void {
 
   if (event.key === "Enter") {
     event.preventDefault();
+    event.stopPropagation();
     const selectedSong = songs[songbookSelectionIndex.value];
     if (selectedSong) {
-      void openSongFromSongbook(selectedSong.filePath, { restoreListFocus: true });
+      void openSongFromSongbook(selectedSong.filePath, { restoreListFocus: options?.restoreListFocus });
     }
   }
+}
+
+function handleSongbookListKeydown(event: KeyboardEvent): void {
+  handleSongbookNavigationKeydown(event, { restoreListFocus: true });
 }
 
 watch(
@@ -420,6 +439,24 @@ watch(
   () => {
     syncSongbookSelection();
     songItemRefs.value = songItemRefs.value.slice(0, songbookSongs.value.length);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [activePanel.value, selectedSongPath.value] as const,
+  ([panel, filePath], previousValue) => {
+    if (panel !== "songbook" || isPerformanceMode.value) {
+      return;
+    }
+
+    const [previousPanel, previousFilePath] = previousValue ?? [];
+    const enteredSongbook = previousPanel !== "songbook";
+    const selectedSongChanged = filePath !== previousFilePath;
+
+    if ((enteredSongbook || selectedSongChanged) && filePath) {
+      scrollSongbookSelectionIntoView("auto");
+    }
   },
   { immediate: true }
 );
@@ -443,17 +480,37 @@ function handleWindowKeydown(event: KeyboardEvent): void {
     return;
   }
 
-  if (event.key !== "F11") {
+  if (event.key === "F11") {
+    if (!songbook.value) {
+      return;
+    }
+
+    event.preventDefault();
+    setActivePanel("songbook");
+    isPerformanceMode.value = !isPerformanceMode.value;
     return;
   }
 
-  if (!songbook.value) {
+  if (activePanel.value !== "songbook" || isPerformanceMode.value) {
     return;
   }
 
-  event.preventDefault();
-  setActivePanel("songbook");
-  isPerformanceMode.value = !isPerformanceMode.value;
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Enter") {
+    return;
+  }
+
+  const eventTarget = event.target instanceof Element ? event.target : null;
+  const activeElement = document.activeElement;
+
+  if (songListRef.value?.contains(eventTarget) || songListRef.value?.contains(activeElement)) {
+    return;
+  }
+
+  if (isInteractiveElement(eventTarget) || isInteractiveElement(activeElement)) {
+    return;
+  }
+
+  handleSongbookNavigationKeydown(event);
 }
 
 async function toggleConversionMode(): Promise<void> {
