@@ -30,7 +30,7 @@ const {
   previewError,
   copyToClipboard,
   pasteFromClipboard,
-  clearAllState,
+  requestClearAllState,
   exportCurrent,
   runPipeline: runWorkspacePipeline,
   abortConversion,
@@ -246,7 +246,7 @@ onMounted(async () => {
             </label>
             <button class="mini-button" @click="pasteFromClipboard">Paste</button>
             <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
-            <button class="mini-button" :disabled="loading" @click="clearAllState">Clear all</button>
+            <button class="mini-button" :disabled="loading" @click="requestClearAllState">Clear all</button>
             <button v-if="loading" class="run-button" @click="abortConversion">
               <span class="button-content">
                 <span class="button-label">Abort</span>

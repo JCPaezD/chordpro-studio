@@ -33,6 +33,8 @@ type RunPipelineOptions = {
   clearBeforeRun?: boolean;
 };
 
+type UnsavedContentResolution = "save" | "discard" | "cancel";
+
 export type SongWorkspace = {
   activePanel: Ref<"songbook" | "convert">;
   rawInput: Ref<string>;
@@ -56,12 +58,16 @@ export type SongWorkspace = {
   songbook: Ref<Songbook | null>;
   selectedSongPath: ComputedRef<string>;
   hasUnsavedChanges: ComputedRef<boolean>;
+  showUnsavedContentModal: Ref<boolean>;
+  unsavedContentMetadataLine: ComputedRef<string>;
+  isResolvingUnsavedContent: Ref<boolean>;
   initialize(): Promise<void>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
   refreshPreview(chordPro: string, options?: { manageLoadingState?: boolean; requestId?: number; refreshingState?: boolean }): Promise<void>;
   clearGeneratedState(): void;
   clearAllState(): void;
+  requestClearAllState(): Promise<void>;
   exportCurrent(): Promise<void>;
   exportSongbookPdf(): Promise<void>;
   openSongbookFolder(): Promise<void>;
@@ -71,6 +77,9 @@ export type SongWorkspace = {
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
+  confirmUnsavedContentSave(): Promise<void>;
+  confirmUnsavedContentDiscard(): void;
+  confirmUnsavedContentCancel(): void;
   abortConversion(): void;
   runPipeline(options?: RunPipelineOptions): Promise<void>;
   previewFromChordPro(): Promise<void>;
@@ -115,6 +124,18 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     return document.value.chordProText.trim().length > 0;
   });
+  const showUnsavedContentModal = ref(false);
+  const isResolvingUnsavedContent = ref(false);
+  const unsavedContentMetadataLine = computed(() => {
+    const title = songMetadata.value.title?.trim();
+    const artist = songMetadata.value.artist?.trim();
+
+    if (title && artist) {
+      return `${title} - ${artist}`;
+    }
+
+    return title || artist || "";
+  });
 
   const chordproAdapter = new TauriChordproAdapter();
   const parser = new ChordProParser();
@@ -128,6 +149,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let previewRequestId = 0;
   let currentPipelineRequestId = 0;
   let currentAbortController: AbortController | null = null;
+  let pendingUnsavedContentResolution: Promise<UnsavedContentResolution> | null = null;
+  let resolveUnsavedContentResolution: ((choice: UnsavedContentResolution) => void) | null = null;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -333,6 +356,22 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   function clearAllState(): void {
     rawInput.value = "";
     clearGeneratedState();
+  }
+
+  function hasContentThatNeedsClearConfirmation(): boolean {
+    if (rawInput.value.trim().length > 0) {
+      return true;
+    }
+
+    if (cleanedText.value.trim().length > 0 || songJson.value.trim().length > 0) {
+      return true;
+    }
+
+    if (document.value.filePath) {
+      return document.value.dirty;
+    }
+
+    return document.value.chordProText.trim().length > 0;
   }
 
   function sanitizeFilenamePart(value: string): string {
@@ -788,36 +827,89 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
 
-  async function resolveUnsavedChanges(): Promise<"save" | "discard" | "cancel"> {
-    if (!hasUnsavedChanges.value) {
+  function requestUnsavedContentResolution(): Promise<UnsavedContentResolution> {
+    if (pendingUnsavedContentResolution) {
+      return pendingUnsavedContentResolution;
+    }
+
+    isResolvingUnsavedContent.value = false;
+    showUnsavedContentModal.value = true;
+    pendingUnsavedContentResolution = new Promise<UnsavedContentResolution>((resolve) => {
+      resolveUnsavedContentResolution = (choice) => {
+        showUnsavedContentModal.value = false;
+        isResolvingUnsavedContent.value = false;
+        pendingUnsavedContentResolution = null;
+        resolveUnsavedContentResolution = null;
+        resolve(choice);
+      };
+    });
+
+    return pendingUnsavedContentResolution;
+  }
+
+  async function resolveUnsavedChanges(options?: { includeRawInput?: boolean }): Promise<UnsavedContentResolution> {
+    const shouldProtect = options?.includeRawInput ? hasContentThatNeedsClearConfirmation() : hasUnsavedChanges.value;
+
+    if (!shouldProtect) {
       return "discard";
     }
 
-    const choice = await message("This song has unsaved changes.", {
-      title: "Unsaved changes",
-      kind: "warning",
-      buttons: {
-        yes: "Save",
-        no: "Discard",
-        cancel: "Cancel"
-      }
-    });
-
-    if (choice === "Cancel") {
-      return "cancel";
-    }
-
-    if (choice === "Save") {
-      const saved = await saveDocument();
-      return saved ? "save" : "cancel";
-    }
-
-    return "discard";
+    return requestUnsavedContentResolution();
   }
 
   async function ensureDocumentCanBeReplaced(): Promise<boolean> {
     const resolution = await resolveUnsavedChanges();
     return resolution !== "cancel";
+  }
+
+  async function requestClearAllState(): Promise<void> {
+    const resolution = await resolveUnsavedChanges({ includeRawInput: true });
+
+    if (resolution === "cancel") {
+      return;
+    }
+
+    clearAllState();
+  }
+
+  async function confirmUnsavedContentSave(): Promise<void> {
+    if (isResolvingUnsavedContent.value) {
+      return;
+    }
+
+    if (!document.value.chordProText.trim()) {
+      feedback.showFeedback({
+        type: "error",
+        message: "There is no ChordPro content to save yet."
+      });
+      return;
+    }
+
+    isResolvingUnsavedContent.value = true;
+    const saved = await saveDocument();
+
+    if (!saved) {
+      isResolvingUnsavedContent.value = false;
+      return;
+    }
+
+    resolveUnsavedContentResolution?.("save");
+  }
+
+  function confirmUnsavedContentDiscard(): void {
+    if (isResolvingUnsavedContent.value) {
+      return;
+    }
+
+    resolveUnsavedContentResolution?.("discard");
+  }
+
+  function confirmUnsavedContentCancel(): void {
+    if (isResolvingUnsavedContent.value) {
+      return;
+    }
+
+    resolveUnsavedContentResolution?.("cancel");
   }
 
   async function saveDocument(): Promise<boolean> {
@@ -1075,12 +1167,16 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     songbook,
     selectedSongPath,
     hasUnsavedChanges,
+    showUnsavedContentModal,
+    unsavedContentMetadataLine,
+    isResolvingUnsavedContent,
     initialize,
     copyToClipboard,
     pasteFromClipboard,
     refreshPreview,
     clearGeneratedState,
     clearAllState,
+    requestClearAllState,
     exportCurrent,
     exportSongbookPdf,
     openSongbookFolder,
@@ -1090,6 +1186,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     saveDocument,
     setChordProText,
     setActivePanel,
+    confirmUnsavedContentSave,
+    confirmUnsavedContentDiscard,
+    confirmUnsavedContentCancel,
     abortConversion,
     runPipeline,
     previewFromChordPro,

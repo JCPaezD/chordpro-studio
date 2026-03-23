@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import FeedbackToast from "./ui/components/FeedbackToast.vue";
+import UnsavedContentModal from "./ui/components/UnsavedContentModal.vue";
 import { useAppConfig } from "./ui/composables/useAppConfig";
 import { useSongWorkspace } from "./ui/composables/useSongWorkspace";
 import UserView from "./ui/views/UserView.vue";
@@ -44,6 +45,7 @@ onBeforeUnmount(() => {
     </template>
 
     <FeedbackToast />
+    <UnsavedContentModal />
   </main>
 </template>
 

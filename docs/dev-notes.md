@@ -188,6 +188,13 @@ When documentation files are manually edited by the user, Codex should treat the
 - the chosen direction is a fixed-height application layout constrained to the viewport, with a non-scrollable header, no global page scroll and internal scrolling only inside panel content areas
 - this removes the need for runtime height synchronization logic between panels and makes empty, loading and populated states layout-neutral
 
+## Unsaved content safeguard
+
+- destructive clear actions in Convert (`New Sheet`) and Playground (`Clear all`) now reuse a shared Save / Discard / Cancel confirmation modal instead of clearing immediately
+- the safeguard uses a lightweight detection rule: prompt only when content is present and not already safely persisted, with raw input treated as unsaved content even before ChordPro is saved
+- when metadata is already available through the existing workspace parsing/metadata path, the modal shows `Title - Artist` (or the single available value) as a secondary line
+- `Save` reuses the existing save flow and only clears content after a successful save; failed or cancelled saves leave the content intact
+
 ## User View Notes
 
 The application now has two UI modes:

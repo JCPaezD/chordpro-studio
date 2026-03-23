@@ -38,7 +38,7 @@ const {
   songbookError,
   selectedSongPath,
   pasteFromClipboard,
-  clearAllState,
+  requestClearAllState,
   exportCurrent,
   exportSongbookPdf,
   runPipeline,
@@ -625,7 +625,7 @@ async function clearApiKey(): Promise<void> {
                   </div>
                   <div class="header-actions">
                     <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-                    <button class="secondary-button" :disabled="loading" @click="clearAllState">Clear</button>
+                    <button class="secondary-button" :disabled="loading" @click="requestClearAllState">New Sheet</button>
                   </div>
                 </div>
 
