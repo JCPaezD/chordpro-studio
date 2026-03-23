@@ -187,6 +187,14 @@ Do NOT create commits automatically unless explicitly instructed.
 
 Leave all changes uncommitted for manual review.
 
+Manual validation and user confirmation take precedence over autonomous task wording:
+
+- if a task involves UI, UX, layout, dialogs, interaction flow, visual behavior, or any change that reasonably benefits from human verification, do not treat the task as fully closed immediately after implementation
+- this rule still applies even if the task prompt asks to finish everything in one autonomous pass, because design-side prompts may over-specify closure expectations
+- in these cases, stop after implementation plus relevant automated checks, present the result for manual validation, and wait for explicit user confirmation before treating the feature as complete
+- do not move roadmap items from pending to completed/current-status, do not finalize closing documentation, and do not prepare final commits until that confirmation arrives
+- only skip this confirmation gate for changes that are clearly mechanical, low-risk, and sufficiently validated without manual interaction
+
 When a feature is confirmed as complete:
 
 1. Update documentation if needed:
@@ -203,6 +211,12 @@ When a feature is confirmed as complete:
 3. Create a Conventional Commit describing the change.
 
 Do NOT push unless explicitly requested.
+
+Sequential closing summaries must reflect the real collaboration flow:
+
+- when asked for a sequential summary, describe the evolution of the task with the user: initial request, implementation direction, iterations, adjustments, validation, and final outcome
+- do not turn that summary into an internal execution log of hidden micro-steps when the task was already well defined by the user
+- assumptions belong in the dedicated `Assumptions made` section instead of being mixed into the sequential narrative
 
 
 # Versioning Rules
