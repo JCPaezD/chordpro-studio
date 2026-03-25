@@ -267,6 +267,7 @@ Workspace document behavior:
 - editing ChordPro source marks the document dirty
 - the current `.cho` document in memory is the single source of truth for destructive replacement checks
 - reconverting an already opened `.cho` preserves the active `filePath` and updates the parsed song metadata immediately so the editor header, save logic and song list refresh stay aligned
+- running `Convert` from raw input now creates a detached unsaved document with no associated `filePath`, so saving a newly generated song opens `Save As` instead of overwriting the previously opened songbook file
 - unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window
 - unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`
 - Tauri close interception for this flow depends on explicit main-window permissions for `window.close` / `window.destroy` in `src-tauri/capabilities/main.json`

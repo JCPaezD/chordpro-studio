@@ -742,7 +742,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     isGeneratingPreview.value = true;
 
     try {
-      const activeFilePath = document.value.filePath;
       const pipeline = createPipeline(options?.model);
       const result = await pipeline.process(rawInput.value, options?.preferences, {
         signal: abortController?.signal
@@ -755,9 +754,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       cleanedText.value = result.cleanedText;
       replaceDocument(
         createDocumentFromChordPro(result.chordPro, {
-          filePath: activeFilePath,
+          filePath: "",
           song: result.song,
-          dirty: activeFilePath.length > 0
+          dirty: false
         })
       );
       retryLog.value = result.retryLog ?? [];
