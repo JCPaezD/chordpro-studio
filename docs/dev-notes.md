@@ -189,6 +189,12 @@ When documentation files are manually edited by the user, Codex should treat the
 - current Tauri development/package icon set lives in `src-tauri/icons/`
 - the window title now appends the runtime app version as `ChordPro Studio - vX.Y.Z`, resolved from Tauri package metadata at startup instead of hardcoded frontend strings, so the visible title stays synchronized with `tauri.conf.json`
 
+## Startup loading notes
+
+- the app now renders a lightweight bootstrap loader directly inside `app/index.html`, so `#app` is no longer empty before Vue mounts
+- the main Tauri window starts hidden and is shown only after the shared boot loader has rendered, avoiding the initial white/empty window that appeared before the WebView painted its first frame
+- the existing app-level startup loader in `App.vue` remains the same logical loading state, but now reuses the same visual treatment as the bootstrap loader and stays as an overlay until config loading, workspace initialization and the first settled layout frames complete
+
 ## UI Layout Notes
 
 - the User View refactor is now implemented: the shell is viewport-constrained, the header is fixed within the view, preview height stays stable across states, and panel scrolling is internal only

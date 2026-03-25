@@ -4,9 +4,83 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ChordPro Studio</title>
+    <style>
+      html,
+      body,
+      #app {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(235, 194, 111, 0.24), transparent 28%),
+          radial-gradient(circle at top right, rgba(133, 165, 129, 0.2), transparent 24%),
+          linear-gradient(180deg, #f7f2e8 0%, #efe6d6 100%);
+        color: #182019;
+      }
+
+      .bootstrap-shell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
+
+      .bootstrap-card {
+        display: inline-flex;
+        align-items: center;
+        gap: 1.05rem;
+        padding: 1.1rem 1.35rem;
+        border: 1px solid rgba(24, 32, 25, 0.12);
+        background: rgba(255, 250, 241, 0.92);
+        box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+      }
+
+      .bootstrap-logo {
+        width: 3.6rem;
+        height: 3.6rem;
+        object-fit: contain;
+        flex: 0 0 auto;
+      }
+
+      .bootstrap-copy {
+        min-width: 0;
+      }
+
+      .bootstrap-title,
+      .bootstrap-status {
+        margin: 0;
+      }
+
+      .bootstrap-title {
+        font-size: 1.18rem;
+        font-weight: 700;
+      }
+
+      .bootstrap-status {
+        margin-top: 0.2rem;
+        font-size: 0.96rem;
+        color: #7a6541;
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="bootstrap-shell">
+        <div class="bootstrap-card">
+          <img class="bootstrap-logo" src="/src/ui/assets/logo-64.png" alt="" />
+          <div class="bootstrap-copy">
+            <p class="bootstrap-title">ChordPro Studio</p>
+            <p class="bootstrap-status">Loading...</p>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

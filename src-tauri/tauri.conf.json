@@ -13,9 +13,11 @@
     "windows": [
       {
         "title": "ChordPro Studio",
+        "visible": false,
         "width": 1280,
         "height": 800,
-        "resizable": true
+        "resizable": true,
+        "backgroundColor": "#efe6d6"
       }
     ],
     "security": {

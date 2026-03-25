@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 import FeedbackToast from "./ui/components/FeedbackToast.vue";
 import UnsavedContentModal from "./ui/components/UnsavedContentModal.vue";
+import logo64 from "./ui/assets/logo-64.png";
 import { useAppConfig } from "./ui/composables/useAppConfig";
 import { useSongWorkspace } from "./ui/composables/useSongWorkspace";
 import UserView from "./ui/views/UserView.vue";
@@ -14,10 +17,43 @@ const isImmersive = ref(false);
 const appConfig = useAppConfig();
 const configLoading = computed(() => appConfig.loading.value);
 const workspace = useSongWorkspace({ appConfig });
+const bootVisible = ref(true);
+let hasShownMainWindow = false;
+
+function waitForNextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+async function settleInitialUi(): Promise<void> {
+  await nextTick();
+  await waitForNextFrame();
+  await waitForNextFrame();
+}
+
+async function showMainWindowWhenBootReady(): Promise<void> {
+  if (hasShownMainWindow || !isTauri()) {
+    return;
+  }
+
+  await settleInitialUi();
+
+  try {
+    await getCurrentWindow().show();
+    hasShownMainWindow = true;
+  } catch (err) {
+    console.error("Could not show main window after boot loader render.", err);
+  }
+}
 
 onMounted(async () => {
+  await showMainWindowWhenBootReady();
+
   await appConfig.loadConfig();
   await workspace.initialize();
+  await settleInitialUi();
+  bootVisible.value = false;
 });
 
 onBeforeUnmount(() => {
@@ -27,14 +63,7 @@ onBeforeUnmount(() => {
 
 <template>
   <main :class="['app-shell', { immersive: isImmersive }]">
-    <div v-if="configLoading" class="boot-screen">
-      <div class="boot-card">
-        <p class="eyebrow">ChordPro Studio</p>
-        <h1>Loading workspace...</h1>
-      </div>
-    </div>
-
-    <template v-else>
+    <div v-if="!configLoading" class="view-host-layer">
       <div v-show="mode === 'user' || !isDev" class="view-host">
         <UserView :mode="mode" @change-mode="mode = $event" @immersive-change="isImmersive = $event" />
       </div>
@@ -42,7 +71,19 @@ onBeforeUnmount(() => {
       <div v-if="isDev" v-show="mode === 'playground'" class="view-host">
         <PipelinePlaygroundView :mode="mode" @change-mode="mode = $event" />
       </div>
-    </template>
+    </div>
+
+    <Transition name="boot-fade">
+      <div v-if="bootVisible" class="boot-screen">
+        <div class="boot-card">
+          <img class="boot-logo" :src="logo64" alt="" />
+          <div class="boot-copy">
+            <p class="boot-title">ChordPro Studio</p>
+            <p class="boot-status">Loading...</p>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <FeedbackToast />
     <UnsavedContentModal />
@@ -51,6 +92,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-shell {
+  position: relative;
   display: flex;
   min-height: 0;
   height: 100dvh;
@@ -77,29 +119,72 @@ onBeforeUnmount(() => {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
-.boot-screen {
-  display: grid;
+.view-host-layer {
+  display: flex;
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.boot-screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
   place-items: center;
+  padding: inherit;
+  background:
+    radial-gradient(circle at top left, rgba(235, 194, 111, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(133, 165, 129, 0.2), transparent 24%),
+    linear-gradient(180deg, #f7f2e8 0%, #efe6d6 100%);
+  z-index: 5;
 }
 
 .boot-card {
-  padding: 1.5rem 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.05rem;
+  padding: 1.1rem 1.35rem;
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
 }
 
-.boot-card h1 {
+.boot-logo {
+  width: 3.6rem;
+  height: 3.6rem;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.boot-copy {
+  min-width: 0;
+}
+
+.boot-title,
+.boot-status {
   margin: 0;
 }
 
-.eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.boot-title {
+  font-size: 1.18rem;
+  font-weight: 700;
+}
+
+.boot-status {
+  margin-top: 0.2rem;
+  font-size: 0.96rem;
   color: #7a6541;
+}
+
+.boot-fade-enter-active,
+.boot-fade-leave-active {
+  transition: opacity 160ms ease;
+}
+
+.boot-fade-enter-from,
+.boot-fade-leave-to {
+  opacity: 0;
 }
 
 .view-host {
@@ -120,4 +205,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-
