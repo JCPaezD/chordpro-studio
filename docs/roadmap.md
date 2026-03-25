@@ -65,6 +65,7 @@ Current status:
 - v1.4 manual Refresh now forces preview regeneration through the existing preview pipeline with cache bypass, keeps normal preview loads cached, shows loading immediately for the explicit refresh action, and preserves smooth preview transitions when entering or exiting Songbook performance mode
 - v1.4 window title now shows the runtime app version as `ChordPro Studio - vX.Y.Z`, sourced from Tauri package metadata instead of hardcoded frontend values
 - v1.4 startup loading now avoids the initial white window by combining a lightweight bootstrap loader in `index.html`, a hidden main Tauri window shown only after the boot UI is rendered, and a short fade that keeps the real layout covered until the first render settles
+- v1.4 all main text editors now use a shared monospace stack in Convert, Songbook and Playground, improving chord alignment without changing sizing or layout
 
 ## Completed work
 
@@ -116,8 +117,6 @@ Current status:
 ## v1.4 - Rendering quality & UX improvements
 
 ### UX improvements
-
-- use monospace font in all editors (raw input and .cho) to preserve chord alignment and improve editing accuracy
 
 ### Minimal preferences (limited scope)
 

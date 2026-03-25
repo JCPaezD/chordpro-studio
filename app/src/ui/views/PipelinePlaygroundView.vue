@@ -260,7 +260,7 @@ onMounted(async () => {
           </div>
         </div>
         <div class="panel-content">
-          <textarea v-model="rawInput" placeholder="Paste raw chord sheet text here..." />
+          <textarea v-model="rawInput" class="editor-monospace" placeholder="Paste raw chord sheet text here..." />
         </div>
       </section>
 
@@ -275,7 +275,7 @@ onMounted(async () => {
           </div>
         </div>
         <div class="panel-content">
-          <textarea :value="cleanedText" readonly />
+          <textarea :value="cleanedText" class="editor-monospace" readonly />
         </div>
       </section>
 
@@ -290,7 +290,7 @@ onMounted(async () => {
           </div>
         </div>
         <div class="panel-content">
-          <textarea v-model="chordProText" />
+          <textarea v-model="chordProText" class="editor-monospace" />
         </div>
       </section>
 
@@ -751,8 +751,7 @@ onMounted(async () => {
   color: #214d2d;
 }
 
-textarea,
-pre {
+textarea {
   width: 100%;
   flex: 1;
   min-height: 0;
@@ -760,7 +759,7 @@ pre {
   border-radius: 0;
   background: #fffef9;
   color: #1f251f;
-  font-family: "Courier New", monospace;
+  font-family: var(--editor-monospace-family);
   font-size: 0.9rem;
   line-height: 1.4;
   padding: 0.75rem;

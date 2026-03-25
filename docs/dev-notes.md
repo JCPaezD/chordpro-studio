@@ -195,6 +195,10 @@ When documentation files are manually edited by the user, Codex should treat the
 - the main Tauri window starts hidden and is shown only after the shared boot loader has rendered, avoiding the initial white/empty window that appeared before the WebView painted its first frame
 - the existing app-level startup loader in `App.vue` remains the same logical loading state, but now reuses the same visual treatment as the bootstrap loader and stays as an overlay until config loading, workspace initialization and the first settled layout frames complete
 
+## Editor typography notes
+
+- all main text editors now use the same shared monospace stack in Convert, Songbook and Playground to preserve chord alignment while keeping their previous font size, line-height and layout rules intact
+- the monospace stack is centralized through a shared CSS variable and then applied explicitly only to editor textareas, so non-editor UI text keeps the normal application font
 ## UI Layout Notes
 
 - the User View refactor is now implemented: the shell is viewport-constrained, the header is fixed within the view, preview height stays stable across states, and panel scrolling is internal only

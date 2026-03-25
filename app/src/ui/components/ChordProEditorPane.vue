@@ -26,7 +26,7 @@ function handleInput(event: Event): void {
 
     <textarea
       :value="modelValue"
-      class="editor-textarea"
+      class="editor-textarea editor-monospace"
       :placeholder="placeholder"
       @input="handleInput"
     />
@@ -59,6 +59,10 @@ function handleInput(event: Event): void {
   font: inherit;
   line-height: 1.5;
   box-sizing: border-box;
+}
+
+.editor-textarea.editor-monospace {
+  font-family: var(--editor-monospace-family);
 }
 
 .editor-actions {

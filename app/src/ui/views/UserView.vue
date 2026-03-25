@@ -700,7 +700,7 @@ async function clearApiKey(): Promise<void> {
 
                 <textarea
                   v-model="rawInput"
-                  class="input-textarea"
+                  class="input-textarea editor-monospace"
                   placeholder="Paste the original song text here..."
                 />
               </section>
@@ -1203,6 +1203,8 @@ async function clearApiKey(): Promise<void> {
   gap: 0.75rem;
 }
 
+
+
 .input-textarea {
   flex: 1;
   width: 100%;
@@ -1216,6 +1218,10 @@ async function clearApiKey(): Promise<void> {
   box-sizing: border-box;
   font: inherit;
   line-height: 1.5;
+}
+
+.input-textarea.editor-monospace {
+  font-family: var(--editor-monospace-family);
 }
 
 .panel-actions-stack {

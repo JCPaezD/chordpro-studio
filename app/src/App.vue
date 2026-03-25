@@ -117,7 +117,9 @@ onBeforeUnmount(() => {
   margin: 0;
   overflow: hidden;
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  --editor-monospace-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
+
 
 .view-host-layer {
   display: flex;
