@@ -117,6 +117,8 @@ Current status:
 ### UX improvements
 
 - add lightweight loading state on app startup (avoid blank screen)
+- ensure active song is auto-scrolled into view when entering Songbook and Performance mode
+- use monospace font in all editors (raw input and .cho) to preserve chord alignment and improve editing accuracy
 
 ### Minimal preferences (limited scope)
 
@@ -157,6 +159,7 @@ Current status:
 - add lightweight automated checks for core deterministic flows
 - introduce small regression tests for parser, cleaning, preview cache and render preprocessing
 - add a one-command local smoke validation workflow
+- introduce structured logging system (file-based, timestamped) for debugging and diagnostics
 
 ## v2 - Core feature expansion
 
