@@ -769,7 +769,20 @@ textarea {
 }
 
 pre {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   margin: 0;
+  border: 1px solid rgba(47, 59, 49, 0.16);
+  border-radius: 0;
+  background: #fffef9;
+  color: #1f251f;
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
