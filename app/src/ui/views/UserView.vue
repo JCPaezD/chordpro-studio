@@ -341,6 +341,10 @@ watch(isPerformanceMode, (value, previousValue) => {
       setPreviewFrameSrc(entryFrame, preservedPreviewUrl);
       pendingPreviewFrame.value = entryFrame;
     }
+
+    if (activePanel.value === "songbook" && selectedSongPath.value) {
+      scrollSongbookSelectionIntoView("auto");
+    }
   }
 }, { immediate: true });
 

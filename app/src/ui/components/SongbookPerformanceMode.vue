@@ -223,7 +223,7 @@ function setSongItemRef(index: number) {
   };
 }
 
-function scrollPerformanceSelectionIntoView(): void {
+function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
   const index = performanceSelectionIndex.value;
   if (index < 0) {
     return;
@@ -232,7 +232,7 @@ function scrollPerformanceSelectionIntoView(): void {
   void nextTick(() => {
     songItemRefs.value[index]?.scrollIntoView({
       block: "nearest",
-      behavior: "smooth"
+      behavior
     });
   });
 }
@@ -642,6 +642,7 @@ watch(
 watch(isSongListOpen, (isOpen) => {
   if (isOpen) {
     focusSongList();
+    scrollPerformanceSelectionIntoView("auto");
   }
 });
 
@@ -655,6 +656,7 @@ watch(
 
 onMounted(() => {
   focusSongList();
+  scrollPerformanceSelectionIntoView("auto");
   window.addEventListener("keydown", handleWindowKeydown);
 
   void nextTick(() => {
