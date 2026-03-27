@@ -18,6 +18,7 @@ const appConfig = useAppConfig();
 const configLoading = computed(() => appConfig.loading.value);
 const workspace = useSongWorkspace({ appConfig });
 const bootVisible = ref(true);
+const bootStatus = ref("Loading...");
 let hasShownMainWindow = false;
 
 function waitForNextFrame(): Promise<void> {
@@ -47,13 +48,26 @@ async function showMainWindowWhenBootReady(): Promise<void> {
   }
 }
 
-onMounted(async () => {
-  await showMainWindowWhenBootReady();
+async function initializeApp(): Promise<void> {
+  try {
+    bootStatus.value = "Preparing window...";
+    await showMainWindowWhenBootReady();
+    bootStatus.value = "Loading config...";
+    await appConfig.loadConfig();
+    bootStatus.value = "Restoring workspace...";
+    await workspace.initialize();
+    bootStatus.value = "Finalizing UI...";
+    await settleInitialUi();
+  } catch (err) {
+    console.error("App initialization failed.", err);
+    bootStatus.value = "Startup failed";
+  } finally {
+    bootVisible.value = false;
+  }
+}
 
-  await appConfig.loadConfig();
-  await workspace.initialize();
-  await settleInitialUi();
-  bootVisible.value = false;
+onMounted(() => {
+  void initializeApp();
 });
 
 onBeforeUnmount(() => {
@@ -79,7 +93,7 @@ onBeforeUnmount(() => {
           <img class="boot-logo" :src="logo64" alt="" />
           <div class="boot-copy">
             <p class="boot-title">ChordPro Studio</p>
-            <p class="boot-status">Loading...</p>
+            <p class="boot-status">{{ bootStatus }}</p>
           </div>
         </div>
       </div>
@@ -207,3 +221,6 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
+
+
