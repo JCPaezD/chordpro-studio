@@ -13,3 +13,4 @@ tauri-dev-err.log
 .tmp/
 releases/
 *.zip
+.vscode/
