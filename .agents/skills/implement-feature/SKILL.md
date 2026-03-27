@@ -117,7 +117,37 @@ When implementing a feature:
 
 # Bug Diagnosis And Debugging
 
-When a bug resists the first reasonable implementation attempts:
+## Stall Detection And Escalation (Critical)
+
+If an implementation attempt does not converge after a small number of reasonable iterations:
+
+- do not continue applying speculative fixes
+- do not try multiple alternative patches blindly
+- do not expand the scope of changes to unrelated parts of the system
+
+Instead:
+
+1. Stop making further code changes.
+2. Analyze why the previous attempts failed:
+   - incorrect assumptions
+   - wrong file or layer
+   - missing runtime evidence
+   - UI vs state mismatch
+3. Explain the likely cause of failure.
+4. Explicitly state that the problem requires root-cause debugging.
+
+Then:
+
+- propose switching to a debugging phase
+- suggest isolating the issue as a bug if it is blocking the current feature
+- avoid mixing further implementation attempts with unresolved uncertainty
+
+Important:
+
+- prefer stopping early over accumulating multiple incorrect fixes
+- do not try to "eventually get it right" through repeated small adjustments
+
+Once stall detection has been triggered, debugging must follow an evidence-driven process:
 
 - do not keep iterating blindly on hypotheses with no new evidence
 - pause and inspect the real runtime behavior before making more structural changes
@@ -135,6 +165,11 @@ Escalation guideline:
 
 - after a small number of reasonable attempts, switch from trial-and-error to evidence-driven debugging
 - favor one good diagnostic pass over many speculative fixes
+
+Final rule:
+
+- once stall detection has been triggered, do not return to implementation in the same pass
+- complete the debugging analysis first, or stop and wait for user direction
 
 
 # Editing Strategy And Patch Robustness
