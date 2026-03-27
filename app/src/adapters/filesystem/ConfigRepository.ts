@@ -8,11 +8,13 @@ export type AppConfig = {
   lastOpenedSongPath: string | null;
   conversionMode?: ConversionMode;
   playgroundModel?: string;
+  showChordDiagrams?: boolean;
 };
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   geminiApiKey: null,
-  lastOpenedSongPath: null
+  lastOpenedSongPath: null,
+  showChordDiagrams: true
 };
 
 function normalizeConfig(config: Partial<AppConfig> | null | undefined): AppConfig {
@@ -24,7 +26,10 @@ function normalizeConfig(config: Partial<AppConfig> | null | undefined): AppConf
       : null,
     lastOpenedSongPath: typeof config?.lastOpenedSongPath === "string" && config.lastOpenedSongPath.trim().length > 0
       ? config.lastOpenedSongPath
-      : null
+      : null,
+    showChordDiagrams: typeof config?.showChordDiagrams === "boolean"
+      ? config.showChordDiagrams
+      : true
   };
 }
 

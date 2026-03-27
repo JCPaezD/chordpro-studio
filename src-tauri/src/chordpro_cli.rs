@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
   ffi::OsString,
@@ -46,15 +46,31 @@ pub struct ExportPdfResponse {
   pub output_path: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct RenderStyleOptions {
+  pub show_chord_diagrams: bool,
+}
+
+impl Default for RenderStyleOptions {
+  fn default() -> Self {
+    Self {
+      show_chord_diagrams: true,
+    }
+  }
+}
+
 #[tauri::command]
 pub fn generate_preview(
   app: AppHandle,
   chordpro_text: String,
   bypass_cache: bool,
+  render_style: Option<RenderStyleOptions>,
 ) -> Result<PreviewResponse, ChordProCommandError> {
   let preview_dir = ensure_preview_dir(&app)?;
   let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
-  let cache_path = preview_cache_file_path(&app, &rendered_chordpro_text)?;
+  let render_style = render_style.unwrap_or_default();
+  let cache_path = preview_cache_file_path(&app, &rendered_chordpro_text, &render_style)?;
 
   if !bypass_cache {
     if let Some(cached_pdf_bytes) = read_valid_cached_preview(&cache_path) {
@@ -76,6 +92,7 @@ pub fn generate_preview(
       "--output".as_ref(),
       output_path.as_os_str(),
     ],
+    &render_style,
   )?;
 
   let generated_pdf_bytes = fs::read(&output_path).map_err(|error| ChordProCommandError {
@@ -102,11 +119,13 @@ pub fn export_pdf(
   app: AppHandle,
   chordpro_text: String,
   output_path: String,
+  render_style: Option<RenderStyleOptions>,
 ) -> Result<ExportPdfResponse, ChordProCommandError> {
   let cache_dir = ensure_preview_dir(&app)?;
   let input_path = cache_dir.join(EXPORT_CHO_FILENAME);
   let output_path = PathBuf::from(output_path);
   let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
+  let render_style = render_style.unwrap_or_default();
 
   ensure_output_directory(&output_path)?;
 
@@ -118,6 +137,7 @@ pub fn export_pdf(
       "--output".as_ref(),
       output_path.as_os_str(),
     ],
+    &render_style,
   )?;
 
   Ok(ExportPdfResponse {
@@ -130,6 +150,7 @@ pub fn export_songbook_pdf(
   app: AppHandle,
   input_paths: Vec<String>,
   output_path: String,
+  render_style: Option<RenderStyleOptions>,
 ) -> Result<ExportPdfResponse, ChordProCommandError> {
   if input_paths.is_empty() {
     return Err(ChordProCommandError {
@@ -145,6 +166,7 @@ pub fn export_songbook_pdf(
   ensure_output_directory(&output_path)?;
 
   let preview_dir = ensure_preview_dir(&app)?;
+  let render_style = render_style.unwrap_or_default();
   let prepared_input_paths = prepare_songbook_render_inputs(&preview_dir, &input_paths)?;
   let mut args: Vec<OsString> = prepared_input_paths
     .iter()
@@ -153,7 +175,7 @@ pub fn export_songbook_pdf(
   args.push(OsString::from("--output"));
   args.push(output_path.as_os_str().to_os_string());
 
-  run_chordpro_command(&app, args)?;
+  run_chordpro_command(&app, args, &render_style)?;
 
   Ok(ExportPdfResponse {
     output_path: output_path.to_string_lossy().into_owned(),
@@ -256,15 +278,23 @@ fn ensure_preview_cache_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandE
 fn preview_cache_file_path(
   app: &AppHandle,
   chordpro_text: &str,
+  render_style: &RenderStyleOptions,
 ) -> Result<PathBuf, ChordProCommandError> {
   let cache_dir = ensure_preview_cache_dir(app)?;
-  let cache_key = hash_chordpro_text(chordpro_text);
+  let cache_key = hash_preview_input(chordpro_text, render_style);
   Ok(cache_dir.join(format!("{cache_key}.pdf")))
 }
 
-fn hash_chordpro_text(chordpro_text: &str) -> String {
+fn hash_preview_input(chordpro_text: &str, render_style: &RenderStyleOptions) -> String {
   let mut hasher = Sha256::new();
   hasher.update(chordpro_text.as_bytes());
+  hasher.update(b"\n--render-style--\n");
+  let render_style_signature: &[u8] = if render_style.show_chord_diagrams {
+    b"showChordDiagrams:true"
+  } else {
+    b"showChordDiagrams:false"
+  };
+  hasher.update(render_style_signature);
 
   hasher
     .finalize()
@@ -555,7 +585,19 @@ fn write_text_file(path: &Path, contents: &str) -> Result<(), ChordProCommandErr
   })
 }
 
-fn run_chordpro_command<I, S>(app: &AppHandle, args: I) -> Result<(), ChordProCommandError>
+fn append_render_style_args(command_args: &mut Vec<OsString>, render_style: &RenderStyleOptions) {
+  if render_style.show_chord_diagrams {
+    return;
+  }
+
+  command_args.push(OsString::from("--define=diagrams.show=none"));
+}
+
+fn run_chordpro_command<I, S>(
+  app: &AppHandle,
+  args: I,
+  render_style: &RenderStyleOptions,
+) -> Result<(), ChordProCommandError>
 where
   I: IntoIterator<Item = S>,
   S: AsRef<std::ffi::OsStr>,
@@ -567,6 +609,7 @@ where
     style_config_path.as_os_str().to_os_string(),
   ];
 
+  append_render_style_args(&mut command_args, render_style);
   command_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
 
   let mut command = Command::new(&binary_path);
@@ -978,3 +1021,10 @@ fn decode_output(output: Vec<u8>) -> Option<String> {
     Some(text)
   }
 }
+
+
+
+
+
+
+

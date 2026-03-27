@@ -1,6 +1,11 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
-import type { ChordproAdapter, PreviewResult } from "./adapter";
+import type {
+  ChordproAdapter,
+  ChordproExportOptions,
+  ChordproPreviewOptions,
+  PreviewResult
+} from "./adapter";
 
 interface GeneratePreviewResponse {
   pdfPath: string;
@@ -37,7 +42,7 @@ function formatTauriError(error: unknown): Error {
 }
 
 export class TauriChordproAdapter implements ChordproAdapter {
-  async generatePreview(chordproText: string, options?: { bypassCache?: boolean }): Promise<PreviewResult> {
+  async generatePreview(chordproText: string, options?: ChordproPreviewOptions): Promise<PreviewResult> {
     if (!isTauri()) {
       throw new Error("Preview generation requires the Tauri desktop runtime.");
     }
@@ -45,7 +50,8 @@ export class TauriChordproAdapter implements ChordproAdapter {
     try {
       const response = await invoke<GeneratePreviewResponse>("generate_preview", {
         chordproText,
-        bypassCache: options?.bypassCache ?? false
+        bypassCache: options?.bypassCache ?? false,
+        renderStyle: options?.renderStyle
       });
 
       return {
@@ -57,7 +63,7 @@ export class TauriChordproAdapter implements ChordproAdapter {
     }
   }
 
-  async exportPdf(chordproText: string, outputPath: string): Promise<string> {
+  async exportPdf(chordproText: string, outputPath: string, options?: ChordproExportOptions): Promise<string> {
     if (!isTauri()) {
       throw new Error("PDF export requires the Tauri desktop runtime.");
     }
@@ -65,7 +71,8 @@ export class TauriChordproAdapter implements ChordproAdapter {
     try {
       const response = await invoke<ExportPdfResponse>("export_pdf", {
         chordproText,
-        outputPath
+        outputPath,
+        renderStyle: options?.renderStyle
       });
       return response.outputPath;
     } catch (error) {
@@ -73,7 +80,7 @@ export class TauriChordproAdapter implements ChordproAdapter {
     }
   }
 
-  async exportSongbookPdf(inputPaths: string[], outputPath: string): Promise<string> {
+  async exportSongbookPdf(inputPaths: string[], outputPath: string, options?: ChordproExportOptions): Promise<string> {
     if (!isTauri()) {
       throw new Error("PDF export requires the Tauri desktop runtime.");
     }
@@ -81,7 +88,8 @@ export class TauriChordproAdapter implements ChordproAdapter {
     try {
       const response = await invoke<ExportPdfResponse>("export_songbook_pdf", {
         inputPaths,
-        outputPath
+        outputPath,
+        renderStyle: options?.renderStyle
       });
       return response.outputPath;
     } catch (error) {

@@ -12,6 +12,7 @@ export type AppConfigStore = {
   loading: Ref<boolean>;
   conversionMode: ComputedRef<ConversionMode | undefined>;
   playgroundModel: ComputedRef<string | undefined>;
+  showChordDiagrams: ComputedRef<boolean>;
   lastSongbookPath: ComputedRef<string | undefined>;
   lastOpenedSongPath: ComputedRef<string | null>;
   loadConfig(): Promise<void>;
@@ -19,6 +20,7 @@ export type AppConfigStore = {
   clearApiKey(): Promise<void>;
   setConversionMode(mode: ConversionMode): Promise<void>;
   setPlaygroundModel(model: string): Promise<void>;
+  setShowChordDiagrams(value: boolean): Promise<void>;
   setLastSongbookPath(path: string): Promise<void>;
   clearLastSongbookPath(): Promise<void>;
   setLastOpenedSongPath(path: string): Promise<void>;
@@ -83,6 +85,10 @@ async function setPlaygroundModel(model: string): Promise<void> {
   await updateConfig({ playgroundModel: model });
 }
 
+async function setShowChordDiagrams(value: boolean): Promise<void> {
+  await updateConfig({ showChordDiagrams: value });
+}
+
 async function setLastSongbookPath(path: string): Promise<void> {
   await updateConfig({ lastSongbookPath: path });
 }
@@ -108,6 +114,7 @@ export function useAppConfig(): AppConfigStore {
     loading,
     conversionMode: computed(() => config.value.conversionMode),
     playgroundModel: computed(() => config.value.playgroundModel),
+    showChordDiagrams: computed(() => config.value.showChordDiagrams ?? true),
     lastSongbookPath: computed(() => config.value.lastSongbookPath),
     lastOpenedSongPath: computed(() => config.value.lastOpenedSongPath),
     loadConfig,
@@ -115,6 +122,7 @@ export function useAppConfig(): AppConfigStore {
     clearApiKey,
     setConversionMode,
     setPlaygroundModel,
+    setShowChordDiagrams,
     setLastSongbookPath,
     clearLastSongbookPath,
     setLastOpenedSongPath,

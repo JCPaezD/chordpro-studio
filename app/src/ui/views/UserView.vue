@@ -33,7 +33,7 @@ const {
   error,
   previewSrc,
   previewError,
-  document,
+  document: workspaceDocument,
   songMetadata,
   songbook,
   songbookError,
@@ -66,6 +66,9 @@ const showApiKeyModal = ref(false);
 const apiKeyDraft = ref("");
 const apiKeyFeedback = ref("");
 const isSavingApiKey = ref(false);
+const showPreferencesMenu = ref(false);
+const preferencesButtonRef = ref<HTMLElement | null>(null);
+const preferencesPanelRef = ref<HTMLElement | null>(null);
 const activePreviewFrame = ref<PreviewFrameId>("A");
 const pendingPreviewFrame = ref<PreviewFrameId | null>(null);
 const previewFrameSrcA = ref("");
@@ -78,6 +81,7 @@ let previewFrameSwapToken = 0;
 const conversionMode = computed<ConversionMode>(() => appConfig.conversionMode.value ?? "quality");
 const configLoading = computed(() => appConfig.loading.value);
 const hasApiKey = computed(() => !!appConfig.apiKey.value);
+const showChordDiagrams = computed(() => appConfig.showChordDiagrams.value);
 const canGenerate = computed(() => !configLoading.value && hasApiKey.value && !loading.value);
 
 const selectedModel = computed(() =>
@@ -98,11 +102,11 @@ const songbookEditorTitle = computed(() => {
     return `${title} - ${artist}`;
   }
 
-  return title || artist || document.value.fileName || "ChordPro source";
+  return title || artist || workspaceDocument.value.fileName || "ChordPro source";
 });
 
 const songbookEditorSubtitle = computed(() =>
-  document.value.fileName || "Open a song from the list to edit its `.cho` content."
+  workspaceDocument.value.fileName || "Open a song from the list to edit its `.cho` content."
 );
 
 const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
@@ -293,7 +297,9 @@ watch(previewSrc, (nextUrl) => {
 });
 
 onBeforeUnmount(() => {
-  emit("immersive-change", false);
+  document.removeEventListener("pointerdown", handlePreferencesPointerDown);
+  window.removeEventListener("keydown", handleWindowKeydown);
+  window.removeEventListener("keydown", handlePreferencesEscape);
 
   if (previewLoadingIndicatorTimer !== null) {
     clearTimeout(previewLoadingIndicatorTimer);
@@ -349,12 +355,12 @@ watch(isPerformanceMode, (value, previousValue) => {
 }, { immediate: true });
 
 onMounted(() => {
+  document.addEventListener("pointerdown", handlePreferencesPointerDown);
   window.addEventListener("keydown", handleWindowKeydown);
+  window.addEventListener("keydown", handlePreferencesEscape);
+
 });
 
-onBeforeUnmount(() => {
-  window.removeEventListener("keydown", handleWindowKeydown);
-});
 
 function syncSongbookSelection(): void {
   const songs = songbookSongs.value;
@@ -477,6 +483,8 @@ watch(
   { immediate: true }
 );
 
+
+
 async function openSongFromSongbook(filePath: string, options?: { restoreListFocus?: boolean }): Promise<void> {
   await openSongFile(filePath);
 
@@ -527,6 +535,37 @@ function handleWindowKeydown(event: KeyboardEvent): void {
   }
 
   handleSongbookNavigationKeydown(event);
+}
+
+function closePreferencesMenu(): void {
+  showPreferencesMenu.value = false;
+}
+
+function togglePreferencesMenu(): void {
+  showPreferencesMenu.value = !showPreferencesMenu.value;
+}
+
+async function toggleChordDiagramsPreference(): Promise<void> {
+  await appConfig.setShowChordDiagrams(!showChordDiagrams.value);
+}
+
+function handlePreferencesPointerDown(event: MouseEvent): void {
+  const target = event.target instanceof Node ? event.target : null;
+  if (!target) {
+    return;
+  }
+
+  if (preferencesButtonRef.value?.contains(target) || preferencesPanelRef.value?.contains(target)) {
+    return;
+  }
+
+  closePreferencesMenu();
+}
+
+function handlePreferencesEscape(event: KeyboardEvent): void {
+  if (event.key === "Escape") {
+    closePreferencesMenu();
+  }
 }
 
 async function toggleConversionMode(): Promise<void> {
@@ -629,28 +668,69 @@ async function clearApiKey(): Promise<void> {
 
     <section class="user-main">
       <aside class="nav-rail" aria-label="User panels">
-        <button
-          :class="['nav-button', { active: activePanel === 'convert' }]"
-          title="Convert"
-          @click="setActivePanel('convert')"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 6h14M5 12h9M5 18h14" />
-            <path d="M16 9l3 3-3 3" />
-          </svg>
-          <span>Convert</span>
-        </button>
-        <button
-          :class="['nav-button', { active: activePanel === 'songbook' }]"
-          title="Songbook"
-          @click="setActivePanel('songbook')"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 4h10a2 2 0 0 1 2 2v12H8a2 2 0 0 0-2 2V4Z" />
-            <path d="M8 18h10v2H8a2 2 0 0 1 0-4h10" />
-          </svg>
-          <span>Songbook</span>
-        </button>
+        <div class="nav-rail-main">
+          <button
+            :class="['nav-button', { active: activePanel === 'convert' }]"
+            title="Convert"
+            @click="setActivePanel('convert')"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 6h14M5 12h9M5 18h14" />
+              <path d="M16 9l3 3-3 3" />
+            </svg>
+            <span>Convert</span>
+          </button>
+          <button
+            :class="['nav-button', { active: activePanel === 'songbook' }]"
+            title="Songbook"
+            @click="setActivePanel('songbook')"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 4h10a2 2 0 0 1 2 2v12H8a2 2 0 0 0-2 2V4Z" />
+              <path d="M8 18h10v2H8a2 2 0 0 1 0-4h10" />
+            </svg>
+            <span>Songbook</span>
+          </button>        </div>
+
+        <div class="nav-rail-footer">
+          <button
+            ref="preferencesButtonRef"
+            :class="['nav-button', { active: showPreferencesMenu }]"
+            title="Preferences"
+            aria-haspopup="dialog"
+            :aria-expanded="showPreferencesMenu ? 'true' : 'false'"
+            @click="togglePreferencesMenu"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8.25A3.75 3.75 0 1 0 12 15.75A3.75 3.75 0 1 0 12 8.25Z" />
+              <path d="M19.14 12a7.53 7.53 0 0 0-.08-1l2.02-1.57-1.92-3.32-2.45.76a7.9 7.9 0 0 0-1.73-1l-.44-2.53h-3.84l-.44 2.53a7.9 7.9 0 0 0-1.73 1l-2.45-.76-1.92 3.32L4.94 11a7.53 7.53 0 0 0 0 2l-2.02 1.57 1.92 3.32 2.45-.76a7.9 7.9 0 0 0 1.73 1l.44 2.53h3.84l.44-2.53a7.9 7.9 0 0 0 1.73-1l2.45.76 1.92-3.32L19.06 13c.05-.33.08-.67.08-1Z" />
+            </svg>
+            <span>Prefs</span>
+          </button>
+          <Transition name="preferences-popover">
+            <div v-if="showPreferencesMenu" ref="preferencesPanelRef" class="preferences-popover">
+              <p class="preferences-heading">Preferences</p>
+              <div class="preferences-item">
+                <div class="preferences-item-copy">
+                  <span class="preferences-item-label">Show chord diagrams</span>
+                  <span class="preferences-item-value">{{ showChordDiagrams ? 'ON' : 'OFF' }}</span>
+                </div>
+                <button
+                  class="preferences-switch"
+                  type="button"
+                  role="switch"
+                  :aria-checked="showChordDiagrams"
+                  :disabled="configLoading"
+                  @click="toggleChordDiagramsPreference"
+                >
+                  <span :class="['preferences-switch-track', { on: showChordDiagrams }]">
+                    <span class="preferences-switch-thumb" />
+                  </span>
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
       </aside>
 
       <section class="panel card workspace-panel">
@@ -803,7 +883,7 @@ async function clearApiKey(): Promise<void> {
                     </p>
                   </div>
                   <div class="editor-heading-aside">
-                    <span v-if="document.dirty" class="dirty-badge">Unsaved changes</span>
+                    <span v-if="workspaceDocument.dirty" class="dirty-badge">Unsaved changes</span>
                     <div class="header-actions">
                       <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
                         Save
@@ -1083,14 +1163,25 @@ async function clearApiKey(): Promise<void> {
 }
 
 .nav-rail {
-  display: grid;
-  align-content: start;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
   padding: 0.65rem;
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
-  overflow: hidden;
+  overflow: visible;
+}
+
+.nav-rail-main {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.nav-rail-footer {
+  position: relative;
+  margin-top: auto;
 }
 
 .nav-button {
@@ -1100,8 +1191,8 @@ async function clearApiKey(): Promise<void> {
   width: 100%;
   box-sizing: border-box;
   padding: 0.8rem 0.35rem;
-  border: 0;
-  background: transparent;
+  border: 1px solid rgba(35, 49, 39, 0.12);
+  background: rgba(255, 250, 241, 0.42);
   color: #233127;
   font: inherit;
   font-size: 0.7rem;
@@ -1109,6 +1200,12 @@ async function clearApiKey(): Promise<void> {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+
+.nav-rail-main > .nav-button {
+  width: calc(100% - 0.38rem);
+  justify-self: start;
 }
 
 .nav-button svg {
@@ -1123,8 +1220,104 @@ async function clearApiKey(): Promise<void> {
 
 .nav-button.active {
   background: linear-gradient(135deg, #1f3124, #37513b);
+  border-color: rgba(31, 49, 36, 0.18);
   color: #f8f3e8;
 }
+
+.preferences-popover {
+  position: absolute;
+  left: calc(100% + 0.75rem);
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.85rem;
+  width: min(18rem, calc(100vw - 11rem));
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(24, 32, 25, 0.24);
+  background: #fffefb;
+  box-shadow: 0 26px 52px rgba(24, 32, 25, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.preferences-heading {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a6541;
+}
+
+.preferences-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.preferences-item-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.preferences-item-label {
+  color: #233127;
+  font-weight: 700;
+}
+
+.preferences-item-value {
+  color: #7a6541;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.preferences-switch {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.preferences-switch:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.preferences-switch-track {
+  display: inline-flex;
+  align-items: center;
+  width: 2.8rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: #d6d1c6;
+  transition: background 160ms ease, justify-content 160ms ease;
+}
+
+.preferences-switch-track.on {
+  justify-content: flex-end;
+  background: #37513b;
+}
+
+.preferences-switch-thumb {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: #fffaf1;
+  box-shadow: 0 4px 10px rgba(24, 32, 25, 0.18);
+}
+
+.preferences-popover-enter-active,
+.preferences-popover-leave-active {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.preferences-popover-enter-from,
+.preferences-popover-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
 
 .workspace-panel,
 .preview-panel,
@@ -1656,8 +1849,30 @@ async function clearApiKey(): Promise<void> {
 
   .nav-rail {
     grid-row: auto;
-    grid-auto-flow: column;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .nav-rail-main {
+    display: grid;
+    flex: 1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  
+.nav-rail-main > .nav-button {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+
+
+  .preferences-popover {
+    top: calc(100% + 0.65rem);
+    right: 0;
+    bottom: auto;
+    left: auto;
+    width: min(18rem, calc(100vw - 2rem));
   }
 
   .workspace-panel,
@@ -1702,3 +1917,9 @@ async function clearApiKey(): Promise<void> {
   }
 }
 </style>
+
+
+
+
+
+

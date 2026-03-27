@@ -3,8 +3,21 @@ export interface PreviewResult {
   pdfBase64: string;
 }
 
+export interface ChordproRenderStyle {
+  showChordDiagrams: boolean;
+}
+
+export interface ChordproPreviewOptions {
+  bypassCache?: boolean;
+  renderStyle?: ChordproRenderStyle;
+}
+
+export interface ChordproExportOptions {
+  renderStyle?: ChordproRenderStyle;
+}
+
 export interface ChordproAdapter {
-  generatePreview(chordproText: string, options?: { bypassCache?: boolean }): Promise<PreviewResult>;
-  exportPdf(chordproText: string, outputPath: string): Promise<string>;
-  exportSongbookPdf(inputPaths: string[], outputPath: string): Promise<string>;
+  generatePreview(chordproText: string, options?: ChordproPreviewOptions): Promise<PreviewResult>;
+  exportPdf(chordproText: string, outputPath: string, options?: ChordproExportOptions): Promise<string>;
+  exportSongbookPdf(inputPaths: string[], outputPath: string, options?: ChordproExportOptions): Promise<string>;
 }

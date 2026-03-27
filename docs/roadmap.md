@@ -66,6 +66,7 @@ Current status:
 - v1.4 window title now shows the runtime app version as `ChordPro Studio - vX.Y.Z`, sourced from Tauri package metadata instead of hardcoded frontend values
 - v1.4 startup loading now avoids the initial white window by combining a lightweight bootstrap loader in `index.html`, a hidden main Tauri window shown only after the boot UI is rendered, and a short fade that keeps the real layout covered until the first render settles
 - v1.4 all main text editors now use a shared monospace stack in Convert, Songbook and Playground, improving chord alignment without changing sizing or layout
+- v1.4 first minimal user preference now exposes Show chord diagrams through a lightweight sidebar popover, persists in AppConfig, updates preview and PDF export in real time, and extends preview cache validity so diagrams ON/OFF never reuse incompatible cached PDFs
 
 ## Completed work
 
@@ -118,12 +119,6 @@ Current status:
 
 ### UX improvements
 
-### Minimal preferences (limited scope)
-
-- introduce simple persistent preferences (1-2 options max)
-- example: toggle chord diagrams visibility in preview/export
-- avoid complex settings UI or large configuration systems
-
 ### Rendering & layout quality
 
 - prevent horizontal overflow:
@@ -146,6 +141,7 @@ Current status:
   - improve colors, typography, spacing and visual hierarchy
   - introduce icons where appropriate
   - maintain current layout structure
+  - resolve the residual visual alignment bug in the Songbook sidebar button content
 - expand preferences system (future):
   - additional PDF/style options (fonts, spacing, layout tweaks)
   - instrument selection for chord diagrams

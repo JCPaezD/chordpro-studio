@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
   #[serde(rename = "geminiApiKey")]
@@ -17,6 +17,21 @@ pub struct AppConfig {
   pub conversion_mode: Option<String>,
   #[serde(rename = "playgroundModel")]
   pub playground_model: Option<String>,
+  #[serde(rename = "showChordDiagrams")]
+  pub show_chord_diagrams: bool,
+}
+
+impl Default for AppConfig {
+  fn default() -> Self {
+    Self {
+      gemini_api_key: None,
+      last_songbook_path: None,
+      last_opened_song_path: None,
+      conversion_mode: None,
+      playground_model: None,
+      show_chord_diagrams: true,
+    }
+  }
 }
 
 fn config_path(app: &AppHandle) -> Result<PathBuf, String> {

@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from "vue";
+import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
@@ -6,6 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { message, open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
+import type { ChordproRenderStyle } from "../../adapters/chordpro/adapter";
 import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
 import type { AppConfigStore } from "./useAppConfig";
 import { SongRepository } from "../../adapters/filesystem/SongRepository";
@@ -176,6 +177,27 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
   }
 
+  function getRenderStyle(): ChordproRenderStyle {
+    return {
+      showChordDiagrams: appConfig.showChordDiagrams.value
+    };
+  }
+
+  function refreshPreviewForRenderPreferenceChange(): void {
+    if (!previewSrc.value || !document.value.chordProText.trim()) {
+      return;
+    }
+
+    cancelPendingPreviewRefresh();
+    const requestId = previewRequestId + 1;
+    previewRequestId = requestId;
+    void refreshPreview(document.value.chordProText, {
+      manageLoadingState: false,
+      requestId,
+      refreshingState: true
+    });
+  }
+
   function clearOperationMessages(): void {
     previewError.value = "";
   }
@@ -281,7 +303,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     try {
-      const preview = await chordproAdapter.generatePreview(chordPro, { bypassCache });
+      const preview = await chordproAdapter.generatePreview(chordPro, {
+        bypassCache,
+        renderStyle: getRenderStyle()
+      });
 
       if (!requestStillActive()) {
         return;
@@ -572,7 +597,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         return;
       }
 
-      const exportedPath = await chordproAdapter.exportPdf(document.value.chordProText, normalizedPath);
+      const exportedPath = await chordproAdapter.exportPdf(document.value.chordProText, normalizedPath, {
+        renderStyle: getRenderStyle()
+      });
       feedback.showFeedback({
         type: "success",
         message: "Saved to: " + getFilenameFromPath(exportedPath)
@@ -632,7 +659,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         ? selectedPath
         : selectedPath + ".pdf";
 
-      await chordproAdapter.exportSongbookPdf(songFiles, normalizedPath);
+      await chordproAdapter.exportSongbookPdf(songFiles, normalizedPath, {
+        renderStyle: getRenderStyle()
+      });
       feedback.showFeedback({
         type: "success",
         message: "Songbook exported."
@@ -1161,6 +1190,17 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       initializePromise = null;
     }
   }
+  watch(
+    () => appConfig.showChordDiagrams.value,
+    (nextValue, previousValue) => {
+      if (nextValue === previousValue) {
+        return;
+      }
+
+      refreshPreviewForRenderPreferenceChange();
+    }
+  );
+
   function dispose(): void {
     abortConversion();
 

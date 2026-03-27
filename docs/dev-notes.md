@@ -154,6 +154,9 @@ Bundled CLI expectation:
 - the current project style now renders chorus labels through `pdf.labels.comment`, so labels such as `Estribillo` appear above the section while the chorus bar remains active in the content area
 - PDF headers now use centered title plus artist lines with shared footer layout on first and subsequent pages, and the style keeps extra top spacing reserved on all pages to avoid header overlap in multi-page songs
 - chord and section comment fonts were strengthened for readability (`sans bold 11`) while boxed or shaded section labels remain disabled
+- the first minimal user preference now persists `showChordDiagrams` in AppConfig with a default of `true`, preserving existing rendering behavior for older configs
+- that preference is exposed from a lightweight Preferences popover anchored to the bottom of the User View sidebar instead of a separate full-size settings panel
+- preview, single-song PDF export and songbook PDF export now share the same effective render-style option for chord-diagram visibility, and preview cache validity now includes that style dimension so ON/OFF previews do not mix
 
 ## File Encoding Rule
 
@@ -195,6 +198,7 @@ When documentation files are manually edited by the user, Codex should treat the
 - the app now renders a lightweight bootstrap loader directly inside `app/index.html`, so `#app` is no longer empty before Vue mounts
 - the main Tauri window starts hidden and is shown only after the shared boot loader has rendered, avoiding the initial white/empty window that appeared before the WebView painted its first frame
 - the existing app-level startup loader in `App.vue` remains the same logical loading state, but now reuses the same visual treatment as the bootstrap loader and stays as an overlay until config loading, workspace initialization and the first settled layout frames complete
+- startup initialization now reports staged boot status text and falls back to a visible failure state instead of leaving the loader blocked forever when config or workspace initialization throws
 
 ## Editor typography notes
 
@@ -237,6 +241,9 @@ Playground model selector:
 - if a runtime override is present through environment variables, that override still takes precedence and the persisted preference is not rewritten on load
 
 The User View now keeps `Convert` as the default active panel, preserves the VSCode-style sidebar for `Convert` / `Songbook`, and uses a layout-controlled optional ChordPro editor instead of a collapsible panel. The editable `.cho` area still reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
+
+- the sidebar now also includes a light Preferences entry at the bottom and subtle button borders so the navigation affordances remain visible even when only one button is active nearby
+- known pending issue: the `Songbook` sidebar button still has a small visual content-alignment bug even though the button margins and the preference feature itself are stable; this remains open for a later focused UI pass
 
 ## Songbook and Persistence Notes
 
