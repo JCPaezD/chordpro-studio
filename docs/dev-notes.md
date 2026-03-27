@@ -41,7 +41,7 @@ Only record assumptions here when they materially affect behavior, UX, architect
 * [assumption] metadata normalization applies only to fresh LLM conversion output, not to existing `.cho` files or later manual edits
   impact: medium
   revisitable: no
-* [assumption] preview caching stays backend-local, keyed by `SHA-256(chordProText)`, and falls back silently to normal generation on cache failures
+* [assumption] preview caching stays backend-local, keyed by `SHA-256(chordProText + effective render style)`, and falls back silently to normal generation on cache failures
   impact: medium
   revisitable: no
 * [assumption] startup restoration reopens the last songbook and song only when persisted paths still exist, otherwise it fails silently to an empty Songbook state
@@ -124,7 +124,7 @@ Preview failure behavior:
 - if preview generation fails, the previous valid preview remains visible
 - the frontend shows the backend error message returned by the failed preview command
 - while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
-- the backend now reuses a persistent preview cache under `$APPCONFIG/cache/previews/`, keyed by `SHA-256(chordProText)`, so unchanged previews can be returned without invoking the CLI again
+- the backend now reuses a persistent preview cache under `$APPCONFIG/cache/previews/`, keyed by `SHA-256(chordProText + effective render style)`, so unchanged previews can be returned without invoking the CLI again without mixing different diagram-visibility or instrument variants
 - the manual `Refresh` action in Convert, Songbook and Playground now reuses the same preview pipeline with an explicit `bypass_cache` flag, so users can force a fresh CLI render without introducing a parallel preview path
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
 - User View `.cho` editor now refreshes preview with a debounced non-blocking path and keeps the current iframe/PDF visible while a new blob URL is loading
@@ -149,14 +149,13 @@ Bundled CLI expectation:
 - a global `style.json` is now used for all CLI executions
 - this keeps rendering consistent across preview, single PDF export and songbook PDF export
 - the config is resolved from Tauri bundled resources at runtime, with the repository `resources/chordpro-studio/style.json` path used during development
-- the current provisional project style enables keyboard chord diagrams at the bottom of the page and uses project-specific PDF metadata instead of the original preset labels
-- future user preferences should make chord diagrams configurable per user, including visibility, instrument and placement
+- the current provisional project style still defines the shared baseline layout and PDF metadata, while runtime render preferences can now switch chord-diagram visibility and instrument (`piano` / `guitar`) without introducing a parallel render path
 - the current project style now renders chorus labels through `pdf.labels.comment`, so labels such as `Estribillo` appear above the section while the chorus bar remains active in the content area
 - PDF headers now use centered title plus artist lines with shared footer layout on first and subsequent pages, and the style keeps extra top spacing reserved on all pages to avoid header overlap in multi-page songs
 - chord and section comment fonts were strengthened for readability (`sans bold 11`) while boxed or shaded section labels remain disabled
-- the first minimal user preference now persists `showChordDiagrams` in AppConfig with a default of `true`, preserving existing rendering behavior for older configs
-- that preference is exposed from a lightweight Preferences popover anchored to the bottom of the User View sidebar instead of a separate full-size settings panel
-- preview, single-song PDF export and songbook PDF export now share the same effective render-style option for chord-diagram visibility, and preview cache validity now includes that style dimension so ON/OFF previews do not mix
+- chord-diagram preferences now persist `showChordDiagrams` and `instrument` in AppConfig, with defaults of `true` and `piano`, preserving compatibility for older configs
+- those preferences are exposed from a lightweight Preferences popover anchored to the bottom of the User View sidebar instead of a separate full-size settings panel
+- preview, single-song PDF export and songbook PDF export now share the same effective render-style options for chord-diagram visibility and instrument, and preview cache validity now includes those style dimensions so different variants do not mix
 
 ## File Encoding Rule
 
@@ -262,7 +261,7 @@ Songbook behavior:
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
 - when that persisted songbook is available, startup now also restores the last explicitly opened song if the file still exists; otherwise Songbook opens with no active selection and no startup error
-- AppConfig now also stores `lastOpenedSongPath`, `conversionMode`, `playgroundModel` and `geminiApiKey`
+- AppConfig now also stores `lastOpenedSongPath`, `conversionMode`, `playgroundModel`, `geminiApiKey`, `showChordDiagrams` and `instrument`
 - frontend config is loaded once through `useAppConfig()`, kept in memory as the single source of truth, and persisted through Tauri backend commands
 - missing `config.json` now resolves to a default config with `geminiApiKey: null`, and the backend creates the file on first read when needed
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document

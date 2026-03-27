@@ -67,6 +67,7 @@ Current status:
 - v1.4 startup loading now avoids the initial white window by combining a lightweight bootstrap loader in `index.html`, a hidden main Tauri window shown only after the boot UI is rendered, and a short fade that keeps the real layout covered until the first render settles
 - v1.4 all main text editors now use a shared monospace stack in Convert, Songbook and Playground, improving chord alignment without changing sizing or layout
 - v1.4 first minimal user preference now exposes Show chord diagrams through a lightweight sidebar popover, persists in AppConfig, updates preview and PDF export in real time, and extends preview cache validity so diagrams ON/OFF never reuse incompatible cached PDFs
+- v1.4 chord-diagram instrument preference is now available through the same lightweight Preferences popover with a segmented control (`Piano` / `Guitar`), persists in AppConfig with backward-compatible defaults, updates preview and PDF export through the shared render-style path, and extends preview cache validity so instrument variants never mix
 
 ## Completed work
 
@@ -120,7 +121,6 @@ Current status:
 ### UX improvements
 
 - keep the `.cho` editor in a loading state during Generate, preserving previous content until the new conversion succeeds
-- add chord diagram instrument preference (segmented control: guitar / piano) integrated with render style and preview cache
 
 ### Rendering & layout quality
 
@@ -148,7 +148,6 @@ Current status:
   - resolve the residual visual alignment bug in the Songbook sidebar button content
 - expand preferences system (future):
   - additional PDF/style options (fonts, spacing, layout tweaks)
-  - instrument selection for chord diagrams
   - configurable export options
 - allow running the pipeline from intermediate steps in Playground:
   - trigger pipeline execution from any block

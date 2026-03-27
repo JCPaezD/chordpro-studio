@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type ConversionMode = "quality" | "fast";
+export type ChordDiagramInstrument = "guitar" | "piano";
 
 export type AppConfig = {
   geminiApiKey: string | null;
@@ -9,12 +10,14 @@ export type AppConfig = {
   conversionMode?: ConversionMode;
   playgroundModel?: string;
   showChordDiagrams?: boolean;
+  instrument?: ChordDiagramInstrument;
 };
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   geminiApiKey: null,
   lastOpenedSongPath: null,
-  showChordDiagrams: true
+  showChordDiagrams: true,
+  instrument: "piano"
 };
 
 function normalizeConfig(config: Partial<AppConfig> | null | undefined): AppConfig {
@@ -29,7 +32,10 @@ function normalizeConfig(config: Partial<AppConfig> | null | undefined): AppConf
       : null,
     showChordDiagrams: typeof config?.showChordDiagrams === "boolean"
       ? config.showChordDiagrams
-      : true
+      : true,
+    instrument: config?.instrument === "guitar" || config?.instrument === "piano"
+      ? config.instrument
+      : "piano"
   };
 }
 

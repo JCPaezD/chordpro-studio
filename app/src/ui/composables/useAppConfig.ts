@@ -4,6 +4,7 @@ import {
   ConfigRepository,
   DEFAULT_APP_CONFIG,
   type AppConfig,
+  type ChordDiagramInstrument,
   type ConversionMode
 } from "../../adapters/filesystem/ConfigRepository";
 
@@ -13,6 +14,7 @@ export type AppConfigStore = {
   conversionMode: ComputedRef<ConversionMode | undefined>;
   playgroundModel: ComputedRef<string | undefined>;
   showChordDiagrams: ComputedRef<boolean>;
+  instrument: ComputedRef<ChordDiagramInstrument>;
   lastSongbookPath: ComputedRef<string | undefined>;
   lastOpenedSongPath: ComputedRef<string | null>;
   loadConfig(): Promise<void>;
@@ -21,6 +23,7 @@ export type AppConfigStore = {
   setConversionMode(mode: ConversionMode): Promise<void>;
   setPlaygroundModel(model: string): Promise<void>;
   setShowChordDiagrams(value: boolean): Promise<void>;
+  setInstrument(value: ChordDiagramInstrument): Promise<void>;
   setLastSongbookPath(path: string): Promise<void>;
   clearLastSongbookPath(): Promise<void>;
   setLastOpenedSongPath(path: string): Promise<void>;
@@ -89,6 +92,10 @@ async function setShowChordDiagrams(value: boolean): Promise<void> {
   await updateConfig({ showChordDiagrams: value });
 }
 
+async function setInstrument(value: ChordDiagramInstrument): Promise<void> {
+  await updateConfig({ instrument: value });
+}
+
 async function setLastSongbookPath(path: string): Promise<void> {
   await updateConfig({ lastSongbookPath: path });
 }
@@ -115,6 +122,7 @@ export function useAppConfig(): AppConfigStore {
     conversionMode: computed(() => config.value.conversionMode),
     playgroundModel: computed(() => config.value.playgroundModel),
     showChordDiagrams: computed(() => config.value.showChordDiagrams ?? true),
+    instrument: computed(() => config.value.instrument ?? "piano"),
     lastSongbookPath: computed(() => config.value.lastSongbookPath),
     lastOpenedSongPath: computed(() => config.value.lastOpenedSongPath),
     loadConfig,
@@ -123,6 +131,7 @@ export function useAppConfig(): AppConfigStore {
     setConversionMode,
     setPlaygroundModel,
     setShowChordDiagrams,
+    setInstrument,
     setLastSongbookPath,
     clearLastSongbookPath,
     setLastOpenedSongPath,

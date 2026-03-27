@@ -50,12 +50,27 @@ pub struct ExportPdfResponse {
 #[serde(default, rename_all = "camelCase")]
 pub struct RenderStyleOptions {
   pub show_chord_diagrams: bool,
+  pub instrument: DiagramInstrument,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DiagramInstrument {
+  Guitar,
+  Piano,
+}
+
+impl Default for DiagramInstrument {
+  fn default() -> Self {
+    Self::Piano
+  }
 }
 
 impl Default for RenderStyleOptions {
   fn default() -> Self {
     Self {
       show_chord_diagrams: true,
+      instrument: DiagramInstrument::Piano,
     }
   }
 }
@@ -289,12 +304,18 @@ fn hash_preview_input(chordpro_text: &str, render_style: &RenderStyleOptions) ->
   let mut hasher = Sha256::new();
   hasher.update(chordpro_text.as_bytes());
   hasher.update(b"\n--render-style--\n");
-  let render_style_signature: &[u8] = if render_style.show_chord_diagrams {
+  let instrument_signature: &[u8] = match render_style.instrument {
+    DiagramInstrument::Guitar => b"instrument:guitar",
+    DiagramInstrument::Piano => b"instrument:piano",
+  };
+  let diagrams_signature: &[u8] = if render_style.show_chord_diagrams {
     b"showChordDiagrams:true"
   } else {
     b"showChordDiagrams:false"
   };
-  hasher.update(render_style_signature);
+  hasher.update(instrument_signature);
+  hasher.update(b"\n");
+  hasher.update(diagrams_signature);
 
   hasher
     .finalize()
@@ -586,11 +607,21 @@ fn write_text_file(path: &Path, contents: &str) -> Result<(), ChordProCommandErr
 }
 
 fn append_render_style_args(command_args: &mut Vec<OsString>, render_style: &RenderStyleOptions) {
+  match render_style.instrument {
+    DiagramInstrument::Guitar => {
+      command_args.push(OsString::from("--define=instrument.type=guitar"));
+    }
+    DiagramInstrument::Piano => {
+      command_args.push(OsString::from("--define=instrument.type=keyboard"));
+    }
+  }
+
   if render_style.show_chord_diagrams {
     return;
   }
 
   command_args.push(OsString::from("--define=diagrams.show=none"));
+  command_args.push(OsString::from("--define=kbdiagrams.show=none"));
 }
 
 fn run_chordpro_command<I, S>(
@@ -798,7 +829,11 @@ fn configure_background_command(_command: &mut Command) {}
 
 #[cfg(test)]
 mod tests {
-  use super::preprocess_chordpro_for_render;
+  use super::{
+    append_render_style_args, hash_preview_input, preprocess_chordpro_for_render,
+    DiagramInstrument, RenderStyleOptions,
+  };
+  use std::ffi::OsString;
 
   #[test]
   fn leaves_short_tab_blocks_unchanged_in_two_columns() {
@@ -985,6 +1020,44 @@ E|-------------------1-1-1-1-1-1-1-1--------|
     let expected = "{columns: 1}\n{start_of_tab}\nE|-----\n";
 
     assert_eq!(preprocess_chordpro_for_render(input), expected);
+  }
+
+  #[test]
+  fn preview_cache_hash_changes_when_instrument_changes() {
+    let chordpro_text = "{title: Test}\n[C]Hello\n";
+    let piano_style = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Piano,
+    };
+    let guitar_style = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Guitar,
+    };
+
+    assert_ne!(
+      hash_preview_input(chordpro_text, &piano_style),
+      hash_preview_input(chordpro_text, &guitar_style)
+    );
+  }
+
+  #[test]
+  fn render_style_args_apply_instrument_and_hide_all_diagrams_when_disabled() {
+    let mut command_args = Vec::<OsString>::new();
+    let render_style = RenderStyleOptions {
+      show_chord_diagrams: false,
+      instrument: DiagramInstrument::Guitar,
+    };
+
+    append_render_style_args(&mut command_args, &render_style);
+
+    assert_eq!(
+      command_args,
+      vec![
+        OsString::from("--define=instrument.type=guitar"),
+        OsString::from("--define=diagrams.show=none"),
+        OsString::from("--define=kbdiagrams.show=none"),
+      ]
+    );
   }
 }
 

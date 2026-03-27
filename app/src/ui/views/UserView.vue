@@ -5,7 +5,10 @@ import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
-import { type ConversionMode } from "../../adapters/filesystem/ConfigRepository";
+import {
+  type ChordDiagramInstrument,
+  type ConversionMode
+} from "../../adapters/filesystem/ConfigRepository";
 import { useAppConfig } from "../composables/useAppConfig";
 import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
@@ -82,6 +85,7 @@ const conversionMode = computed<ConversionMode>(() => appConfig.conversionMode.v
 const configLoading = computed(() => appConfig.loading.value);
 const hasApiKey = computed(() => !!appConfig.apiKey.value);
 const showChordDiagrams = computed(() => appConfig.showChordDiagrams.value);
+const chordDiagramInstrument = computed(() => appConfig.instrument.value);
 const canGenerate = computed(() => !configLoading.value && hasApiKey.value && !loading.value);
 
 const selectedModel = computed(() =>
@@ -549,6 +553,14 @@ async function toggleChordDiagramsPreference(): Promise<void> {
   await appConfig.setShowChordDiagrams(!showChordDiagrams.value);
 }
 
+async function setInstrumentPreference(value: ChordDiagramInstrument): Promise<void> {
+  if (chordDiagramInstrument.value === value) {
+    return;
+  }
+
+  await appConfig.setInstrument(value);
+}
+
 function handlePreferencesPointerDown(event: MouseEvent): void {
   const target = event.target instanceof Node ? event.target : null;
   if (!target) {
@@ -727,6 +739,33 @@ async function clearApiKey(): Promise<void> {
                     <span class="preferences-switch-thumb" />
                   </span>
                 </button>
+              </div>
+              <div class="preferences-item">
+                <div class="preferences-item-copy">
+                  <span class="preferences-item-label">Instrument</span>
+                </div>
+                <div class="preferences-segmented-control" role="group" aria-label="Instrument" :aria-disabled="configLoading">
+                  <button
+                    class="preferences-segmented-option"
+                    :class="{ active: chordDiagramInstrument === 'piano' }"
+                    type="button"
+                    :disabled="configLoading"
+                    :aria-pressed="chordDiagramInstrument === 'piano'"
+                    @click="setInstrumentPreference('piano')"
+                  >
+                    Piano
+                  </button>
+                  <button
+                    class="preferences-segmented-option"
+                    :class="{ active: chordDiagramInstrument === 'guitar' }"
+                    type="button"
+                    :disabled="configLoading"
+                    :aria-pressed="chordDiagramInstrument === 'guitar'"
+                    @click="setInstrumentPreference('guitar')"
+                  >
+                    Guitar
+                  </button>
+                </div>
               </div>
             </div>
           </Transition>
@@ -1305,6 +1344,40 @@ async function clearApiKey(): Promise<void> {
   border-radius: 999px;
   background: #fffaf1;
   box-shadow: 0 4px 10px rgba(24, 32, 25, 0.18);
+}
+
+.preferences-segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-left: auto;
+  padding: 0.25rem;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: #f4ecdd;
+}
+
+.preferences-segmented-option {
+  min-height: 2.25rem;
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  background: transparent;
+  color: #233127;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.preferences-segmented-option.active {
+  background: linear-gradient(135deg, #1f3124, #37513b);
+  color: #f8f3e8;
+}
+
+.preferences-segmented-option:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .preferences-popover-enter-active,

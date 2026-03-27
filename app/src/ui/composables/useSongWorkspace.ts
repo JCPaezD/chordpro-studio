@@ -179,7 +179,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   function getRenderStyle(): ChordproRenderStyle {
     return {
-      showChordDiagrams: appConfig.showChordDiagrams.value
+      showChordDiagrams: appConfig.showChordDiagrams.value,
+      instrument: appConfig.instrument.value
     };
   }
 
@@ -1191,9 +1192,15 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
   watch(
-    () => appConfig.showChordDiagrams.value,
+    () => ({
+      showChordDiagrams: appConfig.showChordDiagrams.value,
+      instrument: appConfig.instrument.value
+    }),
     (nextValue, previousValue) => {
-      if (nextValue === previousValue) {
+      if (
+        nextValue.showChordDiagrams === previousValue?.showChordDiagrams &&
+        nextValue.instrument === previousValue?.instrument
+      ) {
         return;
       }
 

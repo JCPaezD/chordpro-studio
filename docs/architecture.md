@@ -130,7 +130,7 @@ Preview and export both rely on the same ChordPro renderer.
 Preview flow:
 
 ChordPro text
--> hash `chordProText`
+-> hash `chordProText` + effective render style
 -> check persistent preview cache in `$APPCONFIG/cache/previews/<hash>.pdf`
 -> on cache miss: Tauri `generate_preview` -> temporary `preview.cho` -> ChordPro CLI -> `preview.pdf` -> persist cached PDF
 -> backend returns PDF bytes
@@ -152,6 +152,7 @@ All ChordPro CLI executions now also share the same global style configuration.
 - runtime config path: bundled Tauri resource `resources/chordpro-studio/style.json`
 - development fallback: repository `resources/chordpro-studio/style.json`
 - applied to preview, single PDF export and songbook PDF export through the same backend command path
+- runtime render preferences such as chord-diagram visibility and instrument selection are applied through that same shared command path; they do not introduce a second renderer
 
 The bundled ChordPro runtime itself now stays isolated under `resources/chordpro` and is recreated from the official Windows release artifact instead of a local installation copy. Installer-only files such as `unins000.exe` and `unins000.dat` are not bundled because they are not required at runtime.
 
@@ -194,10 +195,12 @@ Current config content:
 - `conversionMode`
 - `playgroundModel`
 - `geminiApiKey`
+- `showChordDiagrams`
+- `instrument`
 
 `ConfigRepository` persists the full app config through Tauri backend commands. Missing config now resolves to a default object with `geminiApiKey: null`, and the backend creates `config.json` on first read if it does not exist yet.
 
-`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode, the Playground model selection and the last restored songbook state.
+`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode, the Playground model selection, chord-diagram visibility, chord-diagram instrument selection and the last restored songbook state.
 
 ---
 

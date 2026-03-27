@@ -19,6 +19,7 @@ pub struct AppConfig {
   pub playground_model: Option<String>,
   #[serde(rename = "showChordDiagrams")]
   pub show_chord_diagrams: bool,
+  pub instrument: String,
 }
 
 impl Default for AppConfig {
@@ -30,6 +31,7 @@ impl Default for AppConfig {
       conversion_mode: None,
       playground_model: None,
       show_chord_diagrams: true,
+      instrument: "piano".into(),
     }
   }
 }

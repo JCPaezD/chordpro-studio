@@ -1,3 +1,5 @@
+export type ChordproDiagramInstrument = "guitar" | "piano";
+
 export interface PreviewResult {
   pdfPath: string;
   pdfBase64: string;
@@ -5,6 +7,7 @@ export interface PreviewResult {
 
 export interface ChordproRenderStyle {
   showChordDiagrams: boolean;
+  instrument: ChordproDiagramInstrument;
 }
 
 export interface ChordproPreviewOptions {
