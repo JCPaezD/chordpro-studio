@@ -203,7 +203,19 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     previewError.value = "";
   }
 
+  function cancelActiveGeneration(): void {
+    if (!loading.value && !isGeneratingPreview.value && !currentAbortController) {
+      return;
+    }
+
+    abortConversion();
+  }
+
   function setActivePanel(panel: "songbook" | "convert"): void {
+    if (activePanel.value !== panel) {
+      cancelActiveGeneration();
+    }
+
     activePanel.value = panel;
   }
 
@@ -793,6 +805,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
       const previewRequestIdForRun = previewRequestId + 1;
       previewRequestId = previewRequestIdForRun;
+      clearCurrentAbortController(abortController);
+      loading.value = false;
       await refreshPreview(result.chordPro, {
         manageLoadingState: false,
         requestId: previewRequestIdForRun
@@ -875,6 +889,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   async function clearSongbook(): Promise<void> {
+    cancelActiveGeneration();
     songbook.value = null;
     songbookError.value = "";
     try {
@@ -1045,6 +1060,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return;
     }
 
+    cancelActiveGeneration();
     clearOperationMessages();
     error.value = "";
     songbookError.value = "";
@@ -1078,6 +1094,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   async function openSongbookFolder(): Promise<void> {
+    cancelActiveGeneration();
     const selectedFolder = await open({
       title: "Open songbook folder",
       directory: true,

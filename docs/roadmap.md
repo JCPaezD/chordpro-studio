@@ -68,6 +68,7 @@ Current status:
 - v1.4 all main text editors now use a shared monospace stack in Convert, Songbook and Playground, improving chord alignment without changing sizing or layout
 - v1.4 first minimal user preference now exposes Show chord diagrams through a lightweight sidebar popover, persists in AppConfig, updates preview and PDF export in real time, and extends preview cache validity so diagrams ON/OFF never reuse incompatible cached PDFs
 - v1.4 chord-diagram instrument preference is now available through the same lightweight Preferences popover with a segmented control (`Piano` / `Guitar`), persists in AppConfig with backward-compatible defaults, updates preview and PDF export through the shared render-style path, and extends preview cache validity so instrument variants never mix
+- v1.4 Convert now keeps previous `.cho` content visible behind a matching loading overlay during `Generate`, disables editor input until the new conversion result arrives, and reuses the existing abort/stale-context protection so outdated results are not applied after context changes
 
 ## Completed work
 
@@ -119,8 +120,6 @@ Current status:
 ## v1.4 - Rendering quality & UX improvements
 
 ### UX improvements
-
-- keep the `.cho` editor in a loading state during Generate, preserving previous content until the new conversion succeeds
 
 ### Rendering & layout quality
 

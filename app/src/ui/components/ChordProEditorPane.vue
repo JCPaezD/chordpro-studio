@@ -1,11 +1,19 @@
 <script setup lang="ts">
+import LoadingOverlayCard from "./LoadingOverlayCard.vue";
+
 const props = withDefaults(
   defineProps<{
     modelValue: string;
     placeholder?: string;
+    disabled?: boolean;
+    loading?: boolean;
+    loadingMessage?: string;
   }>(),
   {
-    placeholder: "ChordPro text"
+    placeholder: "ChordPro text",
+    disabled: false,
+    loading: false,
+    loadingMessage: "Loading..."
   }
 );
 
@@ -24,12 +32,22 @@ function handleInput(event: Event): void {
       <slot name="header" />
     </div>
 
-    <textarea
-      :value="modelValue"
-      class="editor-textarea editor-monospace"
-      :placeholder="placeholder"
-      @input="handleInput"
-    />
+    <div class="editor-body">
+      <textarea
+        :value="modelValue"
+        class="editor-textarea editor-monospace"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :aria-busy="loading ? 'true' : 'false'"
+        @input="handleInput"
+      />
+
+      <LoadingOverlayCard
+        v-if="loading"
+        :message="loadingMessage"
+        :scrim="modelValue.trim().length > 0"
+      />
+    </div>
 
     <div v-if="$slots.actions" class="editor-actions">
       <slot name="actions" />
@@ -46,6 +64,13 @@ function handleInput(event: Event): void {
   min-height: 0;
 }
 
+.editor-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .editor-textarea {
   flex: 1;
   width: 100%;
@@ -59,6 +84,10 @@ function handleInput(event: Event): void {
   font: inherit;
   line-height: 1.5;
   box-sizing: border-box;
+}
+
+.editor-textarea:disabled {
+  cursor: default;
 }
 
 .editor-textarea.editor-monospace {

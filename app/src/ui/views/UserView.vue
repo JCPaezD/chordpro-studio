@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
+import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
 import {
   type ChordDiagramInstrument,
@@ -831,6 +832,9 @@ async function clearApiKey(): Promise<void> {
               <section v-if="showChordProEditor" class="editor-column">
                 <ChordProEditorPane
                   :model-value="chordProText"
+                  :disabled="loading"
+                  :loading="loading"
+                  loading-message="Generating ChordPro..."
                   placeholder="ChordPro source will appear here after generation."
                   @update:model-value="updateChordPro"
                 >
@@ -983,10 +987,7 @@ async function clearApiKey(): Promise<void> {
             </p>
           </div>
           <div v-else-if="!hasBufferedPreview && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
-            <div class="preview-loading-card">
-              <span class="loading-spinner" aria-hidden="true" />
-              <p class="message">Generating preview...</p>
-            </div>
+            <LoadingOverlayCard :overlay="false" message="Generating preview..." />
           </div>
           <div v-else-if="!hasBufferedPreview && previewError" class="preview-state">
             <p class="message error-message">{{ previewError }}</p>
@@ -1019,12 +1020,7 @@ async function clearApiKey(): Promise<void> {
             <div v-if="isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
               <span class="preview-refresh-spinner" />
             </div>
-            <div v-if="showPreviewLoadingIndicator" class="preview-loading-overlay">
-              <div class="preview-loading-card">
-                <span class="loading-spinner" aria-hidden="true" />
-                <p class="message">Generating preview...</p>
-              </div>
-            </div>
+            <LoadingOverlayCard v-if="showPreviewLoadingIndicator" message="Generating preview..." />
           </div>
         </div>
       </section>
@@ -1748,8 +1744,7 @@ async function clearApiKey(): Promise<void> {
 }
 
 .preview-state,
-.preview-loading-empty,
-.preview-loading-overlay {
+.preview-loading-empty {
   display: grid;
   place-items: center;
 }
@@ -1805,30 +1800,6 @@ async function clearApiKey(): Promise<void> {
 .preview-refresh-spinner {
   width: 0.9rem;
   height: 0.9rem;
-  border: 2px solid rgba(55, 81, 59, 0.18);
-  border-top-color: #37513b;
-  border-radius: 999px;
-  animation: spin 0.8s linear infinite;
-}
-
-.preview-loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(28, 32, 26, 0.24);
-}
-
-.preview-loading-card {
-  display: grid;
-  justify-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.35rem;
-  background: rgba(255, 250, 241, 0.95);
-  box-shadow: 0 16px 28px rgba(24, 32, 25, 0.18);
-}
-
-.loading-spinner {
-  width: 1.2rem;
-  height: 1.2rem;
   border: 2px solid rgba(55, 81, 59, 0.18);
   border-top-color: #37513b;
   border-radius: 999px;
