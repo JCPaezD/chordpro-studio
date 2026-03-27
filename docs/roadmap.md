@@ -119,6 +119,8 @@ Current status:
 
 ### UX improvements
 
+- keep the `.cho` editor in a loading state during Generate, preserving previous content until the new conversion succeeds
+
 ### Rendering & layout quality
 
 - prevent horizontal overflow:
@@ -136,6 +138,7 @@ Current status:
 
 ## v1.x - Additional UX / dev improvements
 
+- prevent accidental text selection in non-interactive UI elements (buttons, labels, icons) using scoped user-select rules
 - add a side menu to the Playground to toggle panel visibility
 - UI visual refinement (non-layout):
   - improve colors, typography, spacing and visual hierarchy
@@ -162,6 +165,7 @@ Current status:
 - layout optimization
 - song library
 - ensure rendering robustness remains compatible with future layout optimization features
+- evaluate richer editing capabilities for the .cho editor (e.g. structured chord manipulation, improved editing UX, potential migration beyond textarea)
 
 ### Export improvements (future)
 
