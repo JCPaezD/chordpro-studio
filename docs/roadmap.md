@@ -138,6 +138,13 @@ Current status:
 
 ## v1.x - Additional UX / dev improvements
 
+### Product clarification
+
+- clarify target user and core value proposition
+- validate whether the current workflow is useful beyond the original personal use case
+- refine product language, visual direction and first-use experience
+- use findings to guide future prioritization across UX, export and feature expansion
+
 - prevent accidental text selection in non-interactive UI elements (buttons, labels, icons) using scoped user-select rules
 - add a side menu to the Playground to toggle panel visibility
 - UI visual refinement (non-layout):
