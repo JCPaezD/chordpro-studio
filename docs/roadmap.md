@@ -120,6 +120,7 @@ Current status:
 ### UX improvements
 
 - keep the `.cho` editor in a loading state during Generate, preserving previous content until the new conversion succeeds
+- add chord diagram instrument preference (segmented control: guitar / piano) integrated with render style and preview cache
 
 ### Rendering & layout quality
 
