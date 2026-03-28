@@ -131,9 +131,6 @@ Current status:
 - refine spacing rules:
   - reduce unnecessary empty lines when safe
   - improve vertical compactness without harming readability
-- refine chorus visual alignment:
-  - adjust bar offset / indent to fix visual alignment
-  - do NOT modify global page margins
 
 ## v1.x - Additional UX / dev improvements
 
