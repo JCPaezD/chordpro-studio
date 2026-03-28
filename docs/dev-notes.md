@@ -71,9 +71,9 @@ Only record assumptions here when they materially affect behavior, UX, architect
 
 ## Local rebuild notes
 
-- local rebuild `v1.3.3` was produced after syncing version metadata across `package.json`, `app/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and the Cargo-generated lockfile update
-- final human-facing artifacts for the rebuild were collected under `releases/v1.3.3/`, keeping `src-tauri/target/` as transient build output only
-- MSI upgrade was validated locally over the previous installed version, and the rebuilt app launched showing `ChordPro Studio - v1.3.3` in the window title
+- local rebuild `v1.4.0` was produced after syncing version metadata across `package.json`, `app/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and the Cargo-generated lockfile update
+- final human-facing artifacts for the rebuild were collected under `releases/v1.4.0/`, keeping `src-tauri/target/` as transient build output only
+- local release artifacts keep the `-local` suffix in their human-facing names while the runtime app version stays `1.4.0`
 
 ## Preview and Export Notes
 
