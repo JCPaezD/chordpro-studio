@@ -69,6 +69,7 @@ Current status:
 - v1.4 first minimal user preference now exposes Show chord diagrams through a lightweight sidebar popover, persists in AppConfig, updates preview and PDF export in real time, and extends preview cache validity so diagrams ON/OFF never reuse incompatible cached PDFs
 - v1.4 chord-diagram instrument preference is now available through the same lightweight Preferences popover with a segmented control (`Piano` / `Guitar`), persists in AppConfig with backward-compatible defaults, updates preview and PDF export through the shared render-style path, and extends preview cache validity so instrument variants never mix
 - v1.4 Convert now keeps previous `.cho` content visible behind a matching loading overlay during `Generate`, disables editor input until the new conversion result arrives, and reuses the existing abort/stale-context protection so outdated results are not applied after context changes
+- horizontal overflow in dense long-chord lines is now treated as a ChordPro engine limitation rather than a pending app-side fix; the documented workaround is to split the affected line manually when needed
 - v1.x sidebar navigation now lets the main rail buttons use the full available width and slightly widens the desktop rail, resolving the residual `Songbook` button alignment bug without introducing per-button layout exceptions
 
 ## Completed work
@@ -124,9 +125,6 @@ Current status:
 
 ### Rendering & layout quality
 
-- prevent horizontal overflow:
-  - ensure chords and long lines never exceed column width
-  - apply safe wrapping or fallback strategies
 - improve column and page break behavior:
   - reduce undesirable splits in sections (verse, chorus)
   - avoid breaking blocks when they naturally fit
