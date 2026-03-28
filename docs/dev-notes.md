@@ -158,6 +158,8 @@ Bundled CLI expectation:
 - chord-diagram preferences now persist `showChordDiagrams` and `instrument` in AppConfig, with defaults of `true` and `piano`, preserving compatibility for older configs
 - those preferences are exposed from a lightweight Preferences popover anchored to the bottom of the User View sidebar instead of a separate full-size settings panel
 - preview, single-song PDF export and songbook PDF export now share the same effective render-style options for chord-diagram visibility and instrument, and preview cache validity now includes those style dimensions so different variants do not mix
+- when chord diagrams are disabled at runtime, the CLI integration must use the global `diagrams.show=none` switch and must not pass `kbdiagrams.show=none`; ChordPro routes diagram generation through `diagrams.show`, while `pdf.kbdiagrams.show` controls keyboard-diagram placement and does not accept `none`
+- if future style/runtime changes touch diagram visibility or placement, re-check the official ChordPro configuration docs for `diagrams.show`, `pdf.diagrams.show` and `pdf.kbdiagrams.show` semantics before extending the CLI `--define` arguments
 
 ## File Encoding Rule
 

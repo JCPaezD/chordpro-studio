@@ -621,7 +621,6 @@ fn append_render_style_args(command_args: &mut Vec<OsString>, render_style: &Ren
   }
 
   command_args.push(OsString::from("--define=diagrams.show=none"));
-  command_args.push(OsString::from("--define=kbdiagrams.show=none"));
 }
 
 fn run_chordpro_command<I, S>(
@@ -1045,7 +1044,7 @@ E|-------------------1-1-1-1-1-1-1-1--------|
     let mut command_args = Vec::<OsString>::new();
     let render_style = RenderStyleOptions {
       show_chord_diagrams: false,
-      instrument: DiagramInstrument::Guitar,
+      instrument: DiagramInstrument::Piano,
     };
 
     append_render_style_args(&mut command_args, &render_style);
@@ -1053,9 +1052,8 @@ E|-------------------1-1-1-1-1-1-1-1--------|
     assert_eq!(
       command_args,
       vec![
-        OsString::from("--define=instrument.type=guitar"),
+        OsString::from("--define=instrument.type=keyboard"),
         OsString::from("--define=diagrams.show=none"),
-        OsString::from("--define=kbdiagrams.show=none"),
       ]
     );
   }

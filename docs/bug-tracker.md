@@ -390,3 +390,27 @@ Resolved with a conservative rename policy:
 Priority: Medium-High
 Target: v1.1
 Status: Resolved
+
+---
+
+## BUG-16 - Preview fails when chord diagrams are disabled
+
+Layer: Backend / ChordPro CLI integration
+
+Description:
+After introducing chord-diagram visibility and instrument preferences, disabling `Show chord diagrams` can make preview generation fail with a ChordPro CLI config error instead of rendering normally without diagrams.
+
+Current behavior:
+Resolved. Preview, single-song PDF export and songbook PDF export now disable diagrams through the global `diagrams.show=none` setting only, while still applying the selected `instrument.type` through the shared render-style path.
+
+Expected behavior:
+Disabling chord diagrams should continue to generate preview and PDF output successfully, without mixing cached variants and without passing invalid ChordPro config overrides.
+
+Root cause:
+The backend appended `--define=kbdiagrams.show=none` when `showChordDiagrams=false`. ChordPro does not accept that override in this form, and keyboard-diagram PDF placement is configured under `pdf.kbdiagrams.show` with placement values instead of `none`.
+
+Temporary decision:
+Resolved by removing the invalid `kbdiagrams.show=none` override and relying on the existing global `diagrams.show=none` control, which is the correct ChordPro-level switch for suppressing diagram generation regardless of instrument type.
+
+Priority: Medium
+Status: Resolved
