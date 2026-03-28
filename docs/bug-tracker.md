@@ -414,3 +414,27 @@ Resolved by removing the invalid `kbdiagrams.show=none` override and relying on 
 
 Priority: Medium
 Status: Resolved
+
+---
+
+## BUG-17 - Songbook sidebar button content is visually misaligned
+
+Layer: UI / Sidebar layout
+
+Description:
+The `Songbook` button in the User View sidebar can look visually shifted relative to `Convert` and `Prefs`, with both icon and label appearing too close to the right edge.
+
+Current behavior:
+Resolved. The main sidebar buttons now use the full available width of the navigation rail, and the desktop rail is slightly wider so the button content has enough horizontal space to center and breathe consistently.
+
+Expected behavior:
+All sidebar buttons should share the same visual alignment and horizontal breathing room, with centered icon and label content that matches the rest of the navigation system.
+
+Root cause:
+The issue was not specific to the `Songbook` SVG. The main sidebar buttons were constrained by a narrower width rule (`calc(100% - 0.38rem)`) and left-aligned inside the rail, so the longer `Songbook` label was the only one that clearly exposed the lack of usable width.
+
+Temporary decision:
+Resolved by letting the main navigation buttons stretch to the full rail width and slightly increasing the desktop rail column width. This fixes the visual imbalance without adding per-button exceptions.
+
+Priority: Low
+Status: Resolved

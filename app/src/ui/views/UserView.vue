@@ -1190,7 +1190,7 @@ async function clearApiKey(): Promise<void> {
 
 .user-main {
   display: grid;
-  grid-template-columns: 6rem minmax(0, 1.1fr) minmax(24rem, 1fr);
+  grid-template-columns: 6.4rem minmax(0, 1.1fr) minmax(24rem, 1fr);
   gap: 1rem;
   flex: 1;
   min-width: 0;
@@ -1239,8 +1239,8 @@ async function clearApiKey(): Promise<void> {
 
 
 .nav-rail-main > .nav-button {
-  width: calc(100% - 0.38rem);
-  justify-self: start;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .nav-button svg {

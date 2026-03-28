@@ -246,7 +246,7 @@ Playground model selector:
 The User View now keeps `Convert` as the default active panel, preserves the VSCode-style sidebar for `Convert` / `Songbook`, and uses a layout-controlled optional ChordPro editor instead of a collapsible panel. The editable `.cho` area still reuses the same `chordProText` state used for preview and export, and can regenerate the preview directly from the edited source without re-running the full pipeline.
 
 - the sidebar now also includes a light Preferences entry at the bottom and subtle button borders so the navigation affordances remain visible even when only one button is active nearby
-- known pending issue: the `Songbook` sidebar button still has a small visual content-alignment bug even though the button margins and the preference feature itself are stable; this remains open for a later focused UI pass
+- the main sidebar buttons now stretch to the full available width of the rail, and the rail itself is slightly wider in desktop layout, resolving the previous `Songbook` label/icon alignment bug without changing the overall panel structure
 
 ## Songbook and Persistence Notes
 
