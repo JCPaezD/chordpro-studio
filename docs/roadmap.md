@@ -128,9 +128,6 @@ Current status:
 - improve column and page break behavior:
   - reduce undesirable splits in sections (verse, chorus)
   - avoid breaking blocks when they naturally fit
-- refine spacing rules:
-  - reduce unnecessary empty lines when safe
-  - improve vertical compactness without harming readability
 
 ## v1.x - Additional UX / dev improvements
 
