@@ -53,6 +53,8 @@ During this skill:
 - do NOT propose speculative fixes
 - do NOT iterate on possible solutions
 - do NOT expand scope unnecessarily
+- if the bug depends on an external tool, CLI, API, library, config schema, file format, or runtime contract, verify the relevant official documentation or other primary source before concluding the root cause
+- do NOT treat local code assumptions as sufficient evidence when the failing behavior depends on external system semantics
 
 Focus only on understanding the problem.
 
@@ -92,6 +94,7 @@ Focus on:
 - lifecycle timing
 - async boundaries
 - caching layers
+- external contracts and configuration semantics when the behavior depends on a CLI, library, API, or file format
 
 ---
 
@@ -108,6 +111,22 @@ Provide a small set of plausible causes:
 - side effects or race conditions
 
 Do not guess broadly. Keep it focused.
+
+---
+
+## 4.5. Verify external contract
+
+When the bug involves an external dependency or tool:
+
+- check the official documentation or other primary source
+- confirm valid flags, config keys, values, and expected behavior
+- compare documented behavior against the local implementation
+- distinguish clearly between:
+  - local assumption
+  - documented behavior
+  - observed runtime behavior
+
+Do not finalize the diagnosis until these are aligned when the bug depends on an external contract.
 
 ---
 
@@ -135,6 +154,7 @@ Provide:
 - most likely root cause
 - why previous attempts failed
 - what must be confirmed before fixing
+- if external behavior was involved, state what was confirmed from documentation versus what was confirmed from runtime reproduction
 
 ---
 
