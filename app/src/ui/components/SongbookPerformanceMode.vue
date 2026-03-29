@@ -1,117 +1,176 @@
 <template>
   <section class="performance-mode">
     <section class="performance-stage">
-      <div class="performance-controls">
-        <button class="mini-button control-button" @click="toggleSongList">
-          {{ isSongListOpen ? "Hide songs" : "Songs" }}
-        </button>
-        <button class="mini-button control-button" @click="props.exitPerformanceMode">Exit</button>
-      </div>
-
-      <div v-if="isSongListOpen" class="performance-sidebar-backdrop" aria-hidden="true" @click="closeSongList" />
-
-      <aside :class="['performance-sidebar-overlay', { open: isSongListOpen }]" :aria-hidden="!isSongListOpen">
-        <div class="performance-sidebar-shell">
-          <div class="performance-sidebar-top">
-            <div class="performance-sidebar-copy">
-              <p class="eyebrow">Songbook</p>
-              <h1>Performance mode</h1>
-              <p v-if="props.songbook">{{ props.songbook.songs.length }} files</p>
+      <div class="performance-main">
+        <aside :class="['performance-sidebar-overlay', { open: isSongListOpen }]" :aria-hidden="!isSongListOpen">
+          <div class="performance-sidebar-shell">
+            <div class="performance-sidebar-top">
+              <div class="performance-sidebar-copy">
+                <p class="eyebrow">Songbook</p>
+                <h1>Performance mode</h1>
+                <p v-if="props.songbook">{{ props.songbook.songs.length }} files</p>
+              </div>
+              <button
+                class="performance-icon-button performance-sidebar-close-button"
+                aria-label="Close song list"
+                title="Close song list"
+                @click="closeSongList({ focusDock: true })"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 8l8 8" />
+                  <path d="M16 8l-8 8" />
+                </svg>
+              </button>
             </div>
-            <button class="mini-button sidebar-close-button" @click="closeSongList">Close</button>
-          </div>
 
-          <p v-if="props.songbookError" class="message error-message">{{ props.songbookError }}</p>
+            <p v-if="props.songbookError" class="message error-message">{{ props.songbookError }}</p>
 
-          <div
-            v-if="props.songbook"
-            ref="songListRef"
-            class="performance-song-list"
-            tabindex="0"
-            @keydown="handleSongListKeydown"
-          >
-            <div v-if="props.songbook.songs.length === 0" class="songbook-empty">
-              No `.cho` files were found in this folder.
+            <div
+              v-if="props.songbook"
+              ref="songListRef"
+              class="performance-song-list"
+              tabindex="0"
+              @keydown="handleSongListKeydown"
+            >
+              <div v-if="props.songbook.songs.length === 0" class="songbook-empty">
+                No `.cho` files were found in this folder.
+              </div>
+              <button
+                v-for="(songEntry, index) in props.songbook.songs"
+                :key="songEntry.filePath"
+                :ref="setSongItemRef(index)"
+                tabindex="-1"
+                :class="['song-item', {
+                  active: currentSongIndex === index,
+                  selected: listSelectionIndex === index
+                }]"
+                @mouseenter="listSelectionIndex = index"
+                @click="void selectSong(index, { closeList: false, focusTarget: 'list' })"
+              >
+                {{ songEntry.displayTitle }}
+              </button>
             </div>
-            <button
-              v-for="(songEntry, index) in props.songbook.songs"
-              :key="songEntry.filePath"
-              :ref="setSongItemRef(index)"
-              :class="['song-item', { active: performanceSelectionIndex === index }]"
-              @click="void selectSong(index, true)"
-            >
-              {{ songEntry.displayTitle }}
-            </button>
-          </div>
 
-          <div v-else class="songbook-empty large">
-            No songbook loaded.
+            <div v-else class="songbook-empty large">
+              No songbook loaded.
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      <div ref="previewViewportRef" class="preview-content" tabindex="-1">
-        <div v-if="!isTauri()" class="preview-state">
-          <p class="message">
-            Preview requires the Tauri desktop runtime.
-          </p>
-        </div>
-        <div v-else-if="!hasBufferedPreview && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
-          <div class="preview-loading-card">
-            <span class="loading-spinner" aria-hidden="true" />
-            <p class="message">Generating preview...</p>
+        <div ref="previewViewportRef" class="preview-content" tabindex="-1">
+          <div v-if="!isTauri()" class="preview-state">
+            <p class="message">
+              Preview requires the Tauri desktop runtime.
+            </p>
           </div>
-        </div>
-        <div v-else-if="!hasBufferedPreview && props.previewError" class="preview-state">
-          <p class="message error-message">{{ props.previewError }}</p>
-        </div>
-        <div v-else-if="!hasBufferedPreview" class="preview-state">
-          <p class="message">
-            Open a song to see the PDF preview.
-          </p>
-        </div>
-        <div v-else ref="previewViewerRef" class="preview-viewer">
-          <iframe
-            :src="bufferedFrameSrcA"
-            class="preview-frame"
-            :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
-            title="ChordPro PDF Preview"
-            @load="handlePreviewFrameLoad('A')"
-          />
-          <iframe
-            :src="bufferedFrameSrcB"
-            class="preview-frame"
-            :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
-            title="ChordPro PDF Preview"
-            @load="handlePreviewFrameLoad('B')"
-          />
-          <div v-if="props.isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
-            <span class="preview-refresh-spinner" />
-          </div>
-          <div class="performance-navigation">
-            <button
-              class="navigation-button"
-              :disabled="!canSelectPreviousSong"
-              aria-label="Previous song"
-              title="Previous song"
-              @click="void selectRelativeSong(-1)"
-            >
-              &uarr;
-            </button>
-            <button
-              class="navigation-button"
-              :disabled="!canSelectNextSong"
-              aria-label="Next song"
-              title="Next song"
-              @click="void selectRelativeSong(1)"
-            >
-              &darr;
-            </button>
-          </div>
-          <div v-if="showPreviewLoadingIndicator" class="preview-loading-overlay">
+          <div v-else-if="!hasBufferedPreview && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
             <div class="preview-loading-card">
               <span class="loading-spinner" aria-hidden="true" />
               <p class="message">Generating preview...</p>
+            </div>
+          </div>
+          <div v-else-if="!hasBufferedPreview && props.previewError" class="preview-state">
+            <p class="message error-message">{{ props.previewError }}</p>
+          </div>
+          <div v-else-if="!hasBufferedPreview" class="preview-state">
+            <p class="message">
+              Open a song to see the PDF preview.
+            </p>
+          </div>
+          <div v-else ref="previewViewerRef" class="preview-viewer">
+            <iframe
+              :src="bufferedFrameSrcA"
+              class="preview-frame"
+              :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
+              title="ChordPro PDF Preview"
+              @load="handlePreviewFrameLoad('A')"
+            />
+            <iframe
+              :src="bufferedFrameSrcB"
+              class="preview-frame"
+              :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
+              title="ChordPro PDF Preview"
+              @load="handlePreviewFrameLoad('B')"
+            />
+            <div v-if="props.isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
+              <span class="preview-refresh-spinner" />
+            </div>
+            <div class="performance-dock-shell" aria-label="Performance controls">
+              <div class="performance-dock">
+                <div class="performance-dock-group">
+                  <button
+                    class="performance-icon-button"
+                    :ref="setDockButtonRef(0)"
+                    tabindex="0"
+                    :class="{ active: isSongListOpen }"
+                    :aria-label="isSongListOpen ? 'Hide songs' : 'Show songs'"
+                    :aria-pressed="isSongListOpen"
+                    :title="isSongListOpen ? 'Hide songs' : 'Show songs'"
+                    @keydown="handleDockButtonKeydown($event, 0)"
+                    @click="toggleSongList"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 6.5h7" />
+                      <path d="M4 12h7" />
+                      <path d="M4 17.5h7" />
+                      <path d="M14.5 5.5h5v13h-5z" />
+                    </svg>
+                  </button>
+                  <button
+                    class="performance-icon-button"
+                    :ref="setDockButtonRef(1)"
+                    tabindex="-1"
+                    aria-label="Exit performance mode"
+                    title="Exit performance mode"
+                    @keydown="handleDockButtonKeydown($event, 1)"
+                    @click="props.exitPerformanceMode"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M8 8l8 8" />
+                      <path d="M16 8l-8 8" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="performance-dock-separator" aria-hidden="true" />
+
+                <div class="performance-dock-group">
+                  <button
+                    class="performance-icon-button"
+                    :ref="setDockButtonRef(2)"
+                    tabindex="-1"
+                    :disabled="!canSelectPreviousSong"
+                    aria-label="Previous song"
+                    title="Previous song"
+                    @keydown="handleDockButtonKeydown($event, 2)"
+                    @click="void selectRelativeSong(-1)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 7l-5 6h10z" />
+                    </svg>
+                  </button>
+                  <button
+                    class="performance-icon-button"
+                    :ref="setDockButtonRef(3)"
+                    tabindex="-1"
+                    :disabled="!canSelectNextSong"
+                    aria-label="Next song"
+                    title="Next song"
+                    @keydown="handleDockButtonKeydown($event, 3)"
+                    @click="void selectRelativeSong(1)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 17l5-6H7z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-if="showPreviewLoadingIndicator" class="preview-loading-overlay">
+              <div class="preview-loading-card">
+                <span class="loading-spinner" aria-hidden="true" />
+                <p class="message">Generating preview...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -150,7 +209,8 @@ const songListRef = ref<HTMLElement | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
-const performanceSelectionIndex = ref(-1);
+const dockButtonRefs = ref<(HTMLButtonElement | null)[]>([]);
+const listSelectionIndex = ref(-1);
 const isSongListOpen = ref(true);
 const showPreviewLoadingIndicator = ref(false);
 const activePreviewFrame = ref<PreviewFrameId>("A");
@@ -169,10 +229,18 @@ let previewFrameNavigationRafB: number | null = null;
 let previewFrameSwapTimer: ReturnType<typeof setTimeout> | null = null;
 let previewFrameSwapToken = 0;
 const songEntries = computed(() => props.songbook?.songs ?? []);
-const canSelectPreviousSong = computed(() => performanceSelectionIndex.value > 0);
+const currentSongIndex = computed(() => {
+  const songs = songEntries.value;
+  if (!props.selectedSongPath) {
+    return -1;
+  }
+
+  return songs.findIndex((songEntry) => songEntry.filePath === props.selectedSongPath);
+});
+const canSelectPreviousSong = computed(() => currentSongIndex.value > 0);
 const canSelectNextSong = computed(() => {
   const songs = songEntries.value;
-  return songs.length > 0 && performanceSelectionIndex.value >= 0 && performanceSelectionIndex.value < songs.length - 1;
+  return songs.length > 0 && currentSongIndex.value >= 0 && currentSongIndex.value < songs.length - 1;
 });
 const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
 const activePreviewBaseUrl = computed(() => props.previewSrc);
@@ -183,22 +251,29 @@ function syncPerformanceSelection(): void {
   const songs = songEntries.value;
 
   if (songs.length === 0) {
-    performanceSelectionIndex.value = -1;
+    listSelectionIndex.value = -1;
     return;
   }
 
-  const selectedIndex = props.selectedSongPath
-    ? songs.findIndex((songEntry) => songEntry.filePath === props.selectedSongPath)
-    : -1;
-
-  if (selectedIndex >= 0) {
-    performanceSelectionIndex.value = selectedIndex;
+  if (listSelectionIndex.value < 0 || listSelectionIndex.value >= songs.length) {
+    listSelectionIndex.value = currentSongIndex.value >= 0 ? currentSongIndex.value : 0;
     return;
   }
 
-  if (performanceSelectionIndex.value < 0 || performanceSelectionIndex.value >= songs.length) {
-    performanceSelectionIndex.value = 0;
+  if (!isSongListOpen.value && currentSongIndex.value >= 0) {
+    listSelectionIndex.value = currentSongIndex.value;
+    return;
   }
+}
+
+function syncListSelectionToCurrentSong(): void {
+  const songs = songEntries.value;
+  if (songs.length === 0) {
+    listSelectionIndex.value = -1;
+    return;
+  }
+
+  listSelectionIndex.value = currentSongIndex.value >= 0 ? currentSongIndex.value : 0;
 }
 
 function focusSongList(): void {
@@ -217,14 +292,32 @@ function focusPreviewViewport(): void {
   });
 }
 
+function focusDockButton(index = 0): void {
+  void nextTick(() => {
+    const buttons = dockButtonRefs.value.filter((button): button is HTMLButtonElement => button !== null);
+    if (buttons.length === 0) {
+      return;
+    }
+
+    const primaryIndex = Math.max(0, Math.min(index, 0));
+    buttons[primaryIndex]?.focus();
+  });
+}
+
 function setSongItemRef(index: number) {
   return (element: Element | null): void => {
     songItemRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
   };
 }
 
+function setDockButtonRef(index: number) {
+  return (element: Element | null): void => {
+    dockButtonRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
+  };
+}
+
 function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
-  const index = performanceSelectionIndex.value;
+  const index = listSelectionIndex.value;
   if (index < 0) {
     return;
   }
@@ -239,11 +332,17 @@ function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth")
 
 function openSongList(): void {
   isSongListOpen.value = true;
+  syncListSelectionToCurrentSong();
   focusSongList();
 }
 
-function closeSongList(options?: { focusPreview?: boolean }): void {
+function closeSongList(options?: { focusDock?: boolean; dockButtonIndex?: number; focusPreview?: boolean }): void {
   isSongListOpen.value = false;
+
+  if (options?.focusDock) {
+    focusDockButton(options.dockButtonIndex ?? 0);
+    return;
+  }
 
   if (options?.focusPreview) {
     focusPreviewViewport();
@@ -513,60 +612,171 @@ function toggleSongList(): void {
   openSongList();
 }
 
-async function selectSong(index: number, closeListAfterOpen = false): Promise<void> {
+async function selectSong(
+  index: number,
+  options?: {
+    closeList?: boolean;
+    focusTarget?: "list" | "dock" | "preview" | "preserve";
+    dockButtonIndex?: number;
+    preserveListSelection?: boolean;
+  }
+): Promise<void> {
   const songEntry = songEntries.value[index];
   if (!songEntry) {
     return;
   }
 
-  performanceSelectionIndex.value = index;
+  if (!options?.preserveListSelection) {
+    listSelectionIndex.value = index;
+  }
+
   await props.openSong(songEntry.filePath);
 
-  if (closeListAfterOpen) {
-    closeSongList({ focusPreview: true });
+  if (options?.closeList) {
+    closeSongList({
+      focusDock: options.focusTarget === "dock",
+      dockButtonIndex: options.dockButtonIndex,
+      focusPreview: options.focusTarget === "preview"
+    });
     return;
   }
 
-  focusSongList();
+  if (options?.focusTarget === "list") {
+    focusSongList();
+    return;
+  }
+
+  if (options?.focusTarget === "dock") {
+    focusDockButton(options.dockButtonIndex ?? 0);
+    return;
+  }
+
+  if (options?.focusTarget === "preview") {
+    focusPreviewViewport();
+  }
 }
 
 async function selectRelativeSong(delta: number): Promise<void> {
   const songs = songEntries.value;
-  if (songs.length === 0 || performanceSelectionIndex.value < 0) {
+  if (songs.length === 0 || currentSongIndex.value < 0) {
     return;
   }
 
-  const nextIndex = Math.max(0, Math.min(performanceSelectionIndex.value + delta, songs.length - 1));
-  if (nextIndex === performanceSelectionIndex.value) {
+  const nextIndex = Math.max(0, Math.min(currentSongIndex.value + delta, songs.length - 1));
+  if (nextIndex === currentSongIndex.value) {
     return;
   }
 
-  await selectSong(nextIndex, !isSongListOpen.value);
+  await selectSong(nextIndex, {
+    closeList: false,
+    focusTarget: "preserve",
+    preserveListSelection: isSongListOpen.value
+  });
 }
 
 function handleSongListKeydown(event: KeyboardEvent): void {
   const songs = songEntries.value;
-  if (songs.length === 0) {
-    return;
-  }
 
   if (event.key === "ArrowDown") {
+    if (songs.length === 0) {
+      return;
+    }
+
     event.preventDefault();
-    performanceSelectionIndex.value = Math.min(performanceSelectionIndex.value + 1, songs.length - 1);
+    listSelectionIndex.value = Math.min(listSelectionIndex.value + 1, songs.length - 1);
     scrollPerformanceSelectionIntoView();
     return;
   }
 
   if (event.key === "ArrowUp") {
+    if (songs.length === 0) {
+      return;
+    }
+
     event.preventDefault();
-    performanceSelectionIndex.value = Math.max(performanceSelectionIndex.value - 1, 0);
+    listSelectionIndex.value = Math.max(listSelectionIndex.value - 1, 0);
     scrollPerformanceSelectionIntoView();
+    return;
+  }
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    focusDockButton(0);
+    return;
+  }
+
+  if (event.key === "Enter") {
+    if (songs.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    void selectSong(listSelectionIndex.value, { closeList: true, focusTarget: "dock", dockButtonIndex: 0 });
+    return;
+  }
+
+  if (event.key === " " || event.key === "Spacebar") {
+    if (songs.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    void selectSong(listSelectionIndex.value, { closeList: false, focusTarget: "list" });
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeSongList({ focusDock: true, dockButtonIndex: 0 });
+  }
+}
+
+function handleDockButtonKeydown(event: KeyboardEvent, _index: number): void {
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    void selectRelativeSong(1);
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    void selectRelativeSong(-1);
+    return;
+  }
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+
+    if (isSongListOpen.value) {
+      focusSongList();
+      return;
+    }
+
+    openSongList();
+    return;
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+
+    if (isSongListOpen.value) {
+      focusSongList();
+      return;
+    }
+
+    openSongList();
     return;
   }
 
   if (event.key === "Enter") {
     event.preventDefault();
-    void selectSong(performanceSelectionIndex.value, true);
+    toggleSongList();
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    props.exitPerformanceMode();
   }
 }
 
@@ -579,7 +789,7 @@ function handleWindowKeydown(event: KeyboardEvent): void {
     event.preventDefault();
 
     if (isSongListOpen.value) {
-      closeSongList({ focusPreview: true });
+      closeSongList({ focusDock: true, dockButtonIndex: 0 });
       return;
     }
 
@@ -694,40 +904,39 @@ onBeforeUnmount(() => {
 }
 
 .performance-stage {
+  --performance-inset: 0.04rem;
+  --performance-control-size: 3.2rem;
+  --performance-control-gap: 0.52rem;
+  --performance-float-edge: calc(var(--performance-control-size) * 0.18);
+  --performance-dock-edge: calc(var(--performance-control-size) * 0.46);
+
   position: relative;
   display: flex;
   flex: 1;
   overflow: hidden;
-  padding: 0.04rem;
+  padding: var(--performance-inset);
   border: 1px solid rgba(24, 32, 25, 0.07);
   background: rgba(255, 250, 241, 0.9);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
 }
 
-.performance-controls {
-  position: absolute;
-  top: 3.35rem;
-  right: 0.45rem;
-  z-index: 5;
+.performance-main {
+  position: relative;
   display: flex;
-  gap: 0.45rem;
-}
-
-.performance-sidebar-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: rgba(18, 24, 18, 0.12);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .performance-sidebar-overlay {
   position: absolute;
-  top: 0.45rem;
-  left: 0.45rem;
-  bottom: 0.45rem;
-  z-index: 4;
-  width: min(19rem, calc(100vw - 2rem));
-  max-width: calc(100% - 0.9rem);
+  top: var(--performance-float-edge);
+  left: var(--performance-float-edge);
+  bottom: var(--performance-float-edge);
+  z-index: 5;
+  width: min(19rem, calc(100vw - (var(--performance-float-edge) * 2) - 1rem));
+  max-width: calc(100% - (var(--performance-float-edge) * 2));
   pointer-events: none;
   transform: translateX(-1rem);
   opacity: 0;
@@ -747,11 +956,21 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 0.55rem;
   height: 100%;
+  box-sizing: border-box;
   padding: 0.58rem;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 250, 241, 0.97);
-  box-shadow: 0 18px 32px rgba(24, 32, 25, 0.18);
+  border: 1px solid rgba(24, 32, 25, 0.24);
+  background: #fffefb;
+  box-shadow: 0 26px 52px rgba(24, 32, 25, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(6px);
+}
+
+.performance-sidebar-shell:focus-within {
+  border-color: rgba(55, 81, 59, 0.42);
+  background: #fffdf7;
+  box-shadow:
+    0 26px 52px rgba(24, 32, 25, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 0 0 4px rgba(55, 81, 59, 0.24);
 }
 
 .performance-sidebar-top {
@@ -789,13 +1008,13 @@ onBeforeUnmount(() => {
   align-content: start;
   gap: 0.3rem;
   overflow: auto;
-  padding-right: 0.08rem;
+  padding-right: 0.24rem;
   outline: none;
 }
 
 .performance-song-list:focus-visible {
-  outline: 2px solid rgba(55, 81, 59, 0.35);
-  outline-offset: 0.18rem;
+  outline: 3px solid rgba(55, 81, 59, 0.36);
+  outline-offset: 0.24rem;
 }
 
 .song-item {
@@ -806,11 +1025,26 @@ onBeforeUnmount(() => {
   text-align: left;
   font: inherit;
   cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .song-item.active {
+  border-color: rgba(55, 81, 59, 0.28);
+  background: #f3f7f1;
+}
+
+.song-item.selected {
   border-color: #37513b;
   background: #eef4ed;
+  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.16);
+}
+
+.song-item.active.selected {
+  background: #e8f1e5;
+  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.22);
 }
 
 .songbook-empty {
@@ -831,6 +1065,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-width: 0;
+  min-height: 0;
 }
 
 .preview-state,
@@ -858,6 +1094,7 @@ onBeforeUnmount(() => {
   position: relative;
   flex: 1;
   overflow: hidden;
+  background: #fff;
 }
 
 .preview-frame {
@@ -865,7 +1102,7 @@ onBeforeUnmount(() => {
   inset: 0;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(47, 59, 49, 0.07);
+  border: none;
   background: #fff;
   transition: opacity 180ms ease-in-out;
 }
@@ -884,6 +1121,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
+  z-index: 3;
   display: grid;
   place-items: center;
   width: 1.8rem;
@@ -894,13 +1132,89 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-.performance-navigation {
+.performance-dock-shell {
   position: absolute;
-  right: 0.45rem;
-  bottom: 0.45rem;
-  z-index: 5;
+  inset: 0;
+  z-index: 6;
+  padding: var(--performance-dock-edge);
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.performance-dock {
   display: grid;
-  gap: 0.45rem;
+  gap: 0;
+  padding: 0.34rem;
+  border: 1px solid rgba(24, 32, 25, 0.24);
+  background: #fffefb;
+  box-shadow: 0 22px 42px rgba(24, 32, 25, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.performance-dock:focus-within {
+  border-color: rgba(55, 81, 59, 0.42);
+  background: #fffdf7;
+  box-shadow:
+    0 22px 42px rgba(24, 32, 25, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 0 0 4px rgba(55, 81, 59, 0.24);
+}
+
+.performance-dock-group {
+  display: grid;
+  gap: var(--performance-control-gap);
+}
+
+.performance-dock-separator {
+  width: 100%;
+  height: 1px;
+  margin: 0.38rem 0;
+  background: rgba(35, 49, 39, 0.14);
+}
+
+.performance-icon-button {
+  display: grid;
+  place-items: center;
+  width: var(--performance-control-size);
+  height: var(--performance-control-size);
+  padding: 0;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: rgba(247, 239, 224, 0.96);
+  color: #233127;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(24, 32, 25, 0.12);
+}
+
+.performance-icon-button svg {
+  width: 1.56rem;
+  height: 1.56rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.performance-icon-button.active {
+  border-color: #37513b;
+  background: #eef4ed;
+}
+
+.performance-icon-button:focus-visible,
+.performance-song-list:focus-visible {
+  outline: 3px solid rgba(55, 81, 59, 0.36);
+  outline-offset: 0.24rem;
+}
+
+.performance-icon-button:focus-visible {
+  border-color: rgba(55, 81, 59, 0.42);
+  background: #f4f8f1;
+  box-shadow:
+    0 10px 24px rgba(24, 32, 25, 0.12),
+    0 0 0 3px rgba(55, 81, 59, 0.18);
 }
 
 .preview-refresh-spinner {
@@ -946,7 +1260,7 @@ onBeforeUnmount(() => {
 }
 
 .mini-button,
-.navigation-button {
+.performance-icon-button {
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: rgba(247, 239, 224, 0.96);
   color: #233127;
@@ -961,27 +1275,26 @@ onBeforeUnmount(() => {
   padding: 0.5rem 0.72rem;
 }
 
-.navigation-button {
-  display: grid;
-  place-items: center;
-  width: 2.7rem;
-  height: 2.7rem;
-  border-radius: 999px;
-  padding: 0;
-  font-size: 1.2rem;
-  line-height: 1;
-  backdrop-filter: blur(6px);
-}
-
 .mini-button:disabled,
-.navigation-button:disabled {
+.performance-icon-button:disabled {
   opacity: 0.62;
   cursor: default;
 }
 
-.control-button,
-.sidebar-close-button {
+.performance-dock {
   backdrop-filter: blur(6px);
+}
+
+.performance-sidebar-close-button {
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
+  box-shadow: none;
+}
+
+.performance-sidebar-close-button svg {
+  width: 1.22rem;
+  height: 1.22rem;
 }
 
 @keyframes spin {
@@ -992,27 +1305,15 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   .performance-stage {
-    padding: 0.02rem;
-  }
-
-  .performance-controls {
-    top: 2.95rem;
-    right: 0.35rem;
-    gap: 0.35rem;
-  }
-
-  .performance-navigation {
-    right: 0.35rem;
-    bottom: 0.35rem;
-    gap: 0.35rem;
+    --performance-inset: 0.02rem;
+    --performance-control-size: 2.7rem;
+    --performance-control-gap: 0.4rem;
+    --performance-float-edge: calc(var(--performance-control-size) * 0.16);
+    --performance-dock-edge: calc(var(--performance-control-size) * 0.36);
   }
 
   .performance-sidebar-overlay {
-    top: 0.35rem;
-    left: 0.35rem;
-    bottom: 0.35rem;
-    width: min(18rem, calc(100vw - 1rem));
-    max-width: calc(100% - 0.7rem);
+    width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
   }
 }
 </style>

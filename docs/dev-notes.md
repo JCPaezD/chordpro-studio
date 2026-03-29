@@ -154,6 +154,8 @@ Preview failure behavior:
 - User View empty states were refined without changing panel layout: Songbook now uses a clearer no-folder call to action, loaded songbooks show a low-weight selection hint, and the Preview placeholder uses softer two-line guidance that adapts when a songbook is available
 - Songbook view now keeps the active song visible when entering the panel or returning from Performance mode, reuses the existing selection auto-scroll during keyboard navigation, and extends ArrowUp / ArrowDown / Enter handling across the view only when focus is outside interactive controls such as buttons, inputs, textareas, contenteditable areas and the PDF viewer
 - Songbook performance mode reuses its existing selection auto-scroll not only during list navigation, but also on entry and when the song sidebar is reopened, so the currently active song stays visible without introducing a separate scroll path
+- the post-v1.4.0 performance-mode friction pass replaces the old modal-style sidebar/backdrop controls with two floating surfaces inside the preview area: a song panel with its own visual depth and a compact action dock anchored inside a scrollbar-safe preview inset, so the PDF remains the dominant surface while list and controls no longer collide with preview borders, native toolbar chrome or the vertical scrollbar
+- performance-mode interaction now separates the currently opened song from the currently selected list item: the dock and its keyboard shortcuts always navigate relative to the song currently shown in preview, while the list keeps an independent `selected` state for keyboard/mouse browsing, with `active` vs `selected` visual distinction and hover allowed to update selection without opening the song
 
 Bundled CLI expectation:
 

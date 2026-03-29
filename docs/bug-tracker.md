@@ -438,3 +438,33 @@ Resolved by letting the main navigation buttons stretch to the full rail width a
 
 Priority: Low
 Status: Resolved
+
+---
+
+## BUG-18 - Songbook performance mode controls overlap preview surfaces
+
+Layer: UI / Performance mode layout
+
+Description:
+The first post-release performance-mode layout left two visible collisions:
+
+- the song-list panel could visually merge with the preview edge instead of reading as a clearly separated floating surface
+- the right-side performance controls could overlap the preview scrollbar or native PDF viewer toolbar area
+
+Impact:
+The mode felt less polished and reduced confidence during real usage, especially in fullscreen reading where the preview should remain the dominant surface and controls must stay reachable without obscuring viewer chrome.
+
+Current behavior:
+Resolved. Songbook performance mode now uses a floating song panel and a compact floating dock anchored inside the preview safe area. The dock remains usable while the list is open, the dark modal backdrop was removed, and the controls no longer depend on a separate side rail that steals preview width.
+
+Expected behavior:
+Performance mode should preserve the largest possible PDF surface while keeping the song list and controls visually separated, scrollbar-safe, and keyboard/mouse friendly.
+
+Root cause:
+The previous layout mixed modal overlay assumptions with edge-anchored controls. The song panel spacing relied too much on inner content rather than the outer floating container, and the action buttons were tied to a layout that either overlapped preview chrome or consumed dedicated width outside the document surface.
+
+Temporary decision:
+Resolved by restructuring the component around two floating surfaces inside the preview area, introducing a compact dock with direct actions, making the list non-modal, and separating the currently opened song from the currently selected list item so keyboard and mouse navigation stay predictable.
+
+Priority: Medium
+Status: Resolved

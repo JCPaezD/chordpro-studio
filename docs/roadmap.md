@@ -72,6 +72,7 @@ Current status:
 - v1.4 rendering quality and UX improvements are now considered closed; the remaining column/page-break edge cases stay within current ChordPro engine limits and are not planned for this version
 - horizontal overflow in dense long-chord lines is now treated as a ChordPro engine limitation rather than a pending app-side fix; the documented workaround is to split the affected line manually when needed
 - v1.x sidebar navigation now lets the main rail buttons use the full available width and slightly widens the desktop rail, resolving the residual `Songbook` button alignment bug without introducing per-button layout exceptions
+- v1.4.x Songbook performance mode now uses a floating song panel and compact dock inside the preview safe area, avoiding preview/list border collisions and scrollbar-native-toolbar overlap while preserving a larger PDF surface plus direct keyboard and mouse navigation with separate active and selected song states
 
 ## Completed work
 
@@ -121,12 +122,6 @@ Current status:
 ## Current roadmap
 
 ## v1.4.x - Post-release friction fixes & UX improvements
-
-### UI fixes (high priority)
-
-- fix visual overlap in Songbook performance mode:
-  - song list bottom border overlapping the preview container
-  - right-side action buttons overlapping the scrollbar
 
 ### UI refinements
 
