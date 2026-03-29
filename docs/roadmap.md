@@ -79,6 +79,7 @@ Current status:
 - v1.4.x chord-diagram preferences now support `Ukulele` end-to-end through preview, single-song PDF export and songbook export, using the real ChordPro ukulele preset plus transparent enharmonic aliases so sharp-based chords such as `F#`, `G#m`, `D#m`, `C#m` and `F#m` render with ukulele diagrams while keeping their original chord names visible
 - v1.4.x ukulele custom chord definitions remain limited to ukulele-compatible 4-string shapes; existing 6-string custom definitions can still work in guitar and keyboard contexts, but are not yet adapted automatically for ukulele
 - v1.4.x saving an existing `.cho` file now preserves file identity by default, prompts explicitly when metadata suggests a different filename, and routes intentional renames through `Save as new file`, including controlled case-only renames on Windows when the user confirms the new casing
+- v1.4.x Songbook now resets the `.cho` editor scroll position to the top when the active song changes, while preserving normal scroll behavior during editing within the same song
 
 ## Completed work
 
@@ -128,10 +129,6 @@ Current status:
 ## Current roadmap
 
 ## v1.4.x - Post-release friction fixes & UX improvements
-
-### Bug fixes
-
-- reset `.cho` editor scroll position when switching songs
 
 ### UI consistency
 

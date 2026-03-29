@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from "vue";
+
 import LoadingOverlayCard from "./LoadingOverlayCard.vue";
 
 const props = withDefaults(
@@ -21,9 +23,23 @@ const emit = defineEmits<{
   "update:modelValue": [value: string];
 }>();
 
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+
 function handleInput(event: Event): void {
   emit("update:modelValue", (event.target as HTMLTextAreaElement).value);
 }
+
+function scrollToTop(): void {
+  if (!textareaRef.value) {
+    return;
+  }
+
+  textareaRef.value.scrollTop = 0;
+}
+
+defineExpose({
+  scrollToTop
+});
 </script>
 
 <template>
@@ -34,6 +50,7 @@ function handleInput(event: Event): void {
 
     <div class="editor-body">
       <textarea
+        ref="textareaRef"
         :value="modelValue"
         class="editor-textarea editor-monospace"
         :placeholder="placeholder"

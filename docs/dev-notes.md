@@ -93,7 +93,7 @@ Only record assumptions here when they materially affect behavior, UX, architect
 ## Post v1.4.x friction findings
 
 - save behavior couples metadata changes with filename suggestion, which can create unintended file duplication
-- the `.cho` editor scroll position should reset on song change to avoid disorientation when switching between songs
+- the `.cho` editor scroll reset issue on song change is now resolved in Songbook by resetting the editor textarea only when the active song path changes, not during edits within the same song
 - Songbook management is still intentionally minimal:
   - no delete flow yet
   - no new empty song creation yet

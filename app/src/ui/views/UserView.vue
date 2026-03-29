@@ -14,6 +14,10 @@ import { useAppConfig } from "../composables/useAppConfig";
 import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
+type ChordProEditorPaneExpose = {
+  scrollToTop: () => void;
+};
+
 const props = defineProps<{
   mode: "user" | "playground";
 }>();
@@ -182,6 +186,7 @@ const currentSongbookIndex = computed(() => {
   return songs.findIndex((songEntry) => songEntry.filePath === selectedSongPath.value);
 });
 const songListRef = ref<HTMLElement | null>(null);
+const songbookEditorPaneRef = ref<ChordProEditorPaneExpose | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate } = usePdfFit(previewViewerRef);
 const viewerFrameSrcA = computed(() => applyPreviewFit(previewFrameSrcA.value));
@@ -600,6 +605,18 @@ watch(
     }
   },
   { immediate: true }
+);
+
+watch(
+  () => selectedSongPath.value,
+  async (filePath, previousFilePath) => {
+    if (!filePath || filePath === previousFilePath) {
+      return;
+    }
+
+    await nextTick();
+    songbookEditorPaneRef.value?.scrollToTop();
+  }
 );
 
 
@@ -1115,6 +1132,7 @@ async function clearApiKey(): Promise<void> {
                 </div>
 
                 <ChordProEditorPane
+                  ref="songbookEditorPaneRef"
                   :model-value="chordProText"
                   placeholder="Open a song from the list to edit it here."
                   @update:model-value="updateChordPro"
