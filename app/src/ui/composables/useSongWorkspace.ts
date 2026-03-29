@@ -3,7 +3,7 @@ import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { message, open, save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
 import type { ChordproRenderStyle } from "../../adapters/chordpro/adapter";
@@ -35,6 +35,12 @@ type RunPipelineOptions = {
 };
 
 type UnsavedContentResolution = "save" | "discard" | "cancel";
+type SaveFilenameMismatchResolution = "keep-current" | "save-as-new" | "cancel";
+type ExistingDocumentSaveTarget = {
+  writePath: string;
+  finalPath: string;
+  applyCaseOnlyRename: boolean;
+};
 
 export type SongWorkspace = {
   activePanel: Ref<"songbook" | "convert">;
@@ -63,6 +69,9 @@ export type SongWorkspace = {
   showUnsavedContentModal: Ref<boolean>;
   unsavedContentMetadataLine: ComputedRef<string>;
   isResolvingUnsavedContent: Ref<boolean>;
+  showSaveFilenameMismatchModal: Ref<boolean>;
+  saveFilenameMismatchCurrentName: Ref<string>;
+  saveFilenameMismatchSuggestedName: Ref<string>;
   initialize(): Promise<void>;
   copyToClipboard(value: string): Promise<void>;
   pasteFromClipboard(): Promise<void>;
@@ -82,6 +91,9 @@ export type SongWorkspace = {
   confirmUnsavedContentSave(): Promise<void>;
   confirmUnsavedContentDiscard(): void;
   confirmUnsavedContentCancel(): void;
+  confirmKeepCurrentFileName(): void;
+  confirmSaveAsNewFile(): void;
+  confirmSaveFilenameMismatchCancel(): void;
   abortConversion(): void;
   runPipeline(options?: RunPipelineOptions): Promise<void>;
   previewFromChordPro(): Promise<void>;
@@ -129,6 +141,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   });
   const showUnsavedContentModal = ref(false);
   const isResolvingUnsavedContent = ref(false);
+  const showSaveFilenameMismatchModal = ref(false);
+  const saveFilenameMismatchCurrentName = ref("");
+  const saveFilenameMismatchSuggestedName = ref("");
   const unsavedContentMetadataLine = computed(() => {
     const title = songMetadata.value.title?.trim();
     const artist = songMetadata.value.artist?.trim();
@@ -154,6 +169,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let currentAbortController: AbortController | null = null;
   let pendingUnsavedContentResolution: Promise<UnsavedContentResolution> | null = null;
   let resolveUnsavedContentResolution: ((choice: UnsavedContentResolution) => void) | null = null;
+  let pendingSaveFilenameMismatchResolution: Promise<SaveFilenameMismatchResolution> | null = null;
+  let resolveSaveFilenameMismatchResolution: ((choice: SaveFilenameMismatchResolution) => void) | null = null;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -475,8 +492,19 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   async function buildSuggestedDocumentPath(filePath: string, metadata: SongMetadata): Promise<string> {
+    const title = metadata.title ? sanitizeFilenamePart(metadata.title) : "";
+    const artist = metadata.artist ? sanitizeFilenamePart(metadata.artist) : "";
+
+    if (!title && !artist) {
+      return filePath;
+    }
+
     const folderPath = await dirname(filePath);
     return join(folderPath, buildSuggestedExportName("cho", metadata));
+  }
+
+  async function normalizeChoSavePath(selectedPath: string): Promise<string> {
+    return selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : selectedPath + ".cho";
   }
 
   async function buildTemporaryRenamePath(filePath: string): Promise<string> {
@@ -494,36 +522,118 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     throw new Error("Could not allocate a temporary path for renaming.");
   }
 
-  async function renameSongPathSafely(currentPath: string, targetPath: string): Promise<string> {
+  async function applyCaseOnlyRename(currentPath: string, targetPath: string): Promise<string> {
     if (normalizeComparablePath(currentPath) === normalizeComparablePath(targetPath)) {
       return currentPath;
     }
 
-    if (normalizeCaseInsensitivePath(currentPath) === normalizeCaseInsensitivePath(targetPath)) {
-      const temporaryPath = await buildTemporaryRenamePath(currentPath);
-      await songRepository.renameSong(currentPath, temporaryPath);
-
-      try {
-        await songRepository.renameSong(temporaryPath, targetPath);
-      } catch (err) {
-        await songRepository.renameSong(temporaryPath, currentPath);
-        throw err;
-      }
-
-      return targetPath;
-    }
-
-    if (await songRepository.songExists(targetPath)) {
+    if (normalizeCaseInsensitivePath(currentPath) !== normalizeCaseInsensitivePath(targetPath)) {
       return currentPath;
     }
 
-    await songRepository.renameSong(currentPath, targetPath);
+    const temporaryPath = await buildTemporaryRenamePath(currentPath);
+    await songRepository.renameSong(currentPath, temporaryPath);
+
+    try {
+      await songRepository.renameSong(temporaryPath, targetPath);
+    } catch (err) {
+      await songRepository.renameSong(temporaryPath, currentPath);
+      throw err;
+    }
+
     return targetPath;
   }
 
-  async function resolveSavedDocumentPath(filePath: string, metadata: SongMetadata): Promise<string> {
+  function requestSaveFilenameMismatchResolution(currentPath: string, suggestedPath: string): Promise<SaveFilenameMismatchResolution> {
+    if (pendingSaveFilenameMismatchResolution) {
+      return pendingSaveFilenameMismatchResolution;
+    }
+
+    saveFilenameMismatchCurrentName.value = getFilenameFromPath(currentPath);
+    saveFilenameMismatchSuggestedName.value = getFilenameFromPath(suggestedPath);
+    showSaveFilenameMismatchModal.value = true;
+
+    pendingSaveFilenameMismatchResolution = new Promise<SaveFilenameMismatchResolution>((resolve) => {
+      resolveSaveFilenameMismatchResolution = (choice) => {
+        showSaveFilenameMismatchModal.value = false;
+        saveFilenameMismatchCurrentName.value = "";
+        saveFilenameMismatchSuggestedName.value = "";
+        pendingSaveFilenameMismatchResolution = null;
+        resolveSaveFilenameMismatchResolution = null;
+        resolve(choice);
+      };
+    });
+
+    return pendingSaveFilenameMismatchResolution;
+  }
+
+  async function promptSaveAsNewDocument(defaultPath: string): Promise<string | null> {
+    const selectedPath = await save({
+      title: "Save as new ChordPro file",
+      defaultPath,
+      filters: [
+        {
+          name: "ChordPro file",
+          extensions: ["cho"]
+        }
+      ]
+    });
+
+    if (!selectedPath) {
+      return null;
+    }
+
+    return normalizeChoSavePath(selectedPath);
+  }
+
+  async function resolveSaveTargetPathForExistingDocument(filePath: string, metadata: SongMetadata): Promise<ExistingDocumentSaveTarget | null> {
     const suggestedPath = await buildSuggestedDocumentPath(filePath, metadata);
-    return renameSongPathSafely(filePath, suggestedPath);
+
+    if (getFilenameFromPath(filePath) === getFilenameFromPath(suggestedPath)) {
+      return {
+        writePath: filePath,
+        finalPath: filePath,
+        applyCaseOnlyRename: false
+      };
+    }
+
+    const resolution = await requestSaveFilenameMismatchResolution(filePath, suggestedPath);
+
+    if (resolution === "cancel") {
+      return null;
+    }
+
+    if (resolution === "keep-current") {
+      return {
+        writePath: filePath,
+        finalPath: filePath,
+        applyCaseOnlyRename: false
+      };
+    }
+
+    const saveAsPath = await promptSaveAsNewDocument(suggestedPath);
+
+    if (!saveAsPath) {
+      return null;
+    }
+
+    if (normalizeCaseInsensitivePath(saveAsPath) === normalizeCaseInsensitivePath(filePath)) {
+      const finalPath = normalizeCaseInsensitivePath(suggestedPath) === normalizeCaseInsensitivePath(filePath)
+        ? suggestedPath
+        : saveAsPath;
+
+      return {
+        writePath: filePath,
+        finalPath,
+        applyCaseOnlyRename: normalizeComparablePath(finalPath) !== normalizeComparablePath(filePath)
+      };
+    }
+
+    return {
+      writePath: saveAsPath,
+      finalPath: saveAsPath,
+      applyCaseOnlyRename: false
+    };
   }
 
   async function buildSuggestedSongbookExportPath(): Promise<string> {
@@ -585,10 +695,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         const currentFilePath = document.value.filePath;
 
         if (currentFilePath && normalizeCaseInsensitivePath(currentFilePath) === normalizeCaseInsensitivePath(normalizedPath)) {
-          const currentSong = document.value.song;
-          const currentMetadata = currentSong?.metadata ?? extractChordProMetadata(document.value.chordProText);
           await songRepository.writeSong(currentFilePath, document.value.chordProText);
-          finalPath = await resolveSavedDocumentPath(currentFilePath, currentMetadata);
+          finalPath = currentFilePath;
         } else {
           await songRepository.writeSong(normalizedPath, document.value.chordProText);
         }
@@ -985,6 +1093,18 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     resolveUnsavedContentResolution?.("cancel");
   }
 
+  function confirmKeepCurrentFileName(): void {
+    resolveSaveFilenameMismatchResolution?.("keep-current");
+  }
+
+  function confirmSaveAsNewFile(): void {
+    resolveSaveFilenameMismatchResolution?.("save-as-new");
+  }
+
+  function confirmSaveFilenameMismatchCancel(): void {
+    resolveSaveFilenameMismatchResolution?.("cancel");
+  }
+
   async function saveDocument(): Promise<boolean> {
     if (!document.value.chordProText) {
       return false;
@@ -995,8 +1115,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     try {
       let parsedSong = document.value.song;
+      let currentMetadata = extractChordProMetadata(document.value.chordProText);
       try {
         parsedSong = parser.parse(document.value.chordProText);
+        currentMetadata = parsedSong.metadata;
       } catch {
         // Keep the previous valid song snapshot if the current draft cannot be parsed.
       }
@@ -1019,14 +1141,18 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           return false;
         }
 
-        targetPath = selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : selectedPath + ".cho";
+        targetPath = await normalizeChoSavePath(selectedPath);
         await songbookService.saveSong(targetPath, document.value.chordProText);
       } else {
-        await songbookService.saveSong(targetPath, document.value.chordProText);
-
-        if (parsedSong) {
-          targetPath = await resolveSavedDocumentPath(targetPath, parsedSong.metadata);
+        const saveTarget = await resolveSaveTargetPathForExistingDocument(targetPath, currentMetadata);
+        if (!saveTarget) {
+          return false;
         }
+
+        await songbookService.saveSong(saveTarget.writePath, document.value.chordProText);
+        targetPath = saveTarget.applyCaseOnlyRename
+          ? await applyCaseOnlyRename(saveTarget.writePath, saveTarget.finalPath)
+          : saveTarget.finalPath;
       }
 
       replaceDocument(
@@ -1263,6 +1389,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     showUnsavedContentModal,
     unsavedContentMetadataLine,
     isResolvingUnsavedContent,
+    showSaveFilenameMismatchModal,
+    saveFilenameMismatchCurrentName,
+    saveFilenameMismatchSuggestedName,
     initialize,
     copyToClipboard,
     pasteFromClipboard,
@@ -1282,6 +1411,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     confirmUnsavedContentSave,
     confirmUnsavedContentDiscard,
     confirmUnsavedContentCancel,
+    confirmKeepCurrentFileName,
+    confirmSaveAsNewFile,
+    confirmSaveFilenameMismatchCancel,
     abortConversion,
     runPipeline,
     previewFromChordPro,

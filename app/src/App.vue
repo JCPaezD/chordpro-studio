@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 import FeedbackToast from "./ui/components/FeedbackToast.vue";
+import SaveFilenameMismatchModal from "./ui/components/SaveFilenameMismatchModal.vue";
 import UnsavedContentModal from "./ui/components/UnsavedContentModal.vue";
 import logo64 from "./ui/assets/logo-64.png";
 import { useAppConfig } from "./ui/composables/useAppConfig";
@@ -100,6 +101,7 @@ onBeforeUnmount(() => {
     </Transition>
 
     <FeedbackToast />
+    <SaveFilenameMismatchModal />
     <UnsavedContentModal />
   </main>
 </template>

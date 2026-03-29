@@ -123,7 +123,13 @@ frontend native save dialog
 -> execute bundled ChordPro CLI with `--output`
 -> generate the requested PDF
 -> if `.cho` selected: write current ChordPro text directly to disk without invoking the CLI
--> if the active document already exists on disk: keep overwrite behavior first, then apply conservative filename normalization only when a safe target path is available
+-> if the active document already exists on disk: `Save` now overwrites that file by default, and any metadata-driven filename change must go through an explicit confirmation plus native `Save as new file` flow instead of a silent rename
+
+Save behavior notes:
+
+- existing `.cho` files now preserve file identity on normal `Save`
+- when metadata implies a different filename, the app asks whether to keep the current file name or open `Save as new file`
+- `Save as new file` never deletes or silently replaces the original file; it either writes a genuinely new file or, on Windows case-only rename scenarios, overwrites the current file and then applies a controlled temporary rename sequence to preserve the requested casing
 
 Songbook PDF export now follows this flow:
 

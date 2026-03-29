@@ -174,11 +174,11 @@ The LLM pipeline is not used when opening an existing `.cho` file.
 
 Saving an existing song follows this rule:
 
-- overwrite the current file first
-- derive the suggested `.cho` filename from the active document metadata
-- rename only when the target path is available
-- do not overwrite conflicting files
-- allow safe case-only normalization on Windows through an intermediate temporary rename step
+- if a song already has a `filePath`, normal `Save` overwrites that file and preserves its identity
+- metadata may still derive a suggested `.cho` filename, but any change away from the current filename must be confirmed explicitly
+- if the user chooses `Save as new file`, the app uses the native save dialog and switches the active `filePath` only after the new path is confirmed and written
+- the original file is never deleted or silently replaced during that explicit rename flow
+- Windows case-only renames are handled through a controlled temporary rename sequence only after the user has explicitly chosen the new filename
 
 Songbook persistence follows this model:
 
