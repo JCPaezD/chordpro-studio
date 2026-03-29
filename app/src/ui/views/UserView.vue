@@ -113,9 +113,46 @@ const songbookEditorTitle = computed(() => {
 const songbookEditorSubtitle = computed(() =>
   workspaceDocument.value.fileName || "Open a song from the list to edit its `.cho` content."
 );
+const songbookHeaderLabel = computed(() => {
+  const path = songbook.value?.path?.trim();
+  if (!path) {
+    return "Songs";
+  }
+
+  const normalizedPath = path.replace(/\\/g, "/").replace(/\/+$/, "");
+  const parts = normalizedPath.split("/");
+  return parts[parts.length - 1] || "Songs";
+});
 
 const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
 const songbookSongs = computed(() => songbook.value?.songs ?? []);
+const songbookListItems = computed(() =>
+  songbookSongs.value.map((songEntry) => {
+    const separatorIndex = songEntry.displayTitle.lastIndexOf(" - ");
+
+    if (separatorIndex < 0) {
+      return {
+        ...songEntry,
+        title: songEntry.displayTitle,
+        artist: ""
+      };
+    }
+
+    return {
+      ...songEntry,
+      title: songEntry.displayTitle.slice(0, separatorIndex).trim(),
+      artist: songEntry.displayTitle.slice(separatorIndex + 3).trim()
+    };
+  })
+);
+const currentSongbookIndex = computed(() => {
+  const songs = songbookSongs.value;
+  if (!selectedSongPath.value) {
+    return -1;
+  }
+
+  return songs.findIndex((songEntry) => songEntry.filePath === selectedSongPath.value);
+});
 const songListRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate } = usePdfFit(previewViewerRef);
@@ -447,7 +484,7 @@ function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { resto
     return;
   }
 
-  if (event.key === "Enter") {
+  if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
     event.preventDefault();
     event.stopPropagation();
     const selectedSong = songs[songbookSelectionIndex.value];
@@ -524,7 +561,7 @@ function handleWindowKeydown(event: KeyboardEvent): void {
     return;
   }
 
-  if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Enter") {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") {
     return;
   }
 
@@ -889,10 +926,9 @@ async function clearApiKey(): Promise<void> {
             <div v-if="songbook" class="songbook-layout">
               <aside class="song-list-panel">
                 <div class="song-list-header">
-                  <div>
-                    <h3>Songs</h3>
-                    <p>{{ songbook.songs.length }} files</p>
-                    <p class="song-list-hint">Select a song to preview</p>
+                  <div class="song-list-title-row">
+                    <h3 :title="songbook?.path || songbookHeaderLabel">{{ songbookHeaderLabel }}</h3>
+                    <span class="song-count-badge">{{ songbook.songs.length }}</span>
                   </div>
                 </div>
                 <div
@@ -906,13 +942,31 @@ async function clearApiKey(): Promise<void> {
                     No `.cho` files were found in this folder.
                   </div>
                   <button
-                    v-for="(songEntry, index) in songbook.songs"
+                    v-for="(songEntry, index) in songbookListItems"
                     :key="songEntry.filePath"
                     :ref="setSongItemRef(index)"
-                    :class="['song-item', { active: songbookSelectionIndex === index }]"
+                    tabindex="-1"
+                    :class="['song-item', {
+                      active: currentSongbookIndex === index,
+                      selected: songbookSelectionIndex === index
+                    }]"
+                    @mouseenter="songbookSelectionIndex = index"
                     @click="openSongFromSongbook(songEntry.filePath, { restoreListFocus: true })"
                   >
-                    {{ songEntry.displayTitle }}
+                    <span class="song-item-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M7 4.5h7l4 4v11h-11a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" />
+                        <path d="M14 4.5v4h4" />
+                        <path d="M9 14.25h6" />
+                        <path d="M9 17.25h4.5" />
+                      </svg>
+                    </span>
+                    <span class="song-item-copy">
+                      <span class="song-item-title" :title="songEntry.title">{{ songEntry.title }}</span>
+                      <span class="song-item-artist" :title="songEntry.artist || ''">
+                        {{ songEntry.artist || "\u00A0" }}
+                      </span>
+                    </span>
                   </button>
                 </div>
               </aside>
@@ -1652,10 +1706,36 @@ async function clearApiKey(): Promise<void> {
   overflow: hidden;
 }
 
+.song-list-header > div {
+  width: 100%;
+}
+
+.song-list-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.song-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  min-height: 1.28rem;
+  padding: 0.06rem 0.4rem;
+  background: rgba(233, 240, 230, 0.92);
+  color: #526152;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .song-list-body {
   display: grid;
   align-content: start;
-  gap: 0.75rem;
+  gap: 0.62rem;
   overflow: auto;
   padding-right: 0.25rem;
   outline: none;
@@ -1667,7 +1747,11 @@ async function clearApiKey(): Promise<void> {
 }
 
 .song-item {
-  padding: 0.75rem 0.85rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.68rem;
+  padding: 0.62rem 0.78rem;
   border: 1px solid rgba(35, 49, 39, 0.12);
   background: #fffef9;
   color: #233127;
@@ -1677,8 +1761,65 @@ async function clearApiKey(): Promise<void> {
 }
 
 .song-item.active {
+  border-color: rgba(55, 81, 59, 0.28);
+  background: #f3f7f1;
+}
+
+.song-item.selected {
   border-color: #37513b;
   background: #eef4ed;
+  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.16);
+}
+
+.song-item.active.selected {
+  background: #e8f1e5;
+  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.22);
+}
+
+.song-item-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.82rem;
+  height: 1.82rem;
+  margin-top: 0.08rem;
+  color: rgba(74, 86, 74, 0.56);
+}
+
+.song-item-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.song-item-copy {
+  display: grid;
+  gap: 0.14rem;
+  min-width: 0;
+}
+
+.song-item-title,
+.song-item-artist {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-item-title {
+  color: #233127;
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.song-item-artist {
+  color: rgba(74, 86, 74, 0.82);
+  font-size: 0.8rem;
+  line-height: 1.15;
 }
 
 .songbook-empty {
