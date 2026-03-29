@@ -859,7 +859,12 @@ async function clearApiKey(): Promise<void> {
                 <div class="preferences-item-copy">
                   <span class="preferences-item-label">Instrument</span>
                 </div>
-                <div class="preferences-segmented-control" role="group" aria-label="Instrument" :aria-disabled="configLoading">
+                <div
+                  class="preferences-segmented-control"
+                  role="group"
+                  aria-label="Instrument"
+                  :aria-disabled="configLoading"
+                >
                   <button
                     class="preferences-segmented-option"
                     :class="{ active: chordDiagramInstrument === 'piano' }"
@@ -880,10 +885,20 @@ async function clearApiKey(): Promise<void> {
                   >
                     Guitar
                   </button>
+                  <button
+                    class="preferences-segmented-option"
+                    :class="{ active: chordDiagramInstrument === 'ukulele' }"
+                    type="button"
+                    :disabled="configLoading"
+                    :aria-pressed="chordDiagramInstrument === 'ukulele'"
+                    @click="setInstrumentPreference('ukulele')"
+                  >
+                    Ukulele
+                  </button>
                 </div>
               </div>
-            </div>
-          </Transition>
+              </div>
+            </Transition>
         </div>
       </aside>
 
@@ -1448,7 +1463,7 @@ async function clearApiKey(): Promise<void> {
   z-index: 20;
   display: grid;
   gap: 0.85rem;
-  width: min(18rem, calc(100vw - 11rem));
+  width: min(22rem, calc(100vw - 11rem));
   padding: 0.9rem 1rem;
   border: 1px solid rgba(24, 32, 25, 0.24);
   background: #fffefb;
@@ -1526,7 +1541,7 @@ async function clearApiKey(): Promise<void> {
 
 .preferences-segmented-control {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-left: auto;
   padding: 0.25rem;
   border: 1px solid rgba(35, 49, 39, 0.14);
@@ -2274,7 +2289,7 @@ async function clearApiKey(): Promise<void> {
     right: 0;
     bottom: auto;
     left: auto;
-    width: min(18rem, calc(100vw - 2rem));
+    width: min(22rem, calc(100vw - 2rem));
   }
 
   .workspace-panel,

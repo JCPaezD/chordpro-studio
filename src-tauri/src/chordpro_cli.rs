@@ -2,6 +2,7 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
+  collections::BTreeSet,
   ffi::OsString,
   fs,
   io,
@@ -58,6 +59,7 @@ pub struct RenderStyleOptions {
 pub enum DiagramInstrument {
   Guitar,
   Piano,
+  Ukulele,
 }
 
 impl Default for DiagramInstrument {
@@ -83,8 +85,8 @@ pub fn generate_preview(
   render_style: Option<RenderStyleOptions>,
 ) -> Result<PreviewResponse, ChordProCommandError> {
   let preview_dir = ensure_preview_dir(&app)?;
-  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
   let render_style = render_style.unwrap_or_default();
+  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text, &render_style);
   let cache_path = preview_cache_file_path(&app, &rendered_chordpro_text, &render_style)?;
 
   if !bypass_cache {
@@ -139,8 +141,8 @@ pub fn export_pdf(
   let cache_dir = ensure_preview_dir(&app)?;
   let input_path = cache_dir.join(EXPORT_CHO_FILENAME);
   let output_path = PathBuf::from(output_path);
-  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
   let render_style = render_style.unwrap_or_default();
+  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text, &render_style);
 
   ensure_output_directory(&output_path)?;
 
@@ -182,7 +184,7 @@ pub fn export_songbook_pdf(
 
   let preview_dir = ensure_preview_dir(&app)?;
   let render_style = render_style.unwrap_or_default();
-  let prepared_input_paths = prepare_songbook_render_inputs(&preview_dir, &input_paths)?;
+  let prepared_input_paths = prepare_songbook_render_inputs(&preview_dir, &input_paths, &render_style)?;
   let mut args: Vec<OsString> = prepared_input_paths
     .iter()
     .map(|path| path.as_os_str().to_os_string())
@@ -224,6 +226,7 @@ fn ensure_preview_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> 
 fn prepare_songbook_render_inputs(
   preview_dir: &Path,
   input_paths: &[String],
+  render_style: &RenderStyleOptions,
 ) -> Result<Vec<PathBuf>, ChordProCommandError> {
   let rendered_inputs_dir = preview_dir.join("songbook-export-inputs");
 
@@ -256,7 +259,7 @@ fn prepare_songbook_render_inputs(
       stderr: None,
       details: Some(source_path.to_string_lossy().into_owned()),
     })?;
-    let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text);
+    let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text, render_style);
     let rendered_input_path = rendered_inputs_dir.join(format!("{:03}-render.cho", index + 1));
 
     write_text_file(&rendered_input_path, &rendered_chordpro_text)?;
@@ -307,6 +310,7 @@ fn hash_preview_input(chordpro_text: &str, render_style: &RenderStyleOptions) ->
   let instrument_signature: &[u8] = match render_style.instrument {
     DiagramInstrument::Guitar => b"instrument:guitar",
     DiagramInstrument::Piano => b"instrument:piano",
+    DiagramInstrument::Ukulele => b"instrument:ukulele",
   };
   let diagrams_signature: &[u8] = if render_style.show_chord_diagrams {
     b"showChordDiagrams:true"
@@ -364,11 +368,20 @@ fn write_preview_cache_file(cache_path: &Path, pdf_bytes: &[u8]) -> io::Result<(
   Ok(())
 }
 
-fn preprocess_chordpro_for_render(chordpro_text: &str) -> String {
-  std::panic::catch_unwind(|| preprocess_chordpro_for_render_inner(chordpro_text))
+fn preprocess_chordpro_for_render(
+  chordpro_text: &str,
+  render_style: &RenderStyleOptions,
+) -> String {
+  let rendered = std::panic::catch_unwind(|| preprocess_chordpro_for_render_inner(chordpro_text))
     .ok()
     .and_then(Result::ok)
-    .unwrap_or_else(|| fallback_to_single_column(chordpro_text))
+    .unwrap_or_else(|| fallback_to_single_column(chordpro_text));
+
+  if render_style.instrument == DiagramInstrument::Ukulele && render_style.show_chord_diagrams {
+    return inject_ukulele_enharmonic_aliases(&rendered);
+  }
+
+  rendered
 }
 
 fn preprocess_chordpro_for_render_inner(chordpro_text: &str) -> Result<String, ()> {
@@ -424,6 +437,110 @@ fn preprocess_chordpro_for_render_inner(chordpro_text: &str) -> Result<String, (
   }
 
   Ok(rendered)
+}
+
+fn inject_ukulele_enharmonic_aliases(chordpro_text: &str) -> String {
+  let newline = if chordpro_text.contains("\r\n") { "\r\n" } else { "\n" };
+  let defined_chords = collect_defined_chord_names(chordpro_text);
+  let alias_definitions = collect_used_chord_names(chordpro_text)
+    .into_iter()
+    .filter_map(|chord_name| {
+      if defined_chords.contains(&chord_name) {
+        return None;
+      }
+
+      let alias_target = enharmonic_ukulele_alias_target(&chord_name)?;
+      Some(format!("{{define: {chord_name} copy {alias_target}}}"))
+    })
+    .collect::<Vec<_>>();
+
+  if alias_definitions.is_empty() {
+    return chordpro_text.to_string();
+  }
+
+  let mut rendered = alias_definitions.join(newline);
+  rendered.push_str(newline);
+  rendered.push_str(chordpro_text);
+  rendered
+}
+
+fn collect_defined_chord_names(chordpro_text: &str) -> BTreeSet<String> {
+  chordpro_text
+    .lines()
+    .filter_map(|line| {
+      let trimmed = line.trim();
+      let definition = trimmed.strip_prefix("{define:")?.strip_suffix('}')?.trim();
+      let chord_name = definition.split_whitespace().next()?.trim();
+      if chord_name.is_empty() {
+        return None;
+      }
+      Some(chord_name.to_string())
+    })
+    .collect()
+}
+
+fn collect_used_chord_names(chordpro_text: &str) -> BTreeSet<String> {
+  let mut chord_names = BTreeSet::new();
+
+  for line in chordpro_text.lines() {
+    let mut remainder = line;
+    while let Some(start) = remainder.find('[') {
+      let chord_start = start + 1;
+      let segment = &remainder[chord_start..];
+      let Some(end) = segment.find(']') else {
+        break;
+      };
+      let chord_name = segment[..end].trim();
+      if !chord_name.is_empty() && !chord_name.starts_with('*') {
+        chord_names.insert(chord_name.to_string());
+      }
+      remainder = &segment[end + 1..];
+    }
+  }
+
+  chord_names
+}
+
+fn enharmonic_ukulele_alias_target(chord_name: &str) -> Option<String> {
+  let (primary, bass) = chord_name.split_once('/').map_or((chord_name, None), |(head, tail)| {
+    (head, Some(tail))
+  });
+
+  let mapped_primary = map_sharp_root_to_flat(primary)?;
+  let mut mapped_chord = mapped_primary;
+
+  if let Some(bass_name) = bass {
+    let mapped_bass = map_sharp_root_to_flat(bass_name).unwrap_or_else(|| bass_name.to_string());
+    mapped_chord.push('/');
+    mapped_chord.push_str(&mapped_bass);
+  }
+
+  if mapped_chord == chord_name {
+    None
+  } else {
+    Some(mapped_chord)
+  }
+}
+
+fn map_sharp_root_to_flat(chord_name: &str) -> Option<String> {
+  let mut chars = chord_name.chars();
+  let root_letter = chars.next()?;
+  if !matches!(root_letter, 'A'..='G') {
+    return None;
+  }
+
+  let remaining = chars.as_str();
+  let suffix = remaining.strip_prefix('#')?;
+  let flat_root = match root_letter {
+    'A' => "Bb",
+    'C' => "Db",
+    'D' => "Eb",
+    'F' => "Gb",
+    'G' => "Ab",
+    _ => return None,
+  };
+
+  Some(format!("{flat_root}{suffix}"))
 }
 
 fn split_tab_block(tab_lines: &[String], columns: usize) -> Result<Vec<String>, ()> {
@@ -614,6 +731,9 @@ fn append_render_style_args(command_args: &mut Vec<OsString>, render_style: &Ren
     DiagramInstrument::Piano => {
       command_args.push(OsString::from("--define=instrument.type=keyboard"));
     }
+    DiagramInstrument::Ukulele => {
+      command_args.push(OsString::from("--define=instrument.type=ukulele"));
+    }
   }
 
   if render_style.show_chord_diagrams {
@@ -621,6 +741,13 @@ fn append_render_style_args(command_args: &mut Vec<OsString>, render_style: &Ren
   }
 
   command_args.push(OsString::from("--define=diagrams.show=none"));
+}
+
+fn instrument_preset_resource_path(instrument: DiagramInstrument) -> Option<&'static str> {
+  match instrument {
+    DiagramInstrument::Ukulele => Some("lib/ChordPro/res/config/ukulele.json"),
+    DiagramInstrument::Guitar | DiagramInstrument::Piano => None,
+  }
 }
 
 fn run_chordpro_command<I, S>(
@@ -638,6 +765,12 @@ where
     OsString::from("--config"),
     style_config_path.as_os_str().to_os_string(),
   ];
+
+  if let Some(resource_name) = instrument_preset_resource_path(render_style.instrument) {
+    let preset_config_path = resolve_chordpro_runtime_config(app, resource_name)?;
+    command_args.push(OsString::from("--config"));
+    command_args.push(preset_config_path.as_os_str().to_os_string());
+  }
 
   append_render_style_args(&mut command_args, render_style);
   command_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
@@ -722,6 +855,22 @@ fn resolve_chordpro_style_config(app: &AppHandle) -> Result<PathBuf, ChordProCom
   resolve_existing_resource(&candidate_paths).ok_or_else(|| ChordProCommandError {
     code: "CHORDPRO_STYLE_NOT_FOUND".into(),
     message: "Bundled ChordPro Studio style configuration was not found in any expected location."
+      .into(),
+    stdout: None,
+    stderr: None,
+    details: Some(format_attempted_paths(&candidate_paths)),
+  })
+}
+
+fn resolve_chordpro_runtime_config(
+  app: &AppHandle,
+  resource_name: &str,
+) -> Result<PathBuf, ChordProCommandError> {
+  let candidate_paths = chordpro_resource_candidates(app, resource_name);
+
+  resolve_existing_resource(&candidate_paths).ok_or_else(|| ChordProCommandError {
+    code: "CHORDPRO_RUNTIME_CONFIG_NOT_FOUND".into(),
+    message: "Bundled ChordPro runtime configuration was not found in any expected location."
       .into(),
     stdout: None,
     stderr: None,
@@ -829,7 +978,8 @@ fn configure_background_command(_command: &mut Command) {}
 #[cfg(test)]
 mod tests {
   use super::{
-    append_render_style_args, hash_preview_input, preprocess_chordpro_for_render,
+    append_render_style_args, hash_preview_input, instrument_preset_resource_path,
+    preprocess_chordpro_for_render,
     DiagramInstrument, RenderStyleOptions,
   };
   use std::ffi::OsString;
@@ -837,8 +987,9 @@ mod tests {
   #[test]
   fn leaves_short_tab_blocks_unchanged_in_two_columns() {
     let input = "{columns: 2}\n{start_of_tab}\nE|--0--|\nB|--1--|\n{end_of_tab}\n";
+    let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(input), input);
+    assert_eq!(preprocess_chordpro_for_render(input, &render_style), input);
   }
 
   #[test]
@@ -882,8 +1033,9 @@ mod tests {
       "C".repeat(22),
       "D".repeat(22)
     );
+    let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(&input), expected);
+    assert_eq!(preprocess_chordpro_for_render(&input, &render_style), expected);
   }
 
   #[test]
@@ -917,14 +1069,16 @@ mod tests {
       "X".repeat(25),
       "X".repeat(25)
     );
+    let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(&input), expected);
+    assert_eq!(preprocess_chordpro_for_render(&input, &render_style), expected);
   }
 
   #[test]
   fn splits_two_line_tab_example_from_real_input() {
     let input = "{columns: 2}\n{start_of_tab}\ne----------12--12------------12--12--------------12--12--14--14--12--12--\nb--14--14------------14--14------------14--14---------------------------(x2)\n{end_of_tab}\n";
-    let rendered = preprocess_chordpro_for_render(input);
+    let render_style = RenderStyleOptions::default();
+    let rendered = preprocess_chordpro_for_render(input, &render_style);
 
     assert_eq!(rendered.matches("{start_of_tab}").count(), 3);
     assert!(rendered.contains("e----------12--12"));
@@ -980,8 +1134,9 @@ mod tests {
       "C".repeat(22),
       "D".repeat(22)
     );
+    let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(&input), expected);
+    assert_eq!(preprocess_chordpro_for_render(&input, &render_style), expected);
   }
 
   #[test]
@@ -1005,7 +1160,8 @@ A|-3-3-3-3-3-3-3-3---3---3---3---3----------|
 E|-------------------1-1-1-1-1-1-1-1--------|
 {end_of_tab}
 ";
-    let rendered = preprocess_chordpro_for_render(input);
+    let render_style = RenderStyleOptions::default();
+    let rendered = preprocess_chordpro_for_render(input, &render_style);
 
     assert_eq!(rendered.matches("{start_of_tab}").count(), 4);
     assert!(rendered.contains("E|----------------"));
@@ -1017,8 +1173,9 @@ E|-------------------1-1-1-1-1-1-1-1--------|
   fn falls_back_to_single_column_on_malformed_tab_blocks() {
     let input = "{columns: 2}\n{start_of_tab}\nE|-----\n";
     let expected = "{columns: 1}\n{start_of_tab}\nE|-----\n";
+    let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(input), expected);
+    assert_eq!(preprocess_chordpro_for_render(input, &render_style), expected);
   }
 
   #[test]
@@ -1032,10 +1189,18 @@ E|-------------------1-1-1-1-1-1-1-1--------|
       show_chord_diagrams: true,
       instrument: DiagramInstrument::Guitar,
     };
+    let ukulele_style = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Ukulele,
+    };
 
     assert_ne!(
       hash_preview_input(chordpro_text, &piano_style),
       hash_preview_input(chordpro_text, &guitar_style)
+    );
+    assert_ne!(
+      hash_preview_input(chordpro_text, &guitar_style),
+      hash_preview_input(chordpro_text, &ukulele_style)
     );
   }
 
@@ -1056,6 +1221,64 @@ E|-------------------1-1-1-1-1-1-1-1--------|
         OsString::from("--define=diagrams.show=none"),
       ]
     );
+  }
+
+  #[test]
+  fn render_style_args_support_ukulele_instrument() {
+    let mut command_args = Vec::<OsString>::new();
+    let render_style = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Ukulele,
+    };
+
+    append_render_style_args(&mut command_args, &render_style);
+
+    assert_eq!(command_args, vec![OsString::from("--define=instrument.type=ukulele")]);
+  }
+
+  #[test]
+  fn ukulele_instrument_requires_runtime_preset_config() {
+    assert_eq!(
+      instrument_preset_resource_path(DiagramInstrument::Ukulele),
+      Some("lib/ChordPro/res/config/ukulele.json")
+    );
+    assert_eq!(instrument_preset_resource_path(DiagramInstrument::Guitar), None);
+    assert_eq!(instrument_preset_resource_path(DiagramInstrument::Piano), None);
+  }
+
+  #[test]
+  fn preprocess_injects_ukulele_enharmonic_aliases_without_changing_song_chords() {
+    let input = "{title: Test}\n[F#]one [G#m]two [D#m]three [C#m]four\n";
+    let render_style = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Ukulele,
+    };
+    let rendered = preprocess_chordpro_for_render(input, &render_style);
+
+    assert!(rendered.contains("{define: F# copy Gb}"));
+    assert!(rendered.contains("{define: G#m copy Abm}"));
+    assert!(rendered.contains("{define: D#m copy Ebm}"));
+    assert!(rendered.contains("{define: C#m copy Dbm}"));
+    assert!(rendered.contains("[F#]one [G#m]two [D#m]three [C#m]four"));
+  }
+
+  #[test]
+  fn preprocess_does_not_inject_ukulele_aliases_when_diagrams_are_hidden_or_defined_by_user() {
+    let hidden_input = "{title: Test}\n[F#]one\n";
+    let hidden_render_style = RenderStyleOptions {
+      show_chord_diagrams: false,
+      instrument: DiagramInstrument::Ukulele,
+    };
+    let hidden_rendered = preprocess_chordpro_for_render(hidden_input, &hidden_render_style);
+    assert!(!hidden_rendered.contains("{define: F# copy Gb}"));
+
+    let defined_input = "{define: F# copy Gb}\n[F#]one\n";
+    let render_style = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Ukulele,
+    };
+    let defined_rendered = preprocess_chordpro_for_render(defined_input, &render_style);
+    assert_eq!(defined_rendered.matches("{define: F# copy Gb}").count(), 1);
   }
 }
 

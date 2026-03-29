@@ -1,4 +1,4 @@
-export type ChordproDiagramInstrument = "guitar" | "piano";
+export type ChordproDiagramInstrument = "guitar" | "piano" | "ukulele";
 
 export interface PreviewResult {
   pdfPath: string;

@@ -76,6 +76,8 @@ Current status:
 - v1.4.x sidebar navigation buttons now use square hit areas with centered content, rail-derived sizing and larger lighter-weight icons, improving scanability and preserving the existing active/hover behavior without changing app structure
 - v1.4.x Songbook list now uses a compact two-line title/artist layout with a folder-name header badge, separate active and selected states, hover-driven selection, and aligned `ArrowUp` / `ArrowDown` / `Enter` / `Space` behavior between list focus and global Songbook navigation
 - v1.4.x Songbook list sorting now provides compact header controls for `Title` / `Artist` with asc/desc toggling, deterministic in-memory ordering, and path-based preservation of active and selected songs across reordering
+- v1.4.x chord-diagram preferences now support `Ukulele` end-to-end through preview, single-song PDF export and songbook export, using the real ChordPro ukulele preset plus transparent enharmonic aliases so sharp-based chords such as `F#`, `G#m`, `D#m`, `C#m` and `F#m` render with ukulele diagrams while keeping their original chord names visible
+- v1.4.x ukulele custom chord definitions remain limited to ukulele-compatible 4-string shapes; existing 6-string custom definitions can still work in guitar and keyboard contexts, but are not yet adapted automatically for ukulele
 
 ## Completed work
 
@@ -132,10 +134,6 @@ Current status:
   - extract a shared list component
   - reuse the new two-line hierarchy and item styling in both views
   - keep focus, selection and keyboard interaction local to each view
-
-### Feature
-
-- add `ukulele` as a selectable instrument when supported by the ChordPro CLI
 
 ## v1.x - Additional UX / dev improvements
 
