@@ -5,6 +5,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
+import SongList from "../components/SongList.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
 import {
   type ChordDiagramInstrument,
@@ -16,6 +17,12 @@ import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 type ChordProEditorPaneExpose = {
   scrollToTop: () => void;
+};
+
+type SongListExpose = {
+  focus: () => void;
+  getRootElement: () => HTMLElement | null;
+  getItemElement: (index: number) => HTMLButtonElement | null;
 };
 
 const props = defineProps<{
@@ -185,13 +192,12 @@ const currentSongbookIndex = computed(() => {
 
   return songs.findIndex((songEntry) => songEntry.filePath === selectedSongPath.value);
 });
-const songListRef = ref<HTMLElement | null>(null);
+const songListRef = ref<SongListExpose | null>(null);
 const songbookEditorPaneRef = ref<ChordProEditorPaneExpose | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate } = usePdfFit(previewViewerRef);
 const viewerFrameSrcA = computed(() => applyPreviewFit(previewFrameSrcA.value));
 const viewerFrameSrcB = computed(() => applyPreviewFit(previewFrameSrcB.value));
-const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const songbookSelectionPath = ref<string | null>(null);
 const currentSongbookSelectionIndex = computed(() => {
   const items = songbookListItems.value;
@@ -439,6 +445,7 @@ watch(isPerformanceMode, (value, previousValue) => {
     }
 
     if (activePanel.value === "songbook" && selectedSongPath.value) {
+      syncSongbookSelectionToActiveSong();
       scrollSongbookSelectionIntoView("auto");
     }
   }
@@ -477,10 +484,24 @@ function syncSongbookSelection(): void {
   songbookSelectionPath.value = songs[0]?.filePath ?? null;
 }
 
-function setSongItemRef(index: number) {
-  return (element: Element | null): void => {
-    songItemRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
-  };
+function syncSongbookSelectionToActiveSong(): void {
+  const songs = songbookListItems.value;
+
+  if (songs.length === 0) {
+    songbookSelectionPath.value = null;
+    return;
+  }
+
+  const activeIndex = selectedSongPath.value
+    ? songs.findIndex((songEntry) => songEntry.filePath === selectedSongPath.value)
+    : -1;
+
+  if (activeIndex >= 0) {
+    songbookSelectionPath.value = songs[activeIndex]?.filePath ?? null;
+    return;
+  }
+
+  songbookSelectionPath.value = songs[0]?.filePath ?? null;
 }
 
 function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
@@ -490,7 +511,7 @@ function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): v
   }
 
   void nextTick(() => {
-    songItemRefs.value[index]?.scrollIntoView({
+    songListRef.value?.getItemElement(index)?.scrollIntoView({
       block: "nearest",
       behavior
     });
@@ -504,6 +525,14 @@ function handleSongbookListFocus(): void {
 function setSongbookSelectionByIndex(index: number): void {
   const songEntry = songbookListItems.value[index];
   songbookSelectionPath.value = songEntry?.filePath ?? null;
+}
+
+function handleSongListHover(filePath: string): void {
+  songbookSelectionPath.value = filePath;
+}
+
+function handleSongListOpen(filePath: string): void {
+  void openSongFromSongbook(filePath, { restoreListFocus: true });
 }
 
 function toggleSongbookSort(field: SongbookSortField): void {
@@ -573,7 +602,6 @@ watch(
   () => [songbook.value, selectedSongPath.value],
   () => {
     syncSongbookSelection();
-    songItemRefs.value = songItemRefs.value.slice(0, songbookListItems.value.length);
   },
   { immediate: true }
 );
@@ -601,6 +629,7 @@ watch(
     const selectedSongChanged = filePath !== previousFilePath;
 
     if ((enteredSongbook || selectedSongChanged) && filePath) {
+      syncSongbookSelectionToActiveSong();
       scrollSongbookSelectionIntoView("auto");
     }
   },
@@ -661,8 +690,9 @@ function handleWindowKeydown(event: KeyboardEvent): void {
 
   const eventTarget = event.target instanceof Element ? event.target : null;
   const activeElement = document.activeElement;
+  const songListElement = songListRef.value?.getRootElement();
 
-  if (songListRef.value?.contains(eventTarget) || songListRef.value?.contains(activeElement)) {
+  if (songListElement?.contains(eventTarget) || songListElement?.contains(activeElement)) {
     return;
   }
 
@@ -770,6 +800,7 @@ async function clearApiKey(): Promise<void> {
     <SongbookPerformanceMode
       v-if="isPerformanceMode"
       :songbook="songbook"
+      :song-list-items="songbookListItems"
       :songbook-error="songbookError"
       :selected-song-path="selectedSongPath"
       :current-song-title="songbookEditorTitle"
@@ -1070,44 +1101,17 @@ async function clearApiKey(): Promise<void> {
                     </div>
                   </div>
                 </div>
-                <div
+                <SongList
                   ref="songListRef"
-                  class="song-list-body"
-                  tabindex="0"
+                  :songs="songbookListItems"
+                  :selected-song-path="songbookSelectionPath"
+                  :active-song-path="selectedSongPath"
+                  empty-message="No `.cho` files were found in this folder."
                   @focus="handleSongbookListFocus"
                   @keydown="handleSongbookListKeydown"
-                >
-                  <div v-if="songbook.songs.length === 0" class="songbook-empty">
-                    No `.cho` files were found in this folder.
-                  </div>
-                    <button
-                      v-for="(songEntry, index) in songbookListItems"
-                      :key="songEntry.filePath"
-                      :ref="setSongItemRef(index)"
-                      tabindex="-1"
-                      :class="['song-item', {
-                        active: currentSongbookIndex === index,
-                        selected: currentSongbookSelectionIndex === index
-                      }]"
-                      @mouseenter="setSongbookSelectionByIndex(index)"
-                      @click="openSongFromSongbook(songEntry.filePath, { restoreListFocus: true })"
-                    >
-                    <span class="song-item-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M7 4.5h7l4 4v11h-11a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" />
-                        <path d="M14 4.5v4h4" />
-                        <path d="M9 14.25h6" />
-                        <path d="M9 17.25h4.5" />
-                      </svg>
-                    </span>
-                    <span class="song-item-copy">
-                      <span class="song-item-title" :title="songEntry.title">{{ songEntry.title }}</span>
-                      <span class="song-item-artist" :title="songEntry.artist || ''">
-                        {{ songEntry.artist || "\u00A0" }}
-                      </span>
-                    </span>
-                  </button>
-                </div>
+                  @hover="handleSongListHover"
+                  @open="handleSongListOpen"
+                />
               </aside>
 
               <section class="editor-panel card-subsection">
@@ -1375,7 +1379,6 @@ async function clearApiKey(): Promise<void> {
 .editor-column,
 .songbook-layout,
 .song-list-panel,
-.song-list-body,
 .editor-panel,
 .preview-content,
 .preview-state,
@@ -1932,96 +1935,6 @@ async function clearApiKey(): Promise<void> {
   font-size: 0.76rem;
   font-weight: 700;
   line-height: 1;
-}
-
-.song-list-body {
-  display: grid;
-  align-content: start;
-  gap: 0.62rem;
-  overflow: auto;
-  padding-right: 0.25rem;
-  outline: none;
-}
-
-.song-list-body:focus-visible {
-  outline: 2px solid rgba(55, 81, 59, 0.35);
-  outline-offset: 0.18rem;
-}
-
-.song-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.68rem;
-  padding: 0.62rem 0.78rem;
-  border: 1px solid rgba(35, 49, 39, 0.12);
-  background: #fffef9;
-  color: #233127;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-}
-
-.song-item.active {
-  border-color: rgba(55, 81, 59, 0.28);
-  background: #f3f7f1;
-}
-
-.song-item.selected {
-  border-color: #37513b;
-  background: #eef4ed;
-  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.16);
-}
-
-.song-item.active.selected {
-  background: #e8f1e5;
-  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.22);
-}
-
-.song-item-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 1.82rem;
-  height: 1.82rem;
-  margin-top: 0.08rem;
-  color: rgba(74, 86, 74, 0.56);
-}
-
-.song-item-icon svg {
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.song-item-copy {
-  display: grid;
-  gap: 0.14rem;
-  min-width: 0;
-}
-
-.song-item-title,
-.song-item-artist {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.song-item-title {
-  color: #233127;
-  font-size: 0.94rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.song-item-artist {
-  color: rgba(74, 86, 74, 0.82);
-  font-size: 0.8rem;
-  line-height: 1.15;
 }
 
 @media (max-width: 900px) {

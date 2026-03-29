@@ -25,31 +25,17 @@
 
             <p v-if="props.songbookError" class="message error-message">{{ props.songbookError }}</p>
 
-            <div
+            <SongList
               v-if="props.songbook"
               ref="songListRef"
-              class="performance-song-list"
-              tabindex="0"
+              :songs="props.songListItems"
+              :selected-song-path="selectedSongListPath"
+              :active-song-path="props.selectedSongPath"
+              empty-message="No `.cho` files were found in this folder."
               @keydown="handleSongListKeydown"
-            >
-              <div v-if="props.songbook.songs.length === 0" class="songbook-empty">
-                No `.cho` files were found in this folder.
-              </div>
-              <button
-                v-for="(songEntry, index) in props.songbook.songs"
-                :key="songEntry.filePath"
-                :ref="setSongItemRef(index)"
-                tabindex="-1"
-                :class="['song-item', {
-                  active: currentSongIndex === index,
-                  selected: listSelectionIndex === index
-                }]"
-                @mouseenter="listSelectionIndex = index"
-                @click="void selectSong(index, { closeList: false, focusTarget: 'list' })"
-              >
-                {{ songEntry.displayTitle }}
-              </button>
-            </div>
+              @hover="handleSongListHover"
+              @open="handleSongListOpen"
+            />
 
             <div v-else class="songbook-empty large">
               No songbook loaded.
@@ -184,9 +170,19 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 import { isTauri } from "@tauri-apps/api/core";
 import type { Songbook } from "../../domain/songbook";
+import SongList from "./SongList.vue";
 import { usePdfFit } from "../composables/usePdfFit";
 
 type PreviewFrameId = "A" | "B";
+type SongListItem = {
+  filePath: string;
+  title: string;
+  artist: string;
+};
+type SongListExpose = {
+  focus: () => void;
+  getItemElement: (index: number) => HTMLButtonElement | null;
+};
 
 const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
@@ -194,6 +190,7 @@ const PREVIEW_FRAME_TRANSITION_MS = 180;
 
 const props = defineProps<{
   songbook: Songbook | null;
+  songListItems: SongListItem[];
   songbookError: string;
   selectedSongPath: string;
   currentSongTitle: string;
@@ -205,10 +202,9 @@ const props = defineProps<{
   exitPerformanceMode: () => void;
 }>();
 
-const songListRef = ref<HTMLElement | null>(null);
+const songListRef = ref<SongListExpose | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
-const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
 const dockButtonRefs = ref<(HTMLButtonElement | null)[]>([]);
 const listSelectionIndex = ref(-1);
 const isSongListOpen = ref(true);
@@ -228,7 +224,7 @@ let previewFrameNavigationRafA: number | null = null;
 let previewFrameNavigationRafB: number | null = null;
 let previewFrameSwapTimer: ReturnType<typeof setTimeout> | null = null;
 let previewFrameSwapToken = 0;
-const songEntries = computed(() => props.songbook?.songs ?? []);
+const songEntries = computed(() => props.songListItems);
 const currentSongIndex = computed(() => {
   const songs = songEntries.value;
   if (!props.selectedSongPath) {
@@ -241,6 +237,10 @@ const canSelectPreviousSong = computed(() => currentSongIndex.value > 0);
 const canSelectNextSong = computed(() => {
   const songs = songEntries.value;
   return songs.length > 0 && currentSongIndex.value >= 0 && currentSongIndex.value < songs.length - 1;
+});
+const selectedSongListPath = computed(() => {
+  const songEntry = songEntries.value[listSelectionIndex.value];
+  return songEntry?.filePath ?? null;
 });
 const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
 const activePreviewBaseUrl = computed(() => props.previewSrc);
@@ -304,12 +304,6 @@ function focusDockButton(index = 0): void {
   });
 }
 
-function setSongItemRef(index: number) {
-  return (element: Element | null): void => {
-    songItemRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
-  };
-}
-
 function setDockButtonRef(index: number) {
   return (element: Element | null): void => {
     dockButtonRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
@@ -323,11 +317,25 @@ function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth")
   }
 
   void nextTick(() => {
-    songItemRefs.value[index]?.scrollIntoView({
+    songListRef.value?.getItemElement(index)?.scrollIntoView({
       block: "nearest",
       behavior
     });
   });
+}
+
+function handleSongListHover(filePath: string): void {
+  const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
+  if (nextIndex >= 0) {
+    listSelectionIndex.value = nextIndex;
+  }
+}
+
+function handleSongListOpen(filePath: string): void {
+  const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
+  if (nextIndex >= 0) {
+    void selectSong(nextIndex, { closeList: false, focusTarget: "list" });
+  }
 }
 
 function openSongList(): void {
@@ -699,7 +707,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
     return;
   }
 
-  if (event.key === "ArrowRight") {
+  if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
     event.preventDefault();
     focusDockButton(0);
     return;
@@ -844,7 +852,6 @@ watch(
   () => [props.songbook, props.selectedSongPath],
   () => {
     syncPerformanceSelection();
-    songItemRefs.value = songItemRefs.value.slice(0, songEntries.value.length);
   },
   { immediate: true }
 );
@@ -891,8 +898,7 @@ onBeforeUnmount(() => {
 .performance-stage,
 .preview-content,
 .preview-state,
-.preview-viewer,
-.performance-song-list {
+.preview-viewer {
   min-width: 0;
   min-height: 0;
 }
@@ -1000,51 +1006,6 @@ onBeforeUnmount(() => {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #7a6541;
-}
-
-.performance-song-list {
-  display: grid;
-  flex: 1;
-  align-content: start;
-  gap: 0.3rem;
-  overflow: auto;
-  padding-right: 0.24rem;
-  outline: none;
-}
-
-.performance-song-list:focus-visible {
-  outline: 3px solid rgba(55, 81, 59, 0.36);
-  outline-offset: 0.24rem;
-}
-
-.song-item {
-  padding: 0.62rem 0.68rem;
-  border: 1px solid rgba(35, 49, 39, 0.12);
-  background: #fffef9;
-  color: #233127;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-  transition:
-    border-color 140ms ease,
-    background-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.song-item.active {
-  border-color: rgba(55, 81, 59, 0.28);
-  background: #f3f7f1;
-}
-
-.song-item.selected {
-  border-color: #37513b;
-  background: #eef4ed;
-  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.16);
-}
-
-.song-item.active.selected {
-  background: #e8f1e5;
-  box-shadow: 0 0 0 2px rgba(55, 81, 59, 0.22);
 }
 
 .songbook-empty {
@@ -1203,8 +1164,7 @@ onBeforeUnmount(() => {
   background: #eef4ed;
 }
 
-.performance-icon-button:focus-visible,
-.performance-song-list:focus-visible {
+.performance-icon-button:focus-visible {
   outline: 3px solid rgba(55, 81, 59, 0.36);
   outline-offset: 0.24rem;
 }
