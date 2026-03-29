@@ -284,6 +284,7 @@ Songbook behavior:
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
 - the main Songbook list now presents each entry as a compact two-line `title` / `artist` block with a folder-name header badge, keeping the underlying songbook data flow unchanged while improving scanability
+- the main Songbook view now applies local in-memory sorting controls for `artist` / `title` with asc/desc toggling; ordering stays deterministic through primary field, secondary field and filename fallback without mutating the underlying songbook data
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
 - when that persisted songbook is available, startup now also restores the last explicitly opened song if the file still exists; otherwise Songbook opens with no active selection and no startup error
 - AppConfig now also stores `lastOpenedSongPath`, `conversionMode`, `playgroundModel`, `geminiApiKey`, `showChordDiagrams` and `instrument`
@@ -300,6 +301,7 @@ Workspace document behavior:
 - reconverting an already opened `.cho` preserves the active `filePath` and updates the parsed song metadata immediately so the editor header, save logic and song list refresh stay aligned
 - running `Convert` from raw input now creates a detached unsaved document with no associated `filePath`, so saving a newly generated song opens `Save As` instead of overwriting the previously opened songbook file
 - Songbook list interaction in the main `User` view now mirrors the performance-mode list model: `active` stays tied to the song currently opened in preview, `selected` tracks keyboard or mouse browsing, hover can update selection without opening the song, and the list container keeps keyboard ownership so `ArrowUp` / `ArrowDown` / `Enter` / `Space` behave consistently even after focus leaves the list
+- Songbook list sorting preserves both the active previewed song and the locally selected list item by `filePath` rather than by index, so reordering does not silently change the song or break the existing keyboard navigation model
 - unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window
 - unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`
 - Tauri close interception for this flow depends on explicit main-window permissions for `window.close` / `window.destroy` in `src-tauri/capabilities/main.json`

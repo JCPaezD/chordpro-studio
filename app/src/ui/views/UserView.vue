@@ -59,6 +59,8 @@ const {
 } = useSongWorkspace();
 
 type PreviewFrameId = "A" | "B";
+type SongbookSortField = "title" | "artist";
+type SongbookSortDirection = "asc" | "desc";
 
 const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
 const PREVIEW_FRAME_TRANSITION_MS = 180;
@@ -126,27 +128,53 @@ const songbookHeaderLabel = computed(() => {
 
 const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
 const songbookSongs = computed(() => songbook.value?.songs ?? []);
-const songbookListItems = computed(() =>
-  songbookSongs.value.map((songEntry) => {
+const songbookSortField = ref<SongbookSortField>("artist");
+const songbookSortDirection = ref<SongbookSortDirection>("asc");
+const songbookListItems = computed(() => {
+  const items = songbookSongs.value.map((songEntry) => {
     const separatorIndex = songEntry.displayTitle.lastIndexOf(" - ");
+    const normalizedPath = songEntry.filePath.replace(/\\/g, "/");
+    const pathParts = normalizedPath.split("/");
+    const fallbackName = pathParts[pathParts.length - 1] || normalizedPath;
 
     if (separatorIndex < 0) {
       return {
         ...songEntry,
         title: songEntry.displayTitle,
-        artist: ""
+        artist: "",
+        fallbackName
       };
     }
 
     return {
       ...songEntry,
       title: songEntry.displayTitle.slice(0, separatorIndex).trim(),
-      artist: songEntry.displayTitle.slice(separatorIndex + 3).trim()
+      artist: songEntry.displayTitle.slice(separatorIndex + 3).trim(),
+      fallbackName
     };
-  })
-);
+  });
+
+  const primaryField = songbookSortField.value;
+  const secondaryField = primaryField === "artist" ? "title" : "artist";
+  const directionMultiplier = songbookSortDirection.value === "asc" ? 1 : -1;
+
+  return [...items].sort((left, right) => {
+    const primaryComparison =
+      compareSongbookSortValues(left[primaryField], right[primaryField]) * directionMultiplier;
+    if (primaryComparison !== 0) {
+      return primaryComparison;
+    }
+
+    const secondaryComparison = compareSongbookSortValues(left[secondaryField], right[secondaryField]);
+    if (secondaryComparison !== 0) {
+      return secondaryComparison;
+    }
+
+    return compareSongbookSortValues(left.fallbackName, right.fallbackName);
+  });
+});
 const currentSongbookIndex = computed(() => {
-  const songs = songbookSongs.value;
+  const songs = songbookListItems.value;
   if (!selectedSongPath.value) {
     return -1;
   }
@@ -159,9 +187,24 @@ const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate }
 const viewerFrameSrcA = computed(() => applyPreviewFit(previewFrameSrcA.value));
 const viewerFrameSrcB = computed(() => applyPreviewFit(previewFrameSrcB.value));
 const songItemRefs = ref<(HTMLButtonElement | null)[]>([]);
-const songbookSelectionIndex = ref(-1);
+const songbookSelectionPath = ref<string | null>(null);
+const currentSongbookSelectionIndex = computed(() => {
+  const items = songbookListItems.value;
+  if (!songbookSelectionPath.value) {
+    return -1;
+  }
+
+  return items.findIndex((songEntry) => songEntry.filePath === songbookSelectionPath.value);
+});
 const showPreviewLoadingIndicator = ref(false);
 let previewLoadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
+
+function compareSongbookSortValues(left: string, right: string): number {
+  return left.localeCompare(right, undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
+}
 
 function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
   return frame === "A" ? "B" : "A";
@@ -405,10 +448,10 @@ onMounted(() => {
 
 
 function syncSongbookSelection(): void {
-  const songs = songbookSongs.value;
+  const songs = songbookListItems.value;
 
   if (songs.length === 0) {
-    songbookSelectionIndex.value = -1;
+    songbookSelectionPath.value = null;
     return;
   }
 
@@ -417,13 +460,16 @@ function syncSongbookSelection(): void {
     : -1;
 
   if (selectedIndex >= 0) {
-    songbookSelectionIndex.value = selectedIndex;
+    songbookSelectionPath.value = songs[selectedIndex]?.filePath ?? null;
     return;
   }
 
-  if (songbookSelectionIndex.value < 0 || songbookSelectionIndex.value >= songs.length) {
-    songbookSelectionIndex.value = 0;
+  const currentSelectionIndex = currentSongbookSelectionIndex.value;
+  if (currentSelectionIndex >= 0) {
+    return;
   }
+
+  songbookSelectionPath.value = songs[0]?.filePath ?? null;
 }
 
 function setSongItemRef(index: number) {
@@ -433,7 +479,7 @@ function setSongItemRef(index: number) {
 }
 
 function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
-  const index = songbookSelectionIndex.value;
+  const index = currentSongbookSelectionIndex.value;
   if (index < 0) {
     return;
   }
@@ -450,6 +496,24 @@ function handleSongbookListFocus(): void {
   syncSongbookSelection();
 }
 
+function setSongbookSelectionByIndex(index: number): void {
+  const songEntry = songbookListItems.value[index];
+  songbookSelectionPath.value = songEntry?.filePath ?? null;
+}
+
+function toggleSongbookSort(field: SongbookSortField): void {
+  if (songbookSortField.value === field) {
+    songbookSortDirection.value = songbookSortDirection.value === "asc" ? "desc" : "asc";
+  } else {
+    songbookSortField.value = field;
+    songbookSortDirection.value = "asc";
+  }
+
+  void nextTick(() => {
+    songListRef.value?.focus();
+  });
+}
+
 function isInteractiveElement(element: Element | null): boolean {
   if (!(element instanceof HTMLElement)) {
     return false;
@@ -463,15 +527,17 @@ function isInteractiveElement(element: Element | null): boolean {
 }
 
 function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { restoreListFocus?: boolean }): void {
-  const songs = songbookSongs.value;
+  const songs = songbookListItems.value;
   if (songs.length === 0) {
     return;
   }
 
+  const selectedIndex = currentSongbookSelectionIndex.value >= 0 ? currentSongbookSelectionIndex.value : 0;
+
   if (event.key === "ArrowDown") {
     event.preventDefault();
     event.stopPropagation();
-    songbookSelectionIndex.value = Math.min(songbookSelectionIndex.value + 1, songs.length - 1);
+    setSongbookSelectionByIndex(Math.min(selectedIndex + 1, songs.length - 1));
     scrollSongbookSelectionIntoView();
     return;
   }
@@ -479,7 +545,7 @@ function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { resto
   if (event.key === "ArrowUp") {
     event.preventDefault();
     event.stopPropagation();
-    songbookSelectionIndex.value = Math.max(songbookSelectionIndex.value - 1, 0);
+    setSongbookSelectionByIndex(Math.max(selectedIndex - 1, 0));
     scrollSongbookSelectionIntoView();
     return;
   }
@@ -487,7 +553,7 @@ function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { resto
   if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
     event.preventDefault();
     event.stopPropagation();
-    const selectedSong = songs[songbookSelectionIndex.value];
+    const selectedSong = songs[selectedIndex];
     if (selectedSong) {
       void openSongFromSongbook(selectedSong.filePath, { restoreListFocus: options?.restoreListFocus });
     }
@@ -502,9 +568,20 @@ watch(
   () => [songbook.value, selectedSongPath.value],
   () => {
     syncSongbookSelection();
-    songItemRefs.value = songItemRefs.value.slice(0, songbookSongs.value.length);
+    songItemRefs.value = songItemRefs.value.slice(0, songbookListItems.value.length);
   },
   { immediate: true }
+);
+
+watch(
+  () => [songbookSortField.value, songbookSortDirection.value, activePanel.value, isPerformanceMode.value] as const,
+  ([, , panel, performanceMode]) => {
+    if (panel !== "songbook" || performanceMode) {
+      return;
+    }
+
+    scrollSongbookSelectionIntoView("auto");
+  }
 );
 
 watch(
@@ -930,6 +1007,36 @@ async function clearApiKey(): Promise<void> {
                     <h3 :title="songbook?.path || songbookHeaderLabel">{{ songbookHeaderLabel }}</h3>
                     <span class="song-count-badge">{{ songbook.songs.length }}</span>
                   </div>
+                  <div class="song-list-header-actions">
+                    <div class="song-sort-controls" aria-label="Songbook sorting controls">
+                      <button
+                        :class="['song-sort-button', { active: songbookSortField === 'title' }]"
+                        type="button"
+                        @click="toggleSongbookSort('title')"
+                      >
+                        <span>Title</span>
+                        <span
+                          :class="['song-sort-direction', { visible: songbookSortField === 'title' }]"
+                          aria-hidden="true"
+                        >
+                          {{ songbookSortDirection === "asc" ? "↑" : "↓" }}
+                        </span>
+                      </button>
+                      <button
+                        :class="['song-sort-button', { active: songbookSortField === 'artist' }]"
+                        type="button"
+                        @click="toggleSongbookSort('artist')"
+                      >
+                        <span>Artist</span>
+                        <span
+                          :class="['song-sort-direction', { visible: songbookSortField === 'artist' }]"
+                          aria-hidden="true"
+                        >
+                          {{ songbookSortDirection === "asc" ? "↑" : "↓" }}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div
                   ref="songListRef"
@@ -941,18 +1048,18 @@ async function clearApiKey(): Promise<void> {
                   <div v-if="songbook.songs.length === 0" class="songbook-empty">
                     No `.cho` files were found in this folder.
                   </div>
-                  <button
-                    v-for="(songEntry, index) in songbookListItems"
-                    :key="songEntry.filePath"
-                    :ref="setSongItemRef(index)"
-                    tabindex="-1"
-                    :class="['song-item', {
-                      active: currentSongbookIndex === index,
-                      selected: songbookSelectionIndex === index
-                    }]"
-                    @mouseenter="songbookSelectionIndex = index"
-                    @click="openSongFromSongbook(songEntry.filePath, { restoreListFocus: true })"
-                  >
+                    <button
+                      v-for="(songEntry, index) in songbookListItems"
+                      :key="songEntry.filePath"
+                      :ref="setSongItemRef(index)"
+                      tabindex="-1"
+                      :class="['song-item', {
+                        active: currentSongbookIndex === index,
+                        selected: currentSongbookSelectionIndex === index
+                      }]"
+                      @mouseenter="setSongbookSelectionByIndex(index)"
+                      @click="openSongFromSongbook(songEntry.filePath, { restoreListFocus: true })"
+                    >
                     <span class="song-item-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M7 4.5h7l4 4v11h-11a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" />
@@ -1710,12 +1817,74 @@ async function clearApiKey(): Promise<void> {
   width: 100%;
 }
 
+.song-list-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
 .song-list-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
+}
+
+.song-list-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.song-sort-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.song-sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  min-height: 1.55rem;
+  padding: 0.16rem 0.48rem;
+  border: 1px solid rgba(35, 49, 39, 0.12);
+  background: rgba(255, 254, 249, 0.9);
+  color: rgba(74, 86, 74, 0.88);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.song-sort-button:hover {
+  background: rgba(243, 247, 241, 0.98);
+  border-color: rgba(55, 81, 59, 0.22);
+}
+
+.song-sort-button.active {
+  border-color: rgba(55, 81, 59, 0.28);
+  background: #eef4ed;
+  color: #233127;
+}
+
+.song-sort-direction {
+  display: inline-flex;
+  justify-content: center;
+  width: 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.22;
+}
+
+.song-sort-direction.visible {
+  opacity: 1;
 }
 
 .song-count-badge {
@@ -1820,6 +1989,18 @@ async function clearApiKey(): Promise<void> {
   color: rgba(74, 86, 74, 0.82);
   font-size: 0.8rem;
   line-height: 1.15;
+}
+
+@media (max-width: 900px) {
+  .song-list-title-row {
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .song-list-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
 }
 
 .songbook-empty {

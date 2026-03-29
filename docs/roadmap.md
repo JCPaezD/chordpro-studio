@@ -75,6 +75,7 @@ Current status:
 - v1.4.x Songbook performance mode now uses a floating song panel and compact dock inside the preview safe area, avoiding preview/list border collisions and scrollbar-native-toolbar overlap while preserving a larger PDF surface plus direct keyboard and mouse navigation with separate active and selected song states
 - v1.4.x sidebar navigation buttons now use square hit areas with centered content, rail-derived sizing and larger lighter-weight icons, improving scanability and preserving the existing active/hover behavior without changing app structure
 - v1.4.x Songbook list now uses a compact two-line title/artist layout with a folder-name header badge, separate active and selected states, hover-driven selection, and aligned `ArrowUp` / `ArrowDown` / `Enter` / `Space` behavior between list focus and global Songbook navigation
+- v1.4.x Songbook list sorting now provides compact header controls for `Title` / `Artist` with asc/desc toggling, deterministic in-memory ordering, and path-based preservation of active and selected songs across reordering
 
 ## Completed work
 
@@ -131,12 +132,6 @@ Current status:
   - extract a shared list component
   - reuse the new two-line hierarchy and item styling in both views
   - keep focus, selection and keyboard interaction local to each view
-
-### Functional improvements (lightweight)
-
-- add basic song list sorting:
-  - by title (ascending / descending)
-  - by artist (ascending / descending)
 
 ### Feature
 
