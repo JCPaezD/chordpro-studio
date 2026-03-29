@@ -73,6 +73,7 @@ Current status:
 - horizontal overflow in dense long-chord lines is now treated as a ChordPro engine limitation rather than a pending app-side fix; the documented workaround is to split the affected line manually when needed
 - v1.x sidebar navigation now lets the main rail buttons use the full available width and slightly widens the desktop rail, resolving the residual `Songbook` button alignment bug without introducing per-button layout exceptions
 - v1.4.x Songbook performance mode now uses a floating song panel and compact dock inside the preview safe area, avoiding preview/list border collisions and scrollbar-native-toolbar overlap while preserving a larger PDF surface plus direct keyboard and mouse navigation with separate active and selected song states
+- v1.4.x sidebar navigation buttons now use square hit areas with centered content, rail-derived sizing and larger lighter-weight icons, improving scanability and preserving the existing active/hover behavior without changing app structure
 
 ## Completed work
 
@@ -125,7 +126,6 @@ Current status:
 
 ### UI refinements
 
-- make sidebar navigation buttons square so width and height stay aligned
 - improve song list visual hierarchy:
   - clearer distinction between title and artist
   - better readability and scanability

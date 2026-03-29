@@ -1063,6 +1063,9 @@ async function clearApiKey(): Promise<void> {
 
 <style scoped>
 .user-view {
+  --nav-rail-padding: 0.65rem;
+  --nav-button-size: 5.45rem;
+
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -1190,7 +1193,7 @@ async function clearApiKey(): Promise<void> {
 
 .user-main {
   display: grid;
-  grid-template-columns: 6.4rem minmax(0, 1.1fr) minmax(24rem, 1fr);
+  grid-template-columns: calc(var(--nav-button-size) + (var(--nav-rail-padding) * 2)) minmax(0, 1.1fr) minmax(24rem, 1fr);
   gap: 1rem;
   flex: 1;
   min-width: 0;
@@ -1202,7 +1205,8 @@ async function clearApiKey(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  padding: 0.65rem;
+  align-items: center;
+  padding: var(--nav-rail-padding);
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
@@ -1212,20 +1216,31 @@ async function clearApiKey(): Promise<void> {
 .nav-rail-main {
   display: grid;
   gap: 0.65rem;
+  align-self: center;
+  justify-items: stretch;
+  width: var(--nav-button-size);
 }
 
 .nav-rail-footer {
   position: relative;
   margin-top: auto;
+  display: grid;
+  align-self: center;
+  justify-items: stretch;
+  width: var(--nav-button-size);
 }
 
 .nav-button {
   display: grid;
+  grid-template-rows: auto auto;
+  align-content: center;
   justify-items: center;
-  gap: 0.45rem;
   width: 100%;
+  min-height: var(--nav-button-size);
+  aspect-ratio: 1 / 1;
+  gap: 0.38rem;
   box-sizing: border-box;
-  padding: 0.8rem 0.35rem;
+  padding: 0.7rem 0.45rem;
   border: 1px solid rgba(35, 49, 39, 0.12);
   background: rgba(255, 250, 241, 0.42);
   color: #233127;
@@ -1233,24 +1248,30 @@ async function clearApiKey(): Promise<void> {
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-align: center;
   text-transform: uppercase;
   cursor: pointer;
 }
 
 
 .nav-rail-main > .nav-button {
-  width: 100%;
-  justify-self: stretch;
+  justify-self: center;
 }
 
 .nav-button svg {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.65rem;
+  height: 2.65rem;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.1;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.nav-button:hover:not(.active) {
+  border-color: rgba(35, 49, 39, 0.18);
+  background: rgba(255, 250, 241, 0.62);
 }
 
 .nav-button.active {
@@ -1872,7 +1893,7 @@ async function clearApiKey(): Promise<void> {
 
 @media (max-width: 1180px) {
   .user-main {
-    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-columns: calc(var(--nav-button-size) + (var(--nav-rail-padding) * 2)) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 
@@ -1886,6 +1907,11 @@ async function clearApiKey(): Promise<void> {
 }
 
 @media (max-width: 900px) {
+  .user-view {
+    --nav-rail-padding: 0.55rem;
+    --nav-button-size: 4.35rem;
+  }
+
   .user-main {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
@@ -1901,12 +1927,22 @@ async function clearApiKey(): Promise<void> {
     display: grid;
     flex: 1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
 
   
 .nav-rail-main > .nav-button {
     width: 100%;
     justify-self: stretch;
+  }
+
+  .nav-button svg {
+    width: 2.3rem;
+    height: 2.3rem;
+  }
+
+  .nav-rail-footer .nav-button {
+    width: var(--nav-button-size);
   }
 
 
