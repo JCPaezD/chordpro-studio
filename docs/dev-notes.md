@@ -75,6 +75,21 @@ Only record assumptions here when they materially affect behavior, UX, architect
 - final human-facing artifacts for the rebuild were collected under `releases/v1.4.0/`, keeping `src-tauri/target/` as transient build output only
 - local release artifacts keep the `-local` suffix in their human-facing names while the runtime app version stays `1.4.0`
 
+## Post v1.4.0 direction
+
+- the project is now in a real usage validation phase
+- current priority is resolving real user friction, improving UX clarity and flow, and avoiding speculative features
+
+### Product direction clarification
+
+- current focus is the `User` view, Songbook workflow, and the shared Preview + Export flow
+- deprioritized areas for now are Playground expansion, internal tooling growth, and complex optimizations without a proven real need
+
+### Songbook PDF exploration note
+
+- `style.json` capabilities should be explored and documented before implementing advanced Songbook PDF features
+- avoid designing PDF features that the ChordPro CLI cannot actually support
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:

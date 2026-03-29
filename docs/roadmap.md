@@ -120,6 +120,31 @@ Current status:
 
 ## Current roadmap
 
+## v1.4.x - Post-release friction fixes & UX improvements
+
+### UI fixes (high priority)
+
+- fix visual overlap in Songbook performance mode:
+  - song list bottom border overlapping the preview container
+  - right-side action buttons overlapping the scrollbar
+
+### UI refinements
+
+- make sidebar navigation buttons square so width and height stay aligned
+- improve song list visual hierarchy:
+  - clearer distinction between title and artist
+  - better readability and scanability
+
+### Functional improvements (lightweight)
+
+- add basic song list sorting:
+  - by title (ascending / descending)
+  - by artist (ascending / descending)
+
+### Feature
+
+- add `ukulele` as a selectable instrument when supported by the ChordPro CLI
+
 ## v1.x - Additional UX / dev improvements
 
 ### Product clarification
@@ -129,19 +154,66 @@ Current status:
 - refine product language, visual direction and first-use experience
 - use findings to guide future prioritization across UX, export and feature expansion
 
+### UX review pass
+
+- run a structured UX/UI review by area:
+  - Convert
+  - Songbook
+  - Preview
+  - Performance mode
+  - app shell (header, layout, global consistency)
+- treat this as a dedicated pass rather than a sequence of scattered incremental tweaks
+
+### Songbook PDF improvements (incremental)
+
+- explore and document `style.json` capabilities before implementing advanced PDF features
+- findings should be documented before implementing advanced features
+- improve index structure and metadata
+
+### Song list improvements
+
+- add filtering by artist and title
+- add basic metadata-only search without searching full song content yet
+
+### Preview cache management
+
+- add a manual `pre-generate previews` action:
+  - explicit user-triggered action only
+  - sequential processing
+  - visible progress feedback
+  - cancelable
+- do not introduce automatic background preview generation
+
+### Editor improvements
+
+- add basic syntax highlighting for the `.cho` editor:
+  - lightweight regex-based approach
+  - no heavy editor refactor yet
+  - avoid breaking current input behavior
+
+### UI / UX improvements
+
 - prevent accidental text selection in non-interactive UI elements (buttons, labels, icons) using scoped user-select rules
-- add a side menu to the Playground to toggle panel visibility
 - UI visual refinement (non-layout):
   - improve colors, typography, spacing and visual hierarchy
   - introduce icons where appropriate
   - maintain current layout structure
-- expand preferences system (future):
-  - additional PDF/style options (fonts, spacing, layout tweaks)
-  - configurable export options
+
+### Preferences system (future)
+
+- additional PDF/style options (fonts, spacing, layout tweaks)
+- configurable export options
+
+### Playground and dev workflow
+
+- add a side menu to the Playground to toggle panel visibility
 - allow running the pipeline from intermediate steps in Playground:
   - trigger pipeline execution from any block
   - allow manual editing of intermediate outputs
   - useful for debugging and validation of pipeline stages
+
+### Validation and diagnostics
+
 - add lightweight automated checks for core deterministic flows
 - introduce small regression tests for parser, cleaning, preview cache and render preprocessing
 - add a one-command local smoke validation workflow
@@ -156,18 +228,33 @@ Current status:
 - ensure rendering robustness remains compatible with future layout optimization features
 - evaluate richer editing capabilities for the .cho editor (e.g. structured chord manipulation, improved editing UX, potential migration beyond textarea)
 
-### Export improvements (future)
+### Songbook PDF enhancements
 
 - preview full songbook before export to PDF
-- Songbook cover support:
+- cover page:
   - auto-generated cover (title, date, `Generated with ChordPro Studio`)
   - custom PDF cover support
+- branding / watermark
+- richer visual styling
 - user-configurable ChordPro styles (UI-based)
   - chord diagram visibility, instrument and placement
 - advanced export options:
   - song ordering
   - song selection (checkboxes)
   - table of contents configuration
+
+### Advanced search
+
+- content-based search across lyrics and full `.cho` content
+
+### Potential preview system evolution
+
+- evaluate a non-native PDF viewer such as PDF.js if advanced preview features require it
+
+## Backlog / Technical improvements
+
+- low priority: optimize preview cache invalidation so instrument changes do not force regeneration when chord diagrams are disabled
+- not part of the current roadmap focus
 
 ## Distribution & installation (future)
 
