@@ -128,6 +128,14 @@ Current status:
 
 ## v1.4.x - Post-release friction fixes & UX improvements
 
+### Bug fixes
+
+- fix save behavior when metadata changes (`title` / `artist`):
+  - current behavior may create a new file silently when metadata changes
+  - `Save` should overwrite the current file
+  - renaming should require an explicit action such as `Save As` or confirmation
+- reset `.cho` editor scroll position when switching songs
+
 ### UI consistency
 
 - unify Songbook list UI across Songbook and Performance mode:
@@ -153,12 +161,22 @@ Current status:
   - Performance mode
   - app shell (header, layout, global consistency)
 - treat this as a dedicated pass rather than a sequence of scattered incremental tweaks
+- include a focused Performance mode UX refinement review:
+  - evaluate close button placement
+  - evaluate the song-list toggle affordance (e.g. handle / trigger)
+  - improve intuitiveness without breaking the current interaction model
 
 ### Songbook PDF improvements (incremental)
 
 - explore and document `style.json` capabilities before implementing advanced PDF features
 - findings should be documented before implementing advanced features
 - improve index structure and metadata
+
+### Songbook management features
+
+- delete song/file from the songbook with proper confirmation
+- create a new empty song (`New`)
+- add `Save As` to duplicate or create a copy with a new name
 
 ### Song list improvements
 
@@ -188,6 +206,8 @@ Current status:
   - improve colors, typography, spacing and visual hierarchy
   - introduce icons where appropriate
   - maintain current layout structure
+- add feedback to the `Refresh songbook` action
+- add confirmation and feedback to `Clear songbook`
 
 ### Preferences system (future)
 

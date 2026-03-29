@@ -90,6 +90,17 @@ Only record assumptions here when they materially affect behavior, UX, architect
 - `style.json` capabilities should be explored and documented before implementing advanced Songbook PDF features
 - avoid designing PDF features that the ChordPro CLI cannot actually support
 
+## Post v1.4.x friction findings
+
+- save behavior couples metadata changes with filename suggestion, which can create unintended file duplication
+- the `.cho` editor scroll position should reset on song change to avoid disorientation when switching between songs
+- Songbook management is still intentionally minimal:
+  - no delete flow yet
+  - no new empty song creation yet
+  - no explicit duplication / `Save As` flow yet
+  - these remain planned future improvements
+- Performance mode still has room for UX refinement, but those changes should be handled through a structured UX review rather than ad-hoc incremental tweaks
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
