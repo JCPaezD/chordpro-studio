@@ -1,6 +1,7 @@
 import type { Song } from "../../domain/song";
 import type { Songbook } from "../../domain/songbook";
 import { SongRepository } from "../../adapters/filesystem/SongRepository";
+import { buildSongDisplayTitle } from "../../domain/song/deriveDisplayTitle";
 import { ChordProParser } from "../parser/ChordProParser";
 
 export type LoadedSongFile = {
@@ -14,61 +15,6 @@ function getFileName(filePath: string): string {
   const normalized = filePath.replace(/\\/g, "/");
   const parts = normalized.split("/");
   return parts[parts.length - 1] ?? filePath;
-}
-
-function truncatePreview(text: string, maxLength = 40): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-
-  if (normalized.length <= maxLength) {
-    return normalized || "Untitled song";
-  }
-
-  return `${normalized.slice(0, maxLength).trimEnd()}...`;
-}
-
-function buildFallbackTitle(song: Song): string {
-  const lyricLines: string[] = [];
-
-  for (const section of song.sections) {
-    for (const line of section.lines) {
-      const lyric = line.segments
-        .map((segment) => segment.lyric ?? "")
-        .join("")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (!lyric) {
-        continue;
-      }
-
-      lyricLines.push(lyric);
-
-      if (lyricLines.join(" ").length >= 40) {
-        return truncatePreview(lyricLines.join(" "));
-      }
-    }
-  }
-
-  return truncatePreview(lyricLines.join(" "));
-}
-
-function buildDisplayTitle(song: Song): string {
-  const title = song.metadata.title?.trim();
-  const artist = song.metadata.artist?.trim();
-
-  if (title && artist) {
-    return `${title} - ${artist}`;
-  }
-
-  if (title) {
-    return title;
-  }
-
-  if (artist) {
-    return artist;
-  }
-
-  return buildFallbackTitle(song);
 }
 
 export class SongbookService {
@@ -94,7 +40,7 @@ export class SongbookService {
       const song = this.parser.parse(chordProText);
       songs.push({
         filePath,
-        displayTitle: buildDisplayTitle(song)
+        displayTitle: buildSongDisplayTitle(chordProText, song.metadata, getFileName(filePath))
       });
     }
 

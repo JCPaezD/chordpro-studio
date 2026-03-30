@@ -104,7 +104,7 @@ Only record assumptions here when they materially affect behavior, UX, architect
 ## Post global usage review (v1.4.x stabilization)
 
 - the keyboard vs mouse selection conflict in Songbook and Performance mode is now resolved by tracking the last input source locally in each parent view, so passive hover no longer overrides keyboard-driven selection during autoscroll
-- the current title fallback can still surface chord-only lines instead of a meaningful label when metadata is missing
+- missing song titles are now derived consistently across Songbook UI, preview, single-song PDF export and songbook export by skipping directives, tab blocks and chord-only lines, then reusing the first valid lyric line when available before falling back to artist, filename or `Untitled`
 - preview auto-refresh timing can still interrupt editing flow and likely needs a slightly longer debounce
 - additional improvements were identified for:
   - deterministic `{define}` inclusion during conversion
@@ -168,6 +168,7 @@ Preview failure behavior:
 - the frontend shows the backend error message returned by the failed preview command
 - while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
 - the backend now reuses a persistent preview cache under `$APPCONFIG/cache/previews/`, keyed by `SHA-256(chordProText + effective render style)`, so unchanged previews can be returned without invoking the CLI again without mixing different diagram-visibility or instrument variants
+- when `{title:}` is missing, the backend render preprocess now injects an in-memory derived title before calling ChordPro, using the same fallback criteria as Songbook UI and keeping preview cache validity aligned with the rendered title
 - the manual `Refresh` action in Convert, Songbook and Playground now reuses the same preview pipeline with an explicit `bypass_cache` flag, so users can force a fresh CLI render without introducing a parallel preview path
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
 - User View `Generate` now keeps the existing `.cho` editor content visible behind a non-editable loading overlay until the conversion result is ready, using the same shared loading-card visual treatment as preview instead of clearing the editor upfront

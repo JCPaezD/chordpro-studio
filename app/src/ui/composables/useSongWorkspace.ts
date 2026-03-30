@@ -335,7 +335,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     try {
       const preview = await chordproAdapter.generatePreview(chordPro, {
         bypassCache,
-        renderStyle: getRenderStyle()
+        renderStyle: getRenderStyle(),
+        fileName: document.value.fileName
       });
 
       if (!requestStillActive()) {
@@ -719,7 +720,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       }
 
       const exportedPath = await chordproAdapter.exportPdf(document.value.chordProText, normalizedPath, {
-        renderStyle: getRenderStyle()
+        renderStyle: getRenderStyle(),
+        fileName: document.value.fileName
       });
       feedback.showFeedback({
         type: "success",

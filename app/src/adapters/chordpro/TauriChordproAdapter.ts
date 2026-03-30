@@ -51,7 +51,8 @@ export class TauriChordproAdapter implements ChordproAdapter {
       const response = await invoke<GeneratePreviewResponse>("generate_preview", {
         chordproText,
         bypassCache: options?.bypassCache ?? false,
-        renderStyle: options?.renderStyle
+        renderStyle: options?.renderStyle,
+        fileName: options?.fileName
       });
 
       return {
@@ -72,7 +73,8 @@ export class TauriChordproAdapter implements ChordproAdapter {
       const response = await invoke<ExportPdfResponse>("export_pdf", {
         chordproText,
         outputPath,
-        renderStyle: options?.renderStyle
+        renderStyle: options?.renderStyle,
+        fileName: options?.fileName
       });
       return response.outputPath;
     } catch (error) {

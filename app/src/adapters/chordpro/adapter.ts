@@ -13,10 +13,12 @@ export interface ChordproRenderStyle {
 export interface ChordproPreviewOptions {
   bypassCache?: boolean;
   renderStyle?: ChordproRenderStyle;
+  fileName?: string;
 }
 
 export interface ChordproExportOptions {
   renderStyle?: ChordproRenderStyle;
+  fileName?: string;
 }
 
 export interface ChordproAdapter {

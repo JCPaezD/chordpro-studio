@@ -11,6 +11,7 @@ import {
   type ChordDiagramInstrument,
   type ConversionMode
 } from "../../adapters/filesystem/ConfigRepository";
+import { buildSongDisplayTitle } from "../../domain/song/deriveDisplayTitle";
 import { useAppConfig } from "../composables/useAppConfig";
 import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
@@ -114,14 +115,15 @@ const conversionModeLabel = computed(() =>
 const apiKeyButtonLabel = computed(() => (hasApiKey.value ? "Change API Key" : "Set API Key"));
 
 const songbookEditorTitle = computed(() => {
-  const title = songMetadata.value.title?.trim();
-  const artist = songMetadata.value.artist?.trim();
-
-  if (title && artist) {
-    return `${title} - ${artist}`;
+  if (!workspaceDocument.value.chordProText.trim()) {
+    return workspaceDocument.value.fileName || "ChordPro source";
   }
 
-  return title || artist || workspaceDocument.value.fileName || "ChordPro source";
+  return buildSongDisplayTitle(
+    workspaceDocument.value.chordProText,
+    songMetadata.value,
+    workspaceDocument.value.fileName
+  );
 });
 
 const songbookEditorSubtitle = computed(() =>
@@ -142,27 +144,47 @@ const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewF
 const songbookSongs = computed(() => songbook.value?.songs ?? []);
 const songbookSortField = ref<SongbookSortField>("artist");
 const songbookSortDirection = ref<SongbookSortDirection>("asc");
+
+function getSongbookListFallbackName(filePath: string): string {
+  const normalizedPath = filePath.replace(/\\/g, "/");
+  const pathParts = normalizedPath.split("/");
+  return pathParts[pathParts.length - 1] || normalizedPath;
+}
+
+function splitSongDisplayTitle(displayTitle: string): { title: string; artist: string } {
+  const separatorIndex = displayTitle.lastIndexOf(" - ");
+  if (separatorIndex < 0) {
+    return {
+      title: displayTitle,
+      artist: ""
+    };
+  }
+
+  return {
+    title: displayTitle.slice(0, separatorIndex).trim(),
+    artist: displayTitle.slice(separatorIndex + 3).trim()
+  };
+}
+
 const songbookListItems = computed(() => {
   const items = songbookSongs.value.map((songEntry) => {
-    const separatorIndex = songEntry.displayTitle.lastIndexOf(" - ");
-    const normalizedPath = songEntry.filePath.replace(/\\/g, "/");
-    const pathParts = normalizedPath.split("/");
-    const fallbackName = pathParts[pathParts.length - 1] || normalizedPath;
-
-    if (separatorIndex < 0) {
-      return {
-        ...songEntry,
-        title: songEntry.displayTitle,
-        artist: "",
-        fallbackName
-      };
-    }
+    const isActiveWorkspaceSong =
+      !!workspaceDocument.value.filePath && songEntry.filePath === workspaceDocument.value.filePath;
+    const displayTitle = isActiveWorkspaceSong
+      ? buildSongDisplayTitle(
+          workspaceDocument.value.chordProText,
+          songMetadata.value,
+          workspaceDocument.value.fileName || getSongbookListFallbackName(songEntry.filePath)
+        )
+      : songEntry.displayTitle;
+    const { title, artist } = splitSongDisplayTitle(displayTitle);
 
     return {
       ...songEntry,
-      title: songEntry.displayTitle.slice(0, separatorIndex).trim(),
-      artist: songEntry.displayTitle.slice(separatorIndex + 3).trim(),
-      fallbackName
+      displayTitle,
+      title,
+      artist,
+      fallbackName: getSongbookListFallbackName(songEntry.filePath)
     };
   });
 
@@ -209,6 +231,9 @@ const currentSongbookSelectionIndex = computed(() => {
 
   return items.findIndex((songEntry) => songEntry.filePath === songbookSelectionPath.value);
 });
+const songbookListOrderSignature = computed(() =>
+  songbookListItems.value.map((songEntry) => songEntry.filePath).join("|")
+);
 const showPreviewLoadingIndicator = ref(false);
 let previewLoadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -633,6 +658,22 @@ watch(
       return;
     }
 
+    scrollSongbookSelectionIntoView("auto");
+  }
+);
+
+watch(
+  () => songbookListOrderSignature.value,
+  (nextOrder, previousOrder) => {
+    if (!previousOrder || nextOrder === previousOrder) {
+      return;
+    }
+
+    if (activePanel.value !== "songbook" || isPerformanceMode.value || !selectedSongPath.value) {
+      return;
+    }
+
+    syncSongbookSelectionToActiveSong();
     scrollSongbookSelectionIntoView("auto");
   }
 );

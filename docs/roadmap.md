@@ -82,6 +82,7 @@ Current status:
 - v1.4.x ukulele custom chord definitions remain limited to ukulele-compatible 4-string shapes; existing 6-string custom definitions can still work in guitar and keyboard contexts, but are not yet adapted automatically for ukulele
 - v1.4.x saving an existing `.cho` file now preserves file identity by default, prompts explicitly when metadata suggests a different filename, and routes intentional renames through `Save as new file`, including controlled case-only renames on Windows when the user confirms the new casing
 - v1.4.x Songbook now resets the `.cho` editor scroll position to the top when the active song changes, while preserving normal scroll behavior during editing within the same song
+- v1.4.x missing song titles are now derived consistently from content across UI, preview, single-song PDF export and songbook export, skipping directives, tab blocks and chord-only lines, reusing the first valid lyric line when available, and falling back safely to artist, filename or `Untitled`; the active Songbook item now also updates and autoscrolls in real time while edits change its derived title or sort position
 
 ## Completed work
 
@@ -134,13 +135,6 @@ Current status:
 
 ### UX improvements (lightweight)
 
-- improve song title fallback when metadata is missing:
-  - avoid using chord-only lines as title
-  - expected fallback order:
-    - title metadata
-    - first lyric line
-    - artist
-    - filename or safe default
 - adjust preview auto-refresh debounce timing:
   - increase delay to reduce interruptions during editing
   - goal: improve editing flow without removing preview entirely

@@ -83,10 +83,12 @@ pub fn generate_preview(
   chordpro_text: String,
   bypass_cache: bool,
   render_style: Option<RenderStyleOptions>,
+  file_name: Option<String>,
 ) -> Result<PreviewResponse, ChordProCommandError> {
   let preview_dir = ensure_preview_dir(&app)?;
   let render_style = render_style.unwrap_or_default();
-  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text, &render_style);
+  let rendered_chordpro_text =
+    preprocess_chordpro_for_render(&chordpro_text, &render_style, file_name.as_deref());
   let cache_path = preview_cache_file_path(&app, &rendered_chordpro_text, &render_style)?;
 
   if !bypass_cache {
@@ -137,12 +139,14 @@ pub fn export_pdf(
   chordpro_text: String,
   output_path: String,
   render_style: Option<RenderStyleOptions>,
+  file_name: Option<String>,
 ) -> Result<ExportPdfResponse, ChordProCommandError> {
   let cache_dir = ensure_preview_dir(&app)?;
   let input_path = cache_dir.join(EXPORT_CHO_FILENAME);
   let output_path = PathBuf::from(output_path);
   let render_style = render_style.unwrap_or_default();
-  let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text, &render_style);
+  let rendered_chordpro_text =
+    preprocess_chordpro_for_render(&chordpro_text, &render_style, file_name.as_deref());
 
   ensure_output_directory(&output_path)?;
 
@@ -259,7 +263,9 @@ fn prepare_songbook_render_inputs(
       stderr: None,
       details: Some(source_path.to_string_lossy().into_owned()),
     })?;
-    let rendered_chordpro_text = preprocess_chordpro_for_render(&chordpro_text, render_style);
+    let source_file_name = source_path.file_name().and_then(|value| value.to_str());
+    let rendered_chordpro_text =
+      preprocess_chordpro_for_render(&chordpro_text, render_style, source_file_name);
     let rendered_input_path = rendered_inputs_dir.join(format!("{:03}-render.cho", index + 1));
 
     write_text_file(&rendered_input_path, &rendered_chordpro_text)?;
@@ -371,11 +377,13 @@ fn write_preview_cache_file(cache_path: &Path, pdf_bytes: &[u8]) -> io::Result<(
 fn preprocess_chordpro_for_render(
   chordpro_text: &str,
   render_style: &RenderStyleOptions,
+  file_name: Option<&str>,
 ) -> String {
   let rendered = std::panic::catch_unwind(|| preprocess_chordpro_for_render_inner(chordpro_text))
     .ok()
     .and_then(Result::ok)
     .unwrap_or_else(|| fallback_to_single_column(chordpro_text));
+  let rendered = inject_derived_title_if_missing(&rendered, file_name);
 
   if render_style.instrument == DiagramInstrument::Ukulele && render_style.show_chord_diagrams {
     return inject_ukulele_enharmonic_aliases(&rendered);
@@ -437,6 +445,127 @@ fn preprocess_chordpro_for_render_inner(chordpro_text: &str) -> Result<String, (
   }
 
   Ok(rendered)
+}
+
+fn inject_derived_title_if_missing(chordpro_text: &str, file_name: Option<&str>) -> String {
+  if extract_metadata_directive_value(chordpro_text, "title").is_some() {
+    return chordpro_text.to_string();
+  }
+
+  let newline = if chordpro_text.contains("\r\n") { "\r\n" } else { "\n" };
+  let derived_title = derive_display_title(chordpro_text, file_name);
+  format!("{{title: {derived_title}}}{newline}{chordpro_text}")
+}
+
+fn derive_display_title(chordpro_text: &str, file_name: Option<&str>) -> String {
+  if let Some(title) = extract_metadata_directive_value(chordpro_text, "title") {
+    return title;
+  }
+
+  let artist = extract_metadata_directive_value(chordpro_text, "artist");
+  let mut in_tab_block = false;
+
+  for raw_line in chordpro_text.replace("\r\n", "\n").lines() {
+    let trimmed = raw_line.trim();
+
+    if trimmed.is_empty() {
+      continue;
+    }
+
+    if is_tab_start(trimmed) {
+      in_tab_block = true;
+      continue;
+    }
+
+    if is_tab_end(trimmed) {
+      in_tab_block = false;
+      continue;
+    }
+
+    if in_tab_block || is_directive_line(trimmed) {
+      continue;
+    }
+
+    let lyric_candidate = normalize_whitespace(&strip_chord_tokens(raw_line));
+    if lyric_candidate.is_empty() || !contains_letter(&lyric_candidate) {
+      continue;
+    }
+
+    return lyric_candidate;
+  }
+
+  if let Some(artist_name) = artist.filter(|value| !value.trim().is_empty()) {
+    return artist_name;
+  }
+
+  let fallback_name = file_name
+    .map(strip_file_extension)
+    .filter(|value| !value.is_empty());
+
+  fallback_name.unwrap_or_else(|| "Untitled".into())
+}
+
+fn extract_metadata_directive_value(chordpro_text: &str, key: &str) -> Option<String> {
+  chordpro_text.lines().find_map(|line| {
+    let trimmed = line.trim();
+    let inner = trimmed.strip_prefix('{')?.strip_suffix('}')?;
+    let (directive_key, directive_value) = inner.split_once(':')?;
+    if !directive_key.trim().eq_ignore_ascii_case(key) {
+      return None;
+    }
+
+    let normalized_value = directive_value.trim();
+    if normalized_value.is_empty() {
+      None
+    } else {
+      Some(normalized_value.to_string())
+    }
+  })
+}
+
+fn is_directive_line(line: &str) -> bool {
+  line.starts_with('{') && line.ends_with('}')
+}
+
+fn strip_chord_tokens(line: &str) -> String {
+  let mut output = String::with_capacity(line.len());
+  let mut in_chord = false;
+
+  for character in line.chars() {
+    match character {
+      '[' => in_chord = true,
+      ']' => {
+        in_chord = false;
+        output.push(' ');
+      }
+      _ if !in_chord => output.push(character),
+      _ => {}
+    }
+  }
+
+  output
+}
+
+fn normalize_whitespace(value: &str) -> String {
+  value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn contains_letter(value: &str) -> bool {
+  value.chars().any(|character| character.is_alphabetic())
+}
+
+fn strip_file_extension(file_name: &str) -> String {
+  let trimmed_name = file_name.trim();
+  if trimmed_name.is_empty() {
+    return String::new();
+  }
+
+  Path::new(trimmed_name)
+    .file_stem()
+    .and_then(|stem| stem.to_str())
+    .unwrap_or(trimmed_name)
+    .trim()
+    .to_string()
 }
 
 fn inject_ukulele_enharmonic_aliases(chordpro_text: &str) -> String {
@@ -986,10 +1115,10 @@ mod tests {
 
   #[test]
   fn leaves_short_tab_blocks_unchanged_in_two_columns() {
-    let input = "{columns: 2}\n{start_of_tab}\nE|--0--|\nB|--1--|\n{end_of_tab}\n";
+    let input = "{title: Test}\n{columns: 2}\n{start_of_tab}\nE|--0--|\nB|--1--|\n{end_of_tab}\n";
     let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(input, &render_style), input);
+    assert_eq!(preprocess_chordpro_for_render(input, &render_style, None), input);
   }
 
   #[test]
@@ -999,7 +1128,8 @@ mod tests {
     let line_c = "C".repeat(45);
     let line_d = "D".repeat(45);
     let input = format!(
-      "{{columns: 2}}
+      "{{title: Test}}
+{{columns: 2}}
 {{start_of_tab}}
 {line_a}
 {line_b}
@@ -1009,7 +1139,8 @@ mod tests {
 "
     );
     let expected = format!(
-      "{{columns: 2}}
+      "{{title: Test}}
+{{columns: 2}}
 {{start_of_tab}}
 {}
 {}
@@ -1035,14 +1166,15 @@ mod tests {
     );
     let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(&input, &render_style), expected);
+    assert_eq!(preprocess_chordpro_for_render(&input, &render_style, None), expected);
   }
 
   #[test]
   fn tracks_the_current_column_mode_per_tab_block() {
     let long_tab = "X".repeat(50);
     let input = format!(
-      "{{columns: 1}}
+      "{{title: Test}}
+{{columns: 1}}
 {{start_of_tab}}
 {long_tab}
 {{end_of_tab}}
@@ -1053,7 +1185,8 @@ mod tests {
 "
     );
     let expected = format!(
-      "{{columns: 1}}
+      "{{title: Test}}
+{{columns: 1}}
 {{start_of_tab}}
 {long_tab}
 {{end_of_tab}}
@@ -1071,14 +1204,14 @@ mod tests {
     );
     let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(&input, &render_style), expected);
+    assert_eq!(preprocess_chordpro_for_render(&input, &render_style, None), expected);
   }
 
   #[test]
   fn splits_two_line_tab_example_from_real_input() {
-    let input = "{columns: 2}\n{start_of_tab}\ne----------12--12------------12--12--------------12--12--14--14--12--12--\nb--14--14------------14--14------------14--14---------------------------(x2)\n{end_of_tab}\n";
+    let input = "{title: Test}\n{columns: 2}\n{start_of_tab}\ne----------12--12------------12--12--------------12--12--14--14--12--12--\nb--14--14------------14--14------------14--14---------------------------(x2)\n{end_of_tab}\n";
     let render_style = RenderStyleOptions::default();
-    let rendered = preprocess_chordpro_for_render(input, &render_style);
+    let rendered = preprocess_chordpro_for_render(input, &render_style, None);
 
     assert_eq!(rendered.matches("{start_of_tab}").count(), 3);
     assert!(rendered.contains("e----------12--12"));
@@ -1089,7 +1222,8 @@ mod tests {
   #[test]
   fn splits_blank_line_separated_tab_groups_independently() {
     let input = format!(
-      "{{columns: 2}}
+      "{{title: Test}}
+{{columns: 2}}
 {{start_of_tab}}
 {}
 {}
@@ -1104,7 +1238,8 @@ mod tests {
       "D".repeat(45)
     );
     let expected = format!(
-      "{{columns: 2}}
+      "{{title: Test}}
+{{columns: 2}}
 {{start_of_tab}}
 {}
 {}
@@ -1136,12 +1271,13 @@ mod tests {
     );
     let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(&input, &render_style), expected);
+    assert_eq!(preprocess_chordpro_for_render(&input, &render_style, None), expected);
   }
 
   #[test]
   fn splits_six_line_tab_example_from_real_input() {
-    let input = "{columns: 2}
+    let input = "{title: Test}
+{columns: 2}
 {start_of_tab}
 E|------------------------------------------|
 B|-------------------1---1---1---1----------|
@@ -1161,7 +1297,7 @@ E|-------------------1-1-1-1-1-1-1-1--------|
 {end_of_tab}
 ";
     let render_style = RenderStyleOptions::default();
-    let rendered = preprocess_chordpro_for_render(input, &render_style);
+    let rendered = preprocess_chordpro_for_render(input, &render_style, None);
 
     assert_eq!(rendered.matches("{start_of_tab}").count(), 4);
     assert!(rendered.contains("E|----------------"));
@@ -1171,11 +1307,34 @@ E|-------------------1-1-1-1-1-1-1-1--------|
 
   #[test]
   fn falls_back_to_single_column_on_malformed_tab_blocks() {
-    let input = "{columns: 2}\n{start_of_tab}\nE|-----\n";
-    let expected = "{columns: 1}\n{start_of_tab}\nE|-----\n";
+    let input = "{title: Test}\n{columns: 2}\n{start_of_tab}\nE|-----\n";
+    let expected = "{title: Test}\n{columns: 1}\n{start_of_tab}\nE|-----\n";
     let render_style = RenderStyleOptions::default();
 
-    assert_eq!(preprocess_chordpro_for_render(input, &render_style), expected);
+    assert_eq!(preprocess_chordpro_for_render(input, &render_style, None), expected);
+  }
+
+  #[test]
+  fn preprocess_injects_title_from_first_valid_lyric_line_when_metadata_is_missing() {
+    let input = "{comment: Intro}\n[C] [Em] [Am]\n\n[F]Desmarcate del mar [Em]\n";
+    let render_style = RenderStyleOptions::default();
+    let rendered = preprocess_chordpro_for_render(input, &render_style, None);
+
+    assert!(rendered.starts_with("{title: Desmarcate del mar}\n"));
+    assert!(rendered.contains("[C] [Em] [Am]"));
+    assert!(rendered.contains("[F]Desmarcate del mar [Em]"));
+  }
+
+  #[test]
+  fn preprocess_falls_back_to_artist_or_filename_when_no_valid_lyric_title_exists() {
+    let artist_only_input = "{artist: Vetusta Morla}\n[C] [Em] [Am]\n";
+    let render_style = RenderStyleOptions::default();
+    let artist_rendered = preprocess_chordpro_for_render(artist_only_input, &render_style, None);
+    assert!(artist_rendered.starts_with("{title: Vetusta Morla}\n"));
+
+    let filename_rendered =
+      preprocess_chordpro_for_render("[C] [Em] [Am]\n", &render_style, Some("demo-song.cho"));
+    assert!(filename_rendered.starts_with("{title: demo-song}\n"));
   }
 
   #[test]
@@ -1201,6 +1360,18 @@ E|-------------------1-1-1-1-1-1-1-1--------|
     assert_ne!(
       hash_preview_input(chordpro_text, &guitar_style),
       hash_preview_input(chordpro_text, &ukulele_style)
+    );
+  }
+
+  #[test]
+  fn preview_cache_hash_changes_when_derived_title_changes() {
+    let render_style = RenderStyleOptions::default();
+    let first = preprocess_chordpro_for_render("[C]Hello world\n", &render_style, Some("demo.cho"));
+    let second = preprocess_chordpro_for_render("[C]Goodbye world\n", &render_style, Some("demo.cho"));
+
+    assert_ne!(
+      hash_preview_input(&first, &render_style),
+      hash_preview_input(&second, &render_style)
     );
   }
 
@@ -1253,7 +1424,7 @@ E|-------------------1-1-1-1-1-1-1-1--------|
       show_chord_diagrams: true,
       instrument: DiagramInstrument::Ukulele,
     };
-    let rendered = preprocess_chordpro_for_render(input, &render_style);
+    let rendered = preprocess_chordpro_for_render(input, &render_style, None);
 
     assert!(rendered.contains("{define: F# copy Gb}"));
     assert!(rendered.contains("{define: G#m copy Abm}"));
@@ -1269,7 +1440,7 @@ E|-------------------1-1-1-1-1-1-1-1--------|
       show_chord_diagrams: false,
       instrument: DiagramInstrument::Ukulele,
     };
-    let hidden_rendered = preprocess_chordpro_for_render(hidden_input, &hidden_render_style);
+    let hidden_rendered = preprocess_chordpro_for_render(hidden_input, &hidden_render_style, None);
     assert!(!hidden_rendered.contains("{define: F# copy Gb}"));
 
     let defined_input = "{define: F# copy Gb}\n[F#]one\n";
@@ -1277,7 +1448,7 @@ E|-------------------1-1-1-1-1-1-1-1--------|
       show_chord_diagrams: true,
       instrument: DiagramInstrument::Ukulele,
     };
-    let defined_rendered = preprocess_chordpro_for_render(defined_input, &render_style);
+    let defined_rendered = preprocess_chordpro_for_render(defined_input, &render_style, None);
     assert_eq!(defined_rendered.matches("{define: F# copy Gb}").count(), 1);
   }
 }
