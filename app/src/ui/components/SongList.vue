@@ -25,7 +25,9 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   hover: [filePath: string];
+  mousemove: [filePath: string];
   open: [filePath: string];
+  wheel: [];
   focus: [];
   keydown: [event: KeyboardEvent];
 }>();
@@ -65,6 +67,7 @@ defineExpose({
     :tabindex="tabindex"
     @focus="emit('focus')"
     @keydown="emit('keydown', $event)"
+    @wheel="emit('wheel')"
   >
     <div v-if="songs.length === 0" class="songbook-empty">
       {{ emptyMessage }}
@@ -79,6 +82,7 @@ defineExpose({
         selected: selectedSongPath === songEntry.filePath
       }]"
       @mouseenter="emit('hover', songEntry.filePath)"
+      @mousemove="emit('mousemove', songEntry.filePath)"
       @click="emit('open', songEntry.filePath)"
     >
       <span class="song-item-icon" aria-hidden="true">

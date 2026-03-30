@@ -103,7 +103,7 @@ Only record assumptions here when they materially affect behavior, UX, architect
 
 ## Post global usage review (v1.4.x stabilization)
 
-- a keyboard vs mouse selection conflict is still present in song-list interaction when autoscroll and hover compete
+- the keyboard vs mouse selection conflict in Songbook and Performance mode is now resolved by tracking the last input source locally in each parent view, so passive hover no longer overrides keyboard-driven selection during autoscroll
 - the current title fallback can still surface chord-only lines instead of a meaningful label when metadata is missing
 - preview auto-refresh timing can still interrupt editing flow and likely needs a slightly longer debounce
 - additional improvements were identified for:

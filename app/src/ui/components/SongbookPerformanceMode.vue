@@ -34,7 +34,9 @@
               empty-message="No `.cho` files were found in this folder."
               @keydown="handleSongListKeydown"
               @hover="handleSongListHover"
+              @mousemove="handleSongListMouseMove"
               @open="handleSongListOpen"
+              @wheel="handleSongListWheel"
             />
 
             <div v-else class="songbook-empty large">
@@ -179,6 +181,7 @@ type SongListItem = {
   title: string;
   artist: string;
 };
+type InputSource = "keyboard" | "mouse";
 type SongListExpose = {
   focus: () => void;
   getItemElement: (index: number) => HTMLButtonElement | null;
@@ -207,6 +210,7 @@ const previewViewportRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const dockButtonRefs = ref<(HTMLButtonElement | null)[]>([]);
 const listSelectionIndex = ref(-1);
+const songListLastInputSource = ref<InputSource>("mouse");
 const isSongListOpen = ref(true);
 const showPreviewLoadingIndicator = ref(false);
 const activePreviewFrame = ref<PreviewFrameId>("A");
@@ -325,15 +329,33 @@ function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth")
 }
 
 function handleSongListHover(filePath: string): void {
+  if (songListLastInputSource.value !== "mouse") {
+    return;
+  }
+
   const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
   if (nextIndex >= 0) {
     listSelectionIndex.value = nextIndex;
   }
 }
 
-function handleSongListOpen(filePath: string): void {
+function handleSongListMouseMove(filePath: string): void {
+  songListLastInputSource.value = "mouse";
   const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
   if (nextIndex >= 0) {
+    listSelectionIndex.value = nextIndex;
+  }
+}
+
+function handleSongListWheel(): void {
+  songListLastInputSource.value = "mouse";
+}
+
+function handleSongListOpen(filePath: string): void {
+  songListLastInputSource.value = "mouse";
+  const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
+  if (nextIndex >= 0) {
+    listSelectionIndex.value = nextIndex;
     void selectSong(nextIndex, { closeList: false, focusTarget: "list" });
   }
 }
@@ -690,6 +712,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     listSelectionIndex.value = Math.min(listSelectionIndex.value + 1, songs.length - 1);
     scrollPerformanceSelectionIntoView();
@@ -701,6 +724,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     listSelectionIndex.value = Math.max(listSelectionIndex.value - 1, 0);
     scrollPerformanceSelectionIntoView();
@@ -708,6 +732,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
   }
 
   if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     focusDockButton(0);
     return;
@@ -718,6 +743,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     void selectSong(listSelectionIndex.value, { closeList: true, focusTarget: "dock", dockButtonIndex: 0 });
     return;
@@ -728,6 +754,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     void selectSong(listSelectionIndex.value, { closeList: false, focusTarget: "list" });
     return;
@@ -741,18 +768,21 @@ function handleSongListKeydown(event: KeyboardEvent): void {
 
 function handleDockButtonKeydown(event: KeyboardEvent, _index: number): void {
   if (event.key === "ArrowDown") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     void selectRelativeSong(1);
     return;
   }
 
   if (event.key === "ArrowUp") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     void selectRelativeSong(-1);
     return;
   }
 
   if (event.key === "ArrowRight") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
 
     if (isSongListOpen.value) {
@@ -765,6 +795,7 @@ function handleDockButtonKeydown(event: KeyboardEvent, _index: number): void {
   }
 
   if (event.key === "ArrowLeft") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
 
     if (isSongListOpen.value) {
@@ -777,12 +808,14 @@ function handleDockButtonKeydown(event: KeyboardEvent, _index: number): void {
   }
 
   if (event.key === "Enter") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     toggleSongList();
     return;
   }
 
   if (event.key === "Escape") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     props.exitPerformanceMode();
   }

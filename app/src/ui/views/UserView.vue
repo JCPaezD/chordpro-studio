@@ -72,6 +72,7 @@ const {
 type PreviewFrameId = "A" | "B";
 type SongbookSortField = "title" | "artist";
 type SongbookSortDirection = "asc" | "desc";
+type InputSource = "keyboard" | "mouse";
 
 const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
 const PREVIEW_FRAME_TRANSITION_MS = 180;
@@ -199,6 +200,7 @@ const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate }
 const viewerFrameSrcA = computed(() => applyPreviewFit(previewFrameSrcA.value));
 const viewerFrameSrcB = computed(() => applyPreviewFit(previewFrameSrcB.value));
 const songbookSelectionPath = ref<string | null>(null);
+const songListLastInputSource = ref<InputSource>("mouse");
 const currentSongbookSelectionIndex = computed(() => {
   const items = songbookListItems.value;
   if (!songbookSelectionPath.value) {
@@ -528,10 +530,25 @@ function setSongbookSelectionByIndex(index: number): void {
 }
 
 function handleSongListHover(filePath: string): void {
+  if (songListLastInputSource.value !== "mouse") {
+    return;
+  }
+
   songbookSelectionPath.value = filePath;
 }
 
+function handleSongListMouseMove(filePath: string): void {
+  songListLastInputSource.value = "mouse";
+  songbookSelectionPath.value = filePath;
+}
+
+function handleSongListWheel(): void {
+  songListLastInputSource.value = "mouse";
+}
+
 function handleSongListOpen(filePath: string): void {
+  songListLastInputSource.value = "mouse";
+  songbookSelectionPath.value = filePath;
   void openSongFromSongbook(filePath, { restoreListFocus: true });
 }
 
@@ -569,6 +586,7 @@ function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { resto
   const selectedIndex = currentSongbookSelectionIndex.value >= 0 ? currentSongbookSelectionIndex.value : 0;
 
   if (event.key === "ArrowDown") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     event.stopPropagation();
     setSongbookSelectionByIndex(Math.min(selectedIndex + 1, songs.length - 1));
@@ -577,6 +595,7 @@ function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { resto
   }
 
   if (event.key === "ArrowUp") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     event.stopPropagation();
     setSongbookSelectionByIndex(Math.max(selectedIndex - 1, 0));
@@ -585,6 +604,7 @@ function handleSongbookNavigationKeydown(event: KeyboardEvent, options?: { resto
   }
 
   if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     event.stopPropagation();
     const selectedSong = songs[selectedIndex];
@@ -1110,7 +1130,9 @@ async function clearApiKey(): Promise<void> {
                   @focus="handleSongbookListFocus"
                   @keydown="handleSongbookListKeydown"
                   @hover="handleSongListHover"
+                  @mousemove="handleSongListMouseMove"
                   @open="handleSongListOpen"
+                  @wheel="handleSongListWheel"
                 />
               </aside>
 

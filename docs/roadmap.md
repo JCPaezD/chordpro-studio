@@ -77,6 +77,7 @@ Current status:
 - v1.4.x Songbook list now uses a compact two-line title/artist layout with a folder-name header badge, separate active and selected states, hover-driven selection, and aligned `ArrowUp` / `ArrowDown` / `Enter` / `Space` behavior between list focus and global Songbook navigation
 - v1.4.x Songbook list sorting now provides compact header controls for `Title` / `Artist` with asc/desc toggling, deterministic in-memory ordering, and path-based preservation of active and selected songs across reordering
 - v1.4.x Songbook and Performance mode now share a single reusable `SongList` UI component with the same two-line item layout, visual states and ordered song list, while keeping focus, keyboard navigation, scroll behavior and song-opening logic local to each parent view
+- v1.4.x song-list selection now tracks keyboard versus mouse input per view, so keyboard navigation remains authoritative during autoscroll until real mouse movement, wheel input or click explicitly returns control to hover selection
 - v1.4.x chord-diagram preferences now support `Ukulele` end-to-end through preview, single-song PDF export and songbook export, using the real ChordPro ukulele preset plus transparent enharmonic aliases so sharp-based chords such as `F#`, `G#m`, `D#m`, `C#m` and `F#m` render with ukulele diagrams while keeping their original chord names visible
 - v1.4.x ukulele custom chord definitions remain limited to ukulele-compatible 4-string shapes; existing 6-string custom definitions can still work in guitar and keyboard contexts, but are not yet adapted automatically for ukulele
 - v1.4.x saving an existing `.cho` file now preserves file identity by default, prompts explicitly when metadata suggests a different filename, and routes intentional renames through `Save as new file`, including controlled case-only renames on Windows when the user confirms the new casing
@@ -130,13 +131,6 @@ Current status:
 ## Current roadmap
 
 ## v1.4.x - Post-release friction fixes & UX improvements
-
-### Bug fixes
-
-- fix selection inconsistency when mixing keyboard navigation and mouse hover:
-  - current behavior allows mouse position to override keyboard selection during autoscroll
-  - expected behavior:
-    - keyboard navigation should remain authoritative unless explicit mouse interaction occurs
 
 ### UX improvements (lightweight)
 
