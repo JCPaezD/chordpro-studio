@@ -243,7 +243,7 @@ Current protected actions are:
 - triggering a new conversion from `Convert`
 - closing the application window
 
-Songbook performance mode keeps reusing that same workspace state. It does not create a second reader-specific store; it only changes layout and navigation rules in `User`, and deliberately bypasses unsaved-change blocking while browsing songs in that consumption-focused mode.
+Songbook performance mode keeps reusing that same workspace state. It does not create a second reader-specific store; it only changes layout and navigation rules in `User`, and song changes from that mode now reuse the same `.cho` unsaved-change protection as normal Songbook navigation.
 
 ---
 

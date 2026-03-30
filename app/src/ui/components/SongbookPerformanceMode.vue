@@ -201,7 +201,7 @@ const props = defineProps<{
   isRefreshingPreview: boolean;
   previewError: string;
   previewSrc: string;
-  openSong: (filePath: string) => Promise<void>;
+  openSong: (filePath: string) => Promise<boolean>;
   exitPerformanceMode: () => void;
 }>();
 
@@ -660,7 +660,10 @@ async function selectSong(
     listSelectionIndex.value = index;
   }
 
-  await props.openSong(songEntry.filePath);
+  const opened = await props.openSong(songEntry.filePath);
+  if (!opened) {
+    return;
+  }
 
   if (options?.closeList) {
     closeSongList({

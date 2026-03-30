@@ -1,14 +1,29 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const workspace = useSongWorkspace();
-const saveButtonRef = ref<HTMLButtonElement | null>(null);
+const primaryActionButtonRef = ref<HTMLButtonElement | null>(null);
+const modalMode = computed(() => workspace.unsavedContentModalMode.value);
+const isDirtyMode = computed(() => modalMode.value === "dirty");
+const isRawInputMode = computed(() => modalMode.value === "raw-input");
+const modalEyebrow = computed(() => (isRawInputMode.value ? "Original text" : "Unsaved content"));
+const modalTitle = computed(() =>
+  isRawInputMode.value ? "You have original text that would be discarded." : "You have unsaved content."
+);
+const modalQuestion = computed(() =>
+  isRawInputMode.value ? workspace.rawInputDiscardMessage.value : "What do you want to do?"
+);
 
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape" && workspace.showUnsavedContentModal.value) {
     event.preventDefault();
+    if (isRawInputMode.value) {
+      workspace.confirmRawInputCancel();
+      return;
+    }
+
     workspace.confirmUnsavedContentCancel();
   }
 }
@@ -18,7 +33,7 @@ watch(
   async (visible) => {
     if (visible) {
       await nextTick();
-      saveButtonRef.value?.focus();
+      primaryActionButtonRef.value?.focus();
       window.addEventListener("keydown", handleKeydown);
       return;
     }
@@ -38,44 +53,62 @@ onBeforeUnmount(() => {
       <div
         v-if="workspace.showUnsavedContentModal.value"
         class="modal-backdrop"
-        @click.self="workspace.confirmUnsavedContentCancel()"
+        @click.self="isRawInputMode ? workspace.confirmRawInputCancel() : workspace.confirmUnsavedContentCancel()"
       >
         <div class="modal-card">
           <div class="modal-copy">
-            <p class="eyebrow">Unsaved content</p>
-            <h2>You have unsaved content.</h2>
+            <p class="eyebrow">{{ modalEyebrow }}</p>
+            <h2>{{ modalTitle }}</h2>
           </div>
 
-          <div v-if="workspace.unsavedContentMetadataLine.value" class="modal-context">
+          <div v-if="isDirtyMode && workspace.unsavedContentMetadataLine.value" class="modal-context">
             <p class="modal-meta">
               {{ workspace.unsavedContentMetadataLine.value }}
             </p>
           </div>
-          <p class="modal-question">What do you want to do?</p>
+          <p class="modal-question">{{ modalQuestion }}</p>
 
           <div class="modal-actions">
-            <button
-              ref="saveButtonRef"
-              class="primary-button"
-              :disabled="workspace.isResolvingUnsavedContent.value"
-              @click="workspace.confirmUnsavedContentSave()"
-            >
-              Save
-            </button>
-            <button
-              class="mini-button"
-              :disabled="workspace.isResolvingUnsavedContent.value"
-              @click="workspace.confirmUnsavedContentDiscard()"
-            >
-              Discard
-            </button>
-            <button
-              class="secondary-button"
-              :disabled="workspace.isResolvingUnsavedContent.value"
-              @click="workspace.confirmUnsavedContentCancel()"
-            >
-              Cancel
-            </button>
+            <template v-if="isDirtyMode">
+              <button
+                ref="primaryActionButtonRef"
+                class="primary-button"
+                :disabled="workspace.isResolvingUnsavedContent.value"
+                @click="workspace.confirmUnsavedContentSave()"
+              >
+                Save
+              </button>
+              <button
+                class="mini-button"
+                :disabled="workspace.isResolvingUnsavedContent.value"
+                @click="workspace.confirmUnsavedContentDiscard()"
+              >
+                Discard
+              </button>
+              <button
+                class="secondary-button"
+                :disabled="workspace.isResolvingUnsavedContent.value"
+                @click="workspace.confirmUnsavedContentCancel()"
+              >
+                Cancel
+              </button>
+            </template>
+
+            <template v-else>
+              <button
+                ref="primaryActionButtonRef"
+                class="primary-button"
+                @click="workspace.confirmRawInputDiscard()"
+              >
+                Discard
+              </button>
+              <button
+                class="secondary-button"
+                @click="workspace.confirmRawInputCancel()"
+              >
+                Cancel
+              </button>
+            </template>
           </div>
         </div>
       </div>

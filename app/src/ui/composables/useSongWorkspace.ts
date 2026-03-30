@@ -35,6 +35,7 @@ type RunPipelineOptions = {
 };
 
 type UnsavedContentResolution = "save" | "discard" | "cancel";
+type RawInputDiscardResolution = "discard" | "cancel";
 type SaveFilenameMismatchResolution = "keep-current" | "save-as-new" | "cancel";
 type ExistingDocumentSaveTarget = {
   writePath: string;
@@ -66,8 +67,10 @@ export type SongWorkspace = {
   songbook: Ref<Songbook | null>;
   selectedSongPath: ComputedRef<string>;
   hasUnsavedChanges: ComputedRef<boolean>;
-  showUnsavedContentModal: Ref<boolean>;
+  showUnsavedContentModal: ComputedRef<boolean>;
+  unsavedContentModalMode: Ref<"dirty" | "raw-input" | null>;
   unsavedContentMetadataLine: ComputedRef<string>;
+  rawInputDiscardMessage: Ref<string>;
   isResolvingUnsavedContent: Ref<boolean>;
   showSaveFilenameMismatchModal: Ref<boolean>;
   saveFilenameMismatchCurrentName: Ref<string>;
@@ -84,13 +87,15 @@ export type SongWorkspace = {
   openSongbookFolder(): Promise<void>;
   refreshSongbook(): Promise<void>;
   clearSongbook(): Promise<void>;
-  openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<void>;
+  openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<boolean>;
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
   confirmUnsavedContentSave(): Promise<void>;
   confirmUnsavedContentDiscard(): void;
   confirmUnsavedContentCancel(): void;
+  confirmRawInputDiscard(): void;
+  confirmRawInputCancel(): void;
   confirmKeepCurrentFileName(): void;
   confirmSaveAsNewFile(): void;
   confirmSaveFilenameMismatchCancel(): void;
@@ -139,11 +144,13 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     return document.value.chordProText.trim().length > 0;
   });
-  const showUnsavedContentModal = ref(false);
+  const unsavedContentModalMode = ref<"dirty" | "raw-input" | null>(null);
+  const showUnsavedContentModal = computed(() => unsavedContentModalMode.value !== null);
   const isResolvingUnsavedContent = ref(false);
   const showSaveFilenameMismatchModal = ref(false);
   const saveFilenameMismatchCurrentName = ref("");
   const saveFilenameMismatchSuggestedName = ref("");
+  const rawInputDiscardMessage = ref("");
   const unsavedContentMetadataLine = computed(() => {
     const title = songMetadata.value.title?.trim();
     const artist = songMetadata.value.artist?.trim();
@@ -169,6 +176,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let currentAbortController: AbortController | null = null;
   let pendingUnsavedContentResolution: Promise<UnsavedContentResolution> | null = null;
   let resolveUnsavedContentResolution: ((choice: UnsavedContentResolution) => void) | null = null;
+  let pendingRawInputDiscardResolution: Promise<RawInputDiscardResolution> | null = null;
+  let resolveRawInputDiscardResolution: ((choice: RawInputDiscardResolution) => void) | null = null;
   let pendingSaveFilenameMismatchResolution: Promise<SaveFilenameMismatchResolution> | null = null;
   let resolveSaveFilenameMismatchResolution: ((choice: SaveFilenameMismatchResolution) => void) | null = null;
 
@@ -424,20 +433,37 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     clearGeneratedState();
   }
 
-  function hasContentThatNeedsClearConfirmation(): boolean {
-    if (rawInput.value.trim().length > 0) {
-      return true;
+  function hasRawInputContent(): boolean {
+    return rawInput.value.trim().length > 0;
+  }
+
+  function clearUnsavedModalState(): void {
+    unsavedContentModalMode.value = null;
+    rawInputDiscardMessage.value = "";
+  }
+
+  function requestRawInputDiscardResolution(message: string): Promise<RawInputDiscardResolution> {
+    if (!hasRawInputContent()) {
+      return Promise.resolve("discard");
     }
 
-    if (cleanedText.value.trim().length > 0 || songJson.value.trim().length > 0) {
-      return true;
+    if (pendingRawInputDiscardResolution) {
+      return pendingRawInputDiscardResolution;
     }
 
-    if (document.value.filePath) {
-      return document.value.dirty;
-    }
+    isResolvingUnsavedContent.value = false;
+    unsavedContentModalMode.value = "raw-input";
+    rawInputDiscardMessage.value = message;
+    pendingRawInputDiscardResolution = new Promise<RawInputDiscardResolution>((resolve) => {
+      resolveRawInputDiscardResolution = (choice) => {
+        clearUnsavedModalState();
+        pendingRawInputDiscardResolution = null;
+        resolveRawInputDiscardResolution = null;
+        resolve(choice);
+      };
+    });
 
-    return document.value.chordProText.trim().length > 0;
+    return pendingRawInputDiscardResolution;
   }
 
   function sanitizeFilenamePart(value: string): string {
@@ -1016,10 +1042,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     isResolvingUnsavedContent.value = false;
-    showUnsavedContentModal.value = true;
+    unsavedContentModalMode.value = "dirty";
     pendingUnsavedContentResolution = new Promise<UnsavedContentResolution>((resolve) => {
       resolveUnsavedContentResolution = (choice) => {
-        showUnsavedContentModal.value = false;
+        clearUnsavedModalState();
         isResolvingUnsavedContent.value = false;
         pendingUnsavedContentResolution = null;
         resolveUnsavedContentResolution = null;
@@ -1030,10 +1056,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     return pendingUnsavedContentResolution;
   }
 
-  async function resolveUnsavedChanges(options?: { includeRawInput?: boolean }): Promise<UnsavedContentResolution> {
-    const shouldProtect = options?.includeRawInput ? hasContentThatNeedsClearConfirmation() : hasUnsavedChanges.value;
-
-    if (!shouldProtect) {
+  async function resolveUnsavedChanges(): Promise<UnsavedContentResolution> {
+    if (!hasUnsavedChanges.value) {
       return "discard";
     }
 
@@ -1046,9 +1070,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   async function requestClearAllState(): Promise<void> {
-    const resolution = await resolveUnsavedChanges({ includeRawInput: true });
+    const resolution = await resolveUnsavedChanges();
 
     if (resolution === "cancel") {
+      return;
+    }
+
+    const rawInputResolution = await requestRawInputDiscardResolution("Discard the current original text?");
+    if (rawInputResolution === "cancel") {
       return;
     }
 
@@ -1093,6 +1122,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     resolveUnsavedContentResolution?.("cancel");
+  }
+
+  function confirmRawInputDiscard(): void {
+    resolveRawInputDiscardResolution?.("discard");
+  }
+
+  function confirmRawInputCancel(): void {
+    resolveRawInputDiscardResolution?.("cancel");
   }
 
   function confirmKeepCurrentFileName(): void {
@@ -1183,9 +1220,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return false;
     }
   }
-  async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<void> {
+  async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<boolean> {
     if (!options?.bypassUnsavedChanges && !(await ensureDocumentCanBeReplaced())) {
-      return;
+      return false;
     }
 
     cancelActiveGeneration();
@@ -1216,8 +1253,11 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           console.error("Could not persist lastOpenedSongPath.", err);
         }
       }
+
+      return true;
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Could not open the selected song.";
+      return false;
     }
   }
 
@@ -1259,15 +1299,24 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         const currentWindow = getCurrentWindow();
         unlistenWindowCloseRequested = await currentWindow.onCloseRequested(async (event) => {
           try {
-            if (!hasUnsavedChanges.value) {
+            if (!hasUnsavedChanges.value && !hasRawInputContent()) {
               return;
             }
 
             event.preventDefault();
 
-            const resolution = await resolveUnsavedChanges();
+            if (hasUnsavedChanges.value) {
+              const resolution = await resolveUnsavedChanges();
 
-            if (resolution === "cancel") {
+              if (resolution === "cancel") {
+                return;
+              }
+            }
+
+            const rawInputResolution = await requestRawInputDiscardResolution(
+              "Closing the app will discard the current original text. Continue?"
+            );
+            if (rawInputResolution === "cancel") {
               return;
             }
 
@@ -1389,7 +1438,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     selectedSongPath,
     hasUnsavedChanges,
     showUnsavedContentModal,
+    unsavedContentModalMode,
     unsavedContentMetadataLine,
+    rawInputDiscardMessage,
     isResolvingUnsavedContent,
     showSaveFilenameMismatchModal,
     saveFilenameMismatchCurrentName,
@@ -1413,6 +1464,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     confirmUnsavedContentSave,
     confirmUnsavedContentDiscard,
     confirmUnsavedContentCancel,
+    confirmRawInputDiscard,
+    confirmRawInputCancel,
     confirmKeepCurrentFileName,
     confirmSaveAsNewFile,
     confirmSaveFilenameMismatchCancel,

@@ -712,7 +712,11 @@ watch(
 
 
 async function openSongFromSongbook(filePath: string, options?: { restoreListFocus?: boolean }): Promise<void> {
-  await openSongFile(filePath);
+  const opened = await openSongFile(filePath);
+
+  if (!opened) {
+    return;
+  }
 
   if (options?.restoreListFocus) {
     void nextTick(() => {
@@ -721,8 +725,8 @@ async function openSongFromSongbook(filePath: string, options?: { restoreListFoc
   }
 }
 
-async function openSongInPerformanceMode(filePath: string): Promise<void> {
-  await openSongFile(filePath, { bypassUnsavedChanges: true });
+async function openSongInPerformanceMode(filePath: string): Promise<boolean> {
+  return openSongFile(filePath);
 }
 
 function handleWindowKeydown(event: KeyboardEvent): void {

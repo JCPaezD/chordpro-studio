@@ -303,7 +303,7 @@ When documentation files are manually edited by the user, Codex should treat the
 ## Unsaved content safeguard
 
 - destructive clear actions in Convert (`New Sheet`) and Playground (`Clear all`) now reuse a shared app-level Save / Discard / Cancel confirmation modal instead of clearing immediately
-- the safeguard uses a lightweight detection rule: prompt only when content is present and not already safely persisted, with raw input treated as unsaved content even before ChordPro is saved
+- `.cho` dirty remains the only real unsaved-change state; non-empty original text is protected separately through the same app modal with a reduced `Discard / Cancel` variant instead of being folded into the main dirty logic
 - when metadata is already available through the existing workspace parsing/metadata path, the modal shows `Title - Artist` (or the single available value) as a secondary line
 - `Save` reuses the existing save flow and only clears content after a successful save; failed or cancelled saves leave the content intact
 
@@ -366,6 +366,7 @@ Workspace document behavior:
 - reconverting an already opened `.cho` preserves the active `filePath` and updates the parsed song metadata immediately so the editor header, save logic and song list refresh stay aligned
 - running `Convert` from raw input now creates a detached unsaved document with no associated `filePath`, so saving a newly generated song opens `Save As` instead of overwriting the previously opened songbook file
 - Songbook list interaction in the main `User` view now mirrors the performance-mode list model: `active` stays tied to the song currently opened in preview, `selected` tracks keyboard or mouse browsing, hover can update selection without opening the song, and the list container keeps keyboard ownership so `ArrowUp` / `ArrowDown` / `Enter` / `Space` behave consistently even after focus leaves the list
+- Performance mode now reuses the same `.cho` dirty protection as normal Songbook song changes instead of bypassing it, while `New Sheet` and app close apply any needed original-text protection only after the `.cho` decision has been resolved
 - Songbook list sorting preserves both the active previewed song and the locally selected list item by `filePath` rather than by index, so reordering does not silently change the song or break the existing keyboard navigation model
 - unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window
 - unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`
