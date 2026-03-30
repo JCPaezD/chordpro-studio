@@ -134,7 +134,27 @@ Current status:
 
 ## v1.4.x - Post-release friction fixes & UX improvements
 
-### UX improvements (lightweight)
+### UX feedback consistency
+
+- improve abort action feedback so cancellation is visible and non-ambiguous in the current view
+- improve songbook load feedback with clearer empty-folder guidance and visible loaded-song counts
+
+### Settings UX improvements
+
+- refine the Gemini API key modal with clearer copy, better visibility/editing ergonomics and stronger validation feedback
+
+### Input validation (light UX)
+
+- guide empty `Generate` actions without turning the flow into a hard-blocking form
+
+### Desktop polish
+
+- persist window size and position between desktop sessions
+- restore the last active main view on startup when it does not conflict with restored songbook context
+
+### Editor improvements
+
+- add lightweight undo / redo UI controls for the main text editors
 
 
 ## v1.x - Additional UX / dev improvements
@@ -177,7 +197,7 @@ Current status:
 ### Songbook management features
 
 - delete song/file from the songbook with proper confirmation
-- create a new empty song (`New`)
+- create a new empty song from scratch directly in the songbook (`New`) instead of relying on the current convert/save workaround
 - add `Save As` to duplicate or create a copy with a new name
 
 ### Songbook / export improvements
