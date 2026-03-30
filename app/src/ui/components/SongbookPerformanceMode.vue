@@ -244,6 +244,7 @@ const props = defineProps<{
   songListItems: SongListItem[];
   songbookError: string;
   selectedSongPath: string;
+  selectedListPath: string | null;
   currentSongTitle: string;
   isGeneratingPreview: boolean;
   isRefreshingPreview: boolean;
@@ -254,13 +255,15 @@ const props = defineProps<{
   openSong: (filePath: string) => Promise<boolean>;
   exitPerformanceMode: () => void;
 }>();
+const emit = defineEmits<{
+  "selected-change": [filePath: string | null];
+}>();
 
 const songListRef = ref<SongListExpose | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const dockButtonRefs = ref<(HTMLButtonElement | null)[]>([]);
-const listSelectionIndex = ref(-1);
-const songListLastInputSource = ref<InputSource>("mouse");
+const songListLastInputSource = ref<InputSource>("keyboard");
 const isSongListOpen = ref(true);
 const showPreviewLoadingIndicator = ref(false);
 const activePreviewFrame = ref<PreviewFrameId>("A");
@@ -292,42 +295,71 @@ const canSelectNextSong = computed(() => {
   const songs = songEntries.value;
   return songs.length > 0 && currentSongIndex.value >= 0 && currentSongIndex.value < songs.length - 1;
 });
-const selectedSongListPath = computed(() => {
-  const songEntry = songEntries.value[listSelectionIndex.value];
-  return songEntry?.filePath ?? null;
+const currentSelectionIndex = computed(() => {
+  const songs = songEntries.value;
+  if (!props.selectedListPath) {
+    return -1;
+  }
+
+  return songs.findIndex((songEntry) => songEntry.filePath === props.selectedListPath);
 });
+const selectedSongListPath = computed(() => props.selectedListPath);
 const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
 const activePreviewBaseUrl = computed(() => props.previewSrc);
 const nextRenderedPreviewUrl = computed(() => applyFit(activePreviewBaseUrl.value));
 const hasBufferedPreview = computed(() => !!bufferedFrameSrcA.value || !!bufferedFrameSrcB.value);
 
+function setSelectedListPath(filePath: string | null): void {
+  if (props.selectedListPath === filePath) {
+    return;
+  }
+
+  emit("selected-change", filePath);
+}
+
 function syncPerformanceSelection(): void {
   const songs = songEntries.value;
 
   if (songs.length === 0) {
-    listSelectionIndex.value = -1;
+    setSelectedListPath(null);
     return;
   }
 
-  if (listSelectionIndex.value < 0 || listSelectionIndex.value >= songs.length) {
-    listSelectionIndex.value = currentSongIndex.value >= 0 ? currentSongIndex.value : 0;
+  if (currentSelectionIndex.value >= 0) {
     return;
   }
 
-  if (!isSongListOpen.value && currentSongIndex.value >= 0) {
-    listSelectionIndex.value = currentSongIndex.value;
+  if (currentSongIndex.value >= 0) {
+    setSelectedListPath(songEntries.value[currentSongIndex.value]?.filePath ?? null);
     return;
   }
+
+  setSelectedListPath(songEntries.value[0]?.filePath ?? null);
 }
 
-function syncListSelectionToCurrentSong(): void {
-  const songs = songEntries.value;
-  if (songs.length === 0) {
-    listSelectionIndex.value = -1;
-    return;
+function getSongListIndexByPath(filePath: string | null): number {
+  if (!filePath) {
+    return -1;
   }
 
-  listSelectionIndex.value = currentSongIndex.value >= 0 ? currentSongIndex.value : 0;
+  return songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
+}
+
+function isPerformancePathVisible(filePath: string | null): boolean {
+  const index = getSongListIndexByPath(filePath);
+  if (index < 0) {
+    return false;
+  }
+
+  const itemElement = songListRef.value?.getItemElement(index);
+  const rootElement = songListRef.value?.getRootElement();
+  if (!itemElement || !rootElement) {
+    return false;
+  }
+
+  const itemRect = itemElement.getBoundingClientRect();
+  const rootRect = rootElement.getBoundingClientRect();
+  return itemRect.top >= rootRect.top && itemRect.bottom <= rootRect.bottom;
 }
 
 function focusSongList(): void {
@@ -364,8 +396,7 @@ function setDockButtonRef(index: number) {
   };
 }
 
-function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
-  const index = listSelectionIndex.value;
+function scrollPerformanceIndexIntoView(index: number, behavior: ScrollBehavior = "smooth"): void {
   if (index < 0) {
     return;
   }
@@ -378,23 +409,46 @@ function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth")
   });
 }
 
+function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
+  scrollPerformanceIndexIntoView(currentSelectionIndex.value, behavior);
+}
+
+function alignPerformanceViewportToActiveSong(behavior: ScrollBehavior = "auto"): void {
+  if (!isSongListOpen.value) {
+    return;
+  }
+
+  void nextTick(() => {
+    const activeIndex = currentSongIndex.value;
+    if (activeIndex < 0) {
+      scrollPerformanceSelectionIntoView(behavior);
+      return;
+    }
+
+    songListRef.value?.getItemElement(activeIndex)?.scrollIntoView({
+      block: "nearest",
+      behavior
+    });
+
+    const activePath = props.selectedSongPath;
+    const selectionPath = props.selectedListPath;
+    if (selectionPath && selectionPath !== activePath && !isPerformancePathVisible(selectionPath)) {
+      setSelectedListPath(activePath);
+    }
+  });
+}
+
 function handleSongListHover(filePath: string): void {
   if (songListLastInputSource.value !== "mouse") {
     return;
   }
 
-  const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
-  if (nextIndex >= 0) {
-    listSelectionIndex.value = nextIndex;
-  }
+  setSelectedListPath(filePath);
 }
 
 function handleSongListMouseMove(filePath: string): void {
   songListLastInputSource.value = "mouse";
-  const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
-  if (nextIndex >= 0) {
-    listSelectionIndex.value = nextIndex;
-  }
+  setSelectedListPath(filePath);
 }
 
 function handleSongListWheel(): void {
@@ -403,16 +457,15 @@ function handleSongListWheel(): void {
 
 function handleSongListOpen(filePath: string): void {
   songListLastInputSource.value = "mouse";
+  setSelectedListPath(filePath);
   const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
   if (nextIndex >= 0) {
-    listSelectionIndex.value = nextIndex;
     void selectSong(nextIndex, { closeList: false, focusTarget: "list" });
   }
 }
 
 function openSongList(): void {
   isSongListOpen.value = true;
-  syncListSelectionToCurrentSong();
   focusSongList();
 }
 
@@ -707,7 +760,7 @@ async function selectSong(
   }
 
   if (!options?.preserveListSelection) {
-    listSelectionIndex.value = index;
+    setSelectedListPath(songEntry.filePath);
   }
 
   const opened = await props.openSong(songEntry.filePath);
@@ -753,22 +806,24 @@ async function selectRelativeSong(delta: number): Promise<void> {
   await selectSong(nextIndex, {
     closeList: false,
     focusTarget: "preserve",
-    preserveListSelection: isSongListOpen.value
+    preserveListSelection: true
   });
 }
 
 function handleSongListKeydown(event: KeyboardEvent): void {
   const songs = songEntries.value;
+  const selectedIndex = currentSelectionIndex.value >= 0 ? currentSelectionIndex.value : 0;
 
   if (event.key === "ArrowDown") {
     if (songs.length === 0) {
       return;
     }
 
+    const nextIndex = Math.min(selectedIndex + 1, songs.length - 1);
     songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    listSelectionIndex.value = Math.min(listSelectionIndex.value + 1, songs.length - 1);
-    scrollPerformanceSelectionIntoView();
+    setSelectedListPath(songs[nextIndex]?.filePath ?? null);
+    scrollPerformanceIndexIntoView(nextIndex);
     return;
   }
 
@@ -777,10 +832,11 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
+    const nextIndex = Math.max(selectedIndex - 1, 0);
     songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    listSelectionIndex.value = Math.max(listSelectionIndex.value - 1, 0);
-    scrollPerformanceSelectionIntoView();
+    setSelectedListPath(songs[nextIndex]?.filePath ?? null);
+    scrollPerformanceIndexIntoView(nextIndex);
     return;
   }
 
@@ -798,7 +854,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
 
     songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    void selectSong(listSelectionIndex.value, { closeList: true, focusTarget: "dock", dockButtonIndex: 0 });
+    void selectSong(selectedIndex, { closeList: true, focusTarget: "dock", dockButtonIndex: 0 });
     return;
   }
 
@@ -809,7 +865,7 @@ function handleSongListKeydown(event: KeyboardEvent): void {
 
     songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    void selectSong(listSelectionIndex.value, { closeList: false, focusTarget: "list" });
+    void selectSong(selectedIndex, { closeList: false, focusTarget: "list" });
     return;
   }
 
@@ -935,7 +991,7 @@ watch(
 );
 
 watch(
-  () => [props.songbook, props.selectedSongPath],
+  () => [props.songbook, props.selectedSongPath, props.selectedListPath],
   () => {
     syncPerformanceSelection();
   },
@@ -959,7 +1015,7 @@ watch(
 
 onMounted(() => {
   focusSongList();
-  scrollPerformanceSelectionIntoView("auto");
+  alignPerformanceViewportToActiveSong("auto");
   window.addEventListener("keydown", handleWindowKeydown);
 
   void nextTick(() => {

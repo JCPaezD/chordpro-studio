@@ -473,9 +473,9 @@ watch(isPerformanceMode, (value, previousValue) => {
       pendingPreviewFrame.value = entryFrame;
     }
 
-    if (activePanel.value === "songbook" && selectedSongPath.value) {
-      syncSongbookSelectionToActiveSong();
-      scrollSongbookSelectionIntoView("auto");
+    if (activePanel.value === "songbook") {
+      syncSongbookSelection();
+      alignSongbookViewportToActiveSong("auto");
     }
   }
 }, { immediate: true });
@@ -496,28 +496,8 @@ function syncSongbookSelection(): void {
     return;
   }
 
-  const selectedIndex = selectedSongPath.value
-    ? songs.findIndex((songEntry) => songEntry.filePath === selectedSongPath.value)
-    : -1;
-
-  if (selectedIndex >= 0) {
-    songbookSelectionPath.value = songs[selectedIndex]?.filePath ?? null;
-    return;
-  }
-
   const currentSelectionIndex = currentSongbookSelectionIndex.value;
   if (currentSelectionIndex >= 0) {
-    return;
-  }
-
-  songbookSelectionPath.value = songs[0]?.filePath ?? null;
-}
-
-function syncSongbookSelectionToActiveSong(): void {
-  const songs = songbookListItems.value;
-
-  if (songs.length === 0) {
-    songbookSelectionPath.value = null;
     return;
   }
 
@@ -533,8 +513,33 @@ function syncSongbookSelectionToActiveSong(): void {
   songbookSelectionPath.value = songs[0]?.filePath ?? null;
 }
 
-function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
-  const index = currentSongbookSelectionIndex.value;
+function getSongbookListIndexByPath(filePath: string | null): number {
+  if (!filePath) {
+    return -1;
+  }
+
+  return songbookListItems.value.findIndex((songEntry) => songEntry.filePath === filePath);
+}
+
+function isSongbookPathVisible(filePath: string | null): boolean {
+  const index = getSongbookListIndexByPath(filePath);
+  if (index < 0) {
+    return false;
+  }
+
+  const rootElement = songListRef.value?.getRootElement();
+  const itemElement = songListRef.value?.getItemElement(index);
+  if (!rootElement || !itemElement) {
+    return false;
+  }
+
+  const rootRect = rootElement.getBoundingClientRect();
+  const itemRect = itemElement.getBoundingClientRect();
+  return itemRect.top >= rootRect.top && itemRect.bottom <= rootRect.bottom;
+}
+
+function scrollSongbookPathIntoView(filePath: string | null, behavior: ScrollBehavior = "smooth"): void {
+  const index = getSongbookListIndexByPath(filePath);
   if (index < 0) {
     return;
   }
@@ -544,6 +549,36 @@ function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): v
       block: "nearest",
       behavior
     });
+  });
+}
+
+function scrollSongbookSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
+  scrollSongbookPathIntoView(songbookSelectionPath.value, behavior);
+}
+
+function alignSongbookViewportToActiveSong(behavior: ScrollBehavior = "auto"): void {
+  const activePath = selectedSongPath.value;
+  if (!activePath) {
+    scrollSongbookSelectionIntoView(behavior);
+    return;
+  }
+
+  void nextTick(() => {
+    const activeIndex = getSongbookListIndexByPath(activePath);
+    if (activeIndex < 0) {
+      scrollSongbookSelectionIntoView(behavior);
+      return;
+    }
+
+    songListRef.value?.getItemElement(activeIndex)?.scrollIntoView({
+      block: "nearest",
+      behavior
+    });
+
+    const selectionPath = songbookSelectionPath.value;
+    if (selectionPath && selectionPath !== activePath && !isSongbookPathVisible(selectionPath)) {
+      songbookSelectionPath.value = activePath;
+    }
   });
 }
 
@@ -577,6 +612,10 @@ function handleSongListOpen(filePath: string): void {
   songListLastInputSource.value = "mouse";
   songbookSelectionPath.value = filePath;
   void openSongFromSongbook(filePath, { restoreListFocus: true });
+}
+
+function handlePerformanceSelectionChange(filePath: string | null): void {
+  songbookSelectionPath.value = filePath;
 }
 
 function toggleSongbookSort(field: SongbookSortField): void {
@@ -671,29 +710,28 @@ watch(
       return;
     }
 
-    if (activePanel.value !== "songbook" || isPerformanceMode.value || !selectedSongPath.value) {
+    if (activePanel.value !== "songbook" || isPerformanceMode.value) {
       return;
     }
 
-    syncSongbookSelectionToActiveSong();
+    syncSongbookSelection();
     scrollSongbookSelectionIntoView("auto");
   }
 );
 
 watch(
-  () => [activePanel.value, selectedSongPath.value] as const,
-  ([panel, filePath], previousValue) => {
-    if (panel !== "songbook" || isPerformanceMode.value) {
+  () => [activePanel.value, isPerformanceMode.value] as const,
+  ([panel, performanceMode], previousValue) => {
+    if (panel !== "songbook" || performanceMode) {
       return;
     }
 
-    const [previousPanel, previousFilePath] = previousValue ?? [];
-    const enteredSongbook = previousPanel !== "songbook";
-    const selectedSongChanged = filePath !== previousFilePath;
+    const [previousPanel, previousPerformanceMode] = previousValue ?? [];
+    const enteredSongbook = previousPanel !== "songbook" || previousPerformanceMode;
 
-    if ((enteredSongbook || selectedSongChanged) && filePath) {
-      syncSongbookSelectionToActiveSong();
-      scrollSongbookSelectionIntoView("auto");
+    if (enteredSongbook) {
+      syncSongbookSelection();
+      alignSongbookViewportToActiveSong("auto");
     }
   },
   { immediate: true }
@@ -710,8 +748,6 @@ watch(
     songbookEditorPaneRef.value?.scrollToTop();
   }
 );
-
-
 
 async function openSongFromSongbook(filePath: string, options?: { restoreListFocus?: boolean }): Promise<void> {
   const opened = await openSongFile(filePath);
@@ -870,6 +906,7 @@ async function clearApiKey(): Promise<void> {
       :song-list-items="songbookListItems"
       :songbook-error="songbookError"
       :selected-song-path="selectedSongPath"
+      :selected-list-path="songbookSelectionPath"
       :current-song-title="songbookEditorTitle"
       :is-generating-preview="isGeneratingPreview"
       :is-refreshing-preview="isRefreshingPreview"
@@ -879,6 +916,7 @@ async function clearApiKey(): Promise<void> {
       :preview-placeholder-info="previewPlaceholderInfo"
       :open-song="openSongInPerformanceMode"
       :exit-performance-mode="exitPerformanceMode"
+      @selected-change="handlePerformanceSelectionChange"
     />
 
     <template v-else>
