@@ -83,6 +83,7 @@ Current status:
 - v1.4.x saving an existing `.cho` file now preserves file identity by default, prompts explicitly when metadata suggests a different filename, and routes intentional renames through `Save as new file`, including controlled case-only renames on Windows when the user confirms the new casing
 - v1.4.x Songbook now resets the `.cho` editor scroll position to the top when the active song changes, while preserving normal scroll behavior during editing within the same song
 - v1.4.x missing song titles are now derived consistently from content across UI, preview, single-song PDF export and songbook export, skipping directives, tab blocks and chord-only lines, reusing the first valid lyric line when available, and falling back safely to artist, filename or `Untitled`; the active Songbook item now also updates and autoscrolls in real time while edits change its derived title or sort position
+- v1.4.x Songbook auto-preview now waits for a longer editor pause before refreshing, using a fixed `2000ms` debounce that keeps preview updates automatic while reducing disruptive refreshes during normal `.cho` editing
 
 ## Completed work
 
@@ -135,9 +136,6 @@ Current status:
 
 ### UX improvements (lightweight)
 
-- adjust preview auto-refresh debounce timing:
-  - increase delay to reduce interruptions during editing
-  - goal: improve editing flow without removing preview entirely
 
 ## v1.x - Additional UX / dev improvements
 
@@ -201,6 +199,20 @@ Current status:
   - visible progress feedback
   - cancelable
 - do not introduce automatic background preview generation
+
+### Preview rendering improvements
+
+- introduce asynchronous preview rendering to avoid blocking the UI during ChordPro CLI execution
+- support cancelable preview processes:
+  - abort in-flight CLI execution when new edits occur
+  - ensure only the latest state is rendered
+- adjust debounce strategy after async + cancellation:
+  - reduce current debounce delay
+  - keep debounce as a control mechanism to prevent excessive rendering
+- goal:
+  - eliminate visible UI blocking during editing
+  - maintain responsive and up-to-date preview
+  - avoid redundant or outdated renders
 
 ### Editor improvements
 

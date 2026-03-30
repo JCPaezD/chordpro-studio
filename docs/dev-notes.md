@@ -105,12 +105,21 @@ Only record assumptions here when they materially affect behavior, UX, architect
 
 - the keyboard vs mouse selection conflict in Songbook and Performance mode is now resolved by tracking the last input source locally in each parent view, so passive hover no longer overrides keyboard-driven selection during autoscroll
 - missing song titles are now derived consistently across Songbook UI, preview, single-song PDF export and songbook export by skipping directives, tab blocks and chord-only lines, then reusing the first valid lyric line when available before falling back to artist, filename or `Untitled`
-- preview auto-refresh timing can still interrupt editing flow and likely needs a slightly longer debounce
+- Songbook auto-preview now uses a fixed `2000ms` debounce before refreshing after `.cho` edits; this keeps the feature automatic while giving enough room for calm multi-line or metadata edits before the CLI refresh starts
 - additional improvements were identified for:
   - deterministic `{define}` inclusion during conversion
   - optional tab-block render filtering without changing the original `.cho`
   - PDF navigation usability around returning to the index
   - clearer but still non-intrusive distinction between `active` and `selected` song states
+
+### Preview rendering evolution (post v1.4.x)
+
+- the current debounce-based solution improves editing comfort but does not eliminate render blocking
+- future improvement should combine:
+  - asynchronous CLI execution
+  - cancellation of in-flight preview processes
+  - adjusted debounce timing
+- this is a structural improvement and should be treated as a dedicated technical task, not a minor tweak
 
 ## Preview and Export Notes
 
@@ -173,6 +182,7 @@ Preview failure behavior:
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
 - User View `Generate` now keeps the existing `.cho` editor content visible behind a non-editable loading overlay until the conversion result is ready, using the same shared loading-card visual treatment as preview instead of clearing the editor upfront
 - User View `.cho` editor now refreshes preview with a debounced non-blocking path and keeps the current iframe/PDF visible while a new blob URL is loading
+- the current debounce for Songbook auto-preview is intentionally longer (`2000ms`) after manual validation showed that shorter pauses still made the CLI refresh too present and visually disruptive while editing
 - the User View preview now uses a local dual-iframe buffer with a short delayed swap so the next PDF can load before becoming visible, reducing flicker without changing the underlying native viewer approach
 - both `User` and Songbook performance mode now delay the visible `Generating preview...` overlay slightly for normal cached preview loads, but manual `Refresh` shows loading immediately because it explicitly requests regeneration
 - changing Convert/Songbook context while `Generate` is still running now reuses the existing abort/stale-request protection so outdated conversion results are not applied to a newer workspace context

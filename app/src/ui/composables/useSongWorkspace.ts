@@ -402,7 +402,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         requestId,
         refreshingState: true
       });
-    }, 750);
+    }, 2000);
   }
   function clearGeneratedState(): void {
     cleanedText.value = "";
