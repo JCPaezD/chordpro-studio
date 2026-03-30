@@ -134,7 +134,7 @@ Current status:
 
 ## Current roadmap
 
-## v1.4.x - Post-release friction fixes & UX improvements
+## Post v1.4.x — UX improvements & polish backlog
 
 ### UX feedback consistency
 
