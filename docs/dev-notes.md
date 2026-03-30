@@ -85,6 +85,28 @@ Only record assumptions here when they materially affect behavior, UX, architect
 - current focus is the `User` view, Songbook workflow, and the shared Preview + Export flow
 - deprioritized areas for now are Playground expansion, internal tooling growth, and complex optimizations without a proven real need
 
+### Visual baseline criteria (v1.4.x)
+
+- identity: technical tool with human warmth
+- density: compact-professional
+- priority: content (`song` + preview) over UI
+- seeing more song content and more preview matters more than airy spacing
+- the UI must not compete with the content
+- future decisions should favor reading, editing and flow
+- spacing: hierarchical, not uniform
+- color: controlled warm base with clear functional contrast
+- typography: one consistent UI voice plus monospace for editing
+- icons: support reading, not replace text
+
+Limits:
+
+- do not evolve toward a musical / creative / DAW-like aesthetic
+- do not adopt a generic SaaS-like aesthetic
+- do not use cards and padding uniformly without hierarchy
+- do not convert actions into icons without clear benefit
+- do not separate performance mode visually from the rest of the product
+- do not sacrifice visible content for abstract cleanliness
+
 ### Songbook PDF exploration note
 
 - `style.json` capabilities should be explored and documented before implementing advanced Songbook PDF features
