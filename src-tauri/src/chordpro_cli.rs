@@ -103,6 +103,16 @@ pub fn generate_preview(
   let input_path = preview_dir.join(PREVIEW_CHO_FILENAME);
   let output_path = preview_dir.join(PREVIEW_PDF_FILENAME);
 
+  if output_path.exists() {
+    fs::remove_file(&output_path).map_err(|error| ChordProCommandError {
+      code: "PREVIEW_RESET_ERROR".into(),
+      message: format!("Failed to reset the previous preview PDF: {error}"),
+      stdout: None,
+      stderr: None,
+      details: Some(output_path.to_string_lossy().into_owned()),
+    })?;
+  }
+
   write_text_file(&input_path, &rendered_chordpro_text)?;
   run_chordpro_command(
     &app,

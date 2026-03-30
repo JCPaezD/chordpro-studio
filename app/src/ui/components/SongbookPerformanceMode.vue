@@ -60,10 +60,50 @@
           <div v-else-if="!hasBufferedPreview && props.previewError" class="preview-state">
             <p class="message error-message">{{ props.previewError }}</p>
           </div>
+          <div
+            v-else-if="!hasBufferedPreview && !props.hasRenderablePreviewSource && props.previewPlaceholderInfo.hasContext"
+            class="preview-state"
+          >
+            <div class="preview-empty-copy">
+              <div class="preview-context-block">
+                <p class="message preview-context-title">
+                  {{ props.previewPlaceholderInfo.title || props.previewPlaceholderInfo.fileName }}
+                </p>
+                <p v-if="props.previewPlaceholderInfo.artist" class="message preview-context-detail preview-context-meta">
+                  {{ props.previewPlaceholderInfo.artist }}
+                </p>
+                <p v-if="props.previewPlaceholderInfo.album" class="message preview-context-detail preview-context-meta">
+                  {{ props.previewPlaceholderInfo.album }}
+                </p>
+                <p v-if="props.previewPlaceholderInfo.year" class="message preview-context-detail preview-context-meta">
+                  {{ props.previewPlaceholderInfo.year }}
+                </p>
+                <p v-if="props.previewPlaceholderInfo.fileName" class="message preview-context-detail preview-context-meta preview-context-file-name">
+                  {{ props.previewPlaceholderInfo.fileName }}
+                </p>
+              </div>
+              <div class="preview-context-footer">
+                <span class="preview-context-separator" aria-hidden="true" />
+                <p class="message preview-context-hint">
+                  Preview will appear when the song has renderable content.
+                </p>
+              </div>
+            </div>
+          </div>
           <div v-else-if="!hasBufferedPreview" class="preview-state">
-            <p class="message">
-              Open a song to see the PDF preview.
-            </p>
+            <div class="preview-empty-copy">
+              <div class="preview-context-block">
+                <p class="message preview-context-title">
+                  Open a song to see the PDF preview.
+                </p>
+              </div>
+              <div class="preview-context-footer">
+                <span class="preview-context-separator" aria-hidden="true" />
+                <p class="message preview-context-hint">
+                  Use the song list to load a document into the preview.
+                </p>
+              </div>
+            </div>
           </div>
           <div v-else ref="previewViewerRef" class="preview-viewer">
             <iframe
@@ -181,6 +221,14 @@ type SongListItem = {
   title: string;
   artist: string;
 };
+type PreviewPlaceholderInfo = {
+  title: string;
+  artist: string;
+  album: string;
+  year: string;
+  fileName: string;
+  hasContext: boolean;
+};
 type InputSource = "keyboard" | "mouse";
 type SongListExpose = {
   focus: () => void;
@@ -201,6 +249,8 @@ const props = defineProps<{
   isRefreshingPreview: boolean;
   previewError: string;
   previewSrc: string;
+  hasRenderablePreviewSource: boolean;
+  previewPlaceholderInfo: PreviewPlaceholderInfo;
   openSong: (filePath: string) => Promise<boolean>;
   exitPerformanceMode: () => void;
 }>();
@@ -1084,6 +1134,58 @@ onBeforeUnmount(() => {
 .preview-state .message {
   margin: 0;
   color: #4a564a;
+  text-align: center;
+}
+
+.preview-empty-copy {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  max-width: 28rem;
+}
+
+.preview-context-block {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.preview-context-title {
+  color: #314034;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.preview-context-detail {
+  color: rgba(74, 86, 74, 0.82);
+}
+
+.preview-context-meta {
+  font-size: 0.9rem;
+}
+
+.preview-context-file-name {
+  font-family: var(--editor-monospace-family);
+  font-size: 0.84rem;
+  letter-spacing: 0.01em;
+}
+
+.preview-context-footer {
+  display: grid;
+  justify-items: center;
+  margin-top: 1.25rem;
+  gap: 0.45rem;
+}
+
+.preview-context-separator {
+  width: 4.5rem;
+  border-top: 1px solid rgba(74, 86, 74, 0.18);
+}
+
+.preview-context-hint {
+  width: 100%;
+  color: rgba(74, 86, 74, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.45;
   text-align: center;
 }
 

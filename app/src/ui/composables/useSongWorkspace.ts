@@ -34,6 +34,15 @@ type RunPipelineOptions = {
   clearBeforeRun?: boolean;
 };
 
+type PreviewPlaceholderInfo = {
+  title: string;
+  artist: string;
+  album: string;
+  year: string;
+  fileName: string;
+  hasContext: boolean;
+};
+
 type UnsavedContentResolution = "save" | "discard" | "cancel";
 type RawInputDiscardResolution = "discard" | "cancel";
 type SaveFilenameMismatchResolution = "keep-current" | "save-as-new" | "cancel";
@@ -62,6 +71,8 @@ export type SongWorkspace = {
   previewPath: Ref<string>;
   previewSrc: Ref<string>;
   previewError: Ref<string>;
+  hasRenderablePreviewSource: ComputedRef<boolean>;
+  previewPlaceholderInfo: ComputedRef<PreviewPlaceholderInfo>;
   songMetadata: ComputedRef<SongMetadata>;
   document: Ref<WorkspaceDocument>;
   songbook: Ref<Songbook | null>;
@@ -203,6 +214,78 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
   }
 
+  function parseChordProDirective(line: string): { key: string; value?: string } | null {
+    const directiveMatch = line.match(/^\{([^}]+)\}$/);
+    if (!directiveMatch) {
+      return null;
+    }
+
+    const content = directiveMatch[1].trim();
+    const separatorIndex = content.indexOf(":");
+
+    if (separatorIndex === -1) {
+      return { key: content.toLowerCase() };
+    }
+
+    const key = content.slice(0, separatorIndex).trim().toLowerCase();
+    const value = content.slice(separatorIndex + 1).trim();
+
+    return {
+      key,
+      value: value.length > 0 ? value : undefined
+    };
+  }
+
+  function isMetadataDirectiveKey(key: string): boolean {
+    return key === "title" || key === "artist" || key === "album" || key === "year";
+  }
+
+  function analyzePreviewSource(chordPro: string): {
+    isEffectivelyEmpty: boolean;
+    isMetadataOnly: boolean;
+  } {
+    let hasRenderableContent = false;
+    let hasMetadata = false;
+    let inTabBlock = false;
+
+    for (const rawLine of chordPro.replace(/\r\n?/g, "\n").split("\n")) {
+      const trimmed = rawLine.trim();
+
+      if (!trimmed) {
+        continue;
+      }
+
+      const directive = parseChordProDirective(trimmed);
+      if (directive) {
+        if (directive.key === "start_of_tab") {
+          inTabBlock = true;
+          continue;
+        }
+
+        if (directive.key === "end_of_tab") {
+          inTabBlock = false;
+          continue;
+        }
+
+        if (directive.value && isMetadataDirectiveKey(directive.key)) {
+          hasMetadata = true;
+        }
+
+        continue;
+      }
+
+      if (inTabBlock || trimmed.length > 0) {
+        hasRenderableContent = true;
+        break;
+      }
+    }
+
+    return {
+      isEffectivelyEmpty: !hasRenderableContent,
+      isMetadataOnly: !hasRenderableContent && hasMetadata
+    };
+  }
+
   function getRenderStyle(): ChordproRenderStyle {
     return {
       showChordDiagrams: appConfig.showChordDiagrams.value,
@@ -210,8 +293,39 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     };
   }
 
+  const hasRenderablePreviewSource = computed(() => !analyzePreviewSource(document.value.chordProText).isEffectivelyEmpty);
+  const previewPlaceholderInfo = computed<PreviewPlaceholderInfo>(() => {
+    const title = songMetadata.value.title?.trim() ?? "";
+    const artist = songMetadata.value.artist?.trim() ?? "";
+    const album = songMetadata.value.album?.trim() ?? "";
+    const year = songMetadata.value.year?.trim() ?? "";
+    const fileName = document.value.fileName.trim();
+
+    return {
+      title,
+      artist,
+      album,
+      year,
+      fileName,
+      hasContext:
+        title.length > 0 ||
+        artist.length > 0 ||
+        album.length > 0 ||
+        year.length > 0 ||
+        fileName.length > 0
+    };
+  });
+
   function refreshPreviewForRenderPreferenceChange(): void {
-    if (!previewSrc.value || !document.value.chordProText.trim()) {
+    const previewSource = analyzePreviewSource(document.value.chordProText);
+
+    if (previewSource.isEffectivelyEmpty) {
+      cancelPendingPreviewRefresh();
+      clearPreviewState();
+      return;
+    }
+
+    if (!previewSrc.value) {
       return;
     }
 
@@ -227,6 +341,15 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   function clearOperationMessages(): void {
     previewError.value = "";
+  }
+
+  function clearPreviewState(): void {
+    previewPath.value = "";
+    revokePreviewUrl();
+    previewSrc.value = "";
+    isRefreshingPreview.value = false;
+    isManualPreviewRefresh.value = false;
+    clearOperationMessages();
   }
 
   function cancelActiveGeneration(): void {
@@ -329,9 +452,17 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     const manageLoadingState = options?.manageLoadingState ?? true;
     const requestId = options?.requestId;
     const refreshingState = options?.refreshingState ?? false;
-    const bypassCache = options?.bypassCache ?? false;
+    const previewSource = analyzePreviewSource(chordPro);
+    const bypassCache = (options?.bypassCache ?? false) || previewSource.isMetadataOnly;
     const requestStillActive = () => requestId === undefined || requestId === previewRequestId;
     previewError.value = "";
+
+    if (previewSource.isEffectivelyEmpty) {
+      if (requestStillActive()) {
+        clearPreviewState();
+      }
+      return;
+    }
 
     if (manageLoadingState) {
       isGeneratingPreview.value = true;
@@ -390,14 +521,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return;
     }
 
-    if (previewRefreshDebounceTimer !== null) {
-      clearTimeout(previewRefreshDebounceTimer);
-      previewRefreshDebounceTimer = null;
-    }
+    cancelPendingPreviewRefresh();
 
-    if (!chordPro.trim()) {
-      isRefreshingPreview.value = false;
-      isManualPreviewRefresh.value = false;
+    if (analyzePreviewSource(chordPro).isEffectivelyEmpty) {
+      clearPreviewState();
       return;
     }
 
@@ -422,10 +549,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     validationReason.value = "";
     validationRawOutput.value = "";
     replaceDocument(createDocumentFromChordPro(""));
-    previewPath.value = "";
-    revokePreviewUrl();
-    previewSrc.value = "";
-    clearOperationMessages();
+    clearPreviewState();
   }
 
   function clearAllState(): void {
@@ -473,10 +597,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   function extractChordProMetadata(chordPro: string): SongMetadata {
     const titleMatch = chordPro.match(/^\{title:\s*(.+?)\s*\}$/im);
     const artistMatch = chordPro.match(/^\{artist:\s*(.+?)\s*\}$/im);
+    const albumMatch = chordPro.match(/^\{album:\s*(.+?)\s*\}$/im);
+    const yearMatch = chordPro.match(/^\{year:\s*(.+?)\s*\}$/im);
 
     return {
       title: titleMatch?.[1]?.trim(),
-      artist: artistMatch?.[1]?.trim()
+      artist: artistMatch?.[1]?.trim(),
+      album: albumMatch?.[1]?.trim(),
+      year: yearMatch?.[1]?.trim()
     };
   }
 
@@ -986,9 +1114,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return;
     }
 
-    if (!document.value.chordProText.trim()) {
-      isManualPreviewRefresh.value = false;
-      previewError.value = "Preview generation failed.";
+    if (analyzePreviewSource(document.value.chordProText).isEffectivelyEmpty) {
+      clearPreviewState();
       return;
     }
 
@@ -1026,6 +1153,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   async function clearSongbook(): Promise<void> {
     cancelActiveGeneration();
+    cancelPendingPreviewRefresh();
+    clearPreviewState();
     songbook.value = null;
     songbookError.value = "";
     try {
@@ -1432,6 +1561,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     previewPath,
     previewSrc,
     previewError,
+    hasRenderablePreviewSource,
+    previewPlaceholderInfo,
     songMetadata,
     document,
     songbook,

@@ -49,6 +49,8 @@ const {
   error,
   previewSrc,
   previewError,
+  hasRenderablePreviewSource,
+  previewPlaceholderInfo,
   document: workspaceDocument,
   songMetadata,
   songbook,
@@ -873,6 +875,8 @@ async function clearApiKey(): Promise<void> {
       :is-refreshing-preview="isRefreshingPreview"
       :preview-error="previewError"
       :preview-src="previewSrc"
+      :has-renderable-preview-source="hasRenderablePreviewSource"
+      :preview-placeholder-info="previewPlaceholderInfo"
       :open-song="openSongInPerformanceMode"
       :exit-performance-mode="exitPerformanceMode"
     />
@@ -1257,14 +1261,49 @@ async function clearApiKey(): Promise<void> {
           <div v-else-if="!hasBufferedPreview && previewError" class="preview-state">
             <p class="message error-message">{{ previewError }}</p>
           </div>
+          <div
+            v-else-if="!hasBufferedPreview && !hasRenderablePreviewSource && previewPlaceholderInfo.hasContext"
+            class="preview-state preview-empty-state"
+          >
+            <div class="empty-state-copy preview-empty-copy">
+              <div class="preview-context-block">
+                <p class="message preview-empty-title">
+                  {{ previewPlaceholderInfo.title || previewPlaceholderInfo.fileName }}
+                </p>
+                <p v-if="previewPlaceholderInfo.artist" class="empty-state-subtitle preview-context-meta">
+                  {{ previewPlaceholderInfo.artist }}
+                </p>
+                <p v-if="previewPlaceholderInfo.album" class="empty-state-subtitle preview-context-meta">
+                  {{ previewPlaceholderInfo.album }}
+                </p>
+                <p v-if="previewPlaceholderInfo.year" class="empty-state-subtitle preview-context-meta">
+                  {{ previewPlaceholderInfo.year }}
+                </p>
+                <p v-if="previewPlaceholderInfo.fileName" class="empty-state-subtitle preview-context-meta preview-context-file-name">
+                  {{ previewPlaceholderInfo.fileName }}
+                </p>
+              </div>
+              <div class="preview-context-footer">
+                <span class="preview-context-separator" aria-hidden="true" />
+                <p class="empty-state-subtitle preview-context-hint">
+                  Preview will appear when the song has renderable content.
+                </p>
+              </div>
+            </div>
+          </div>
           <div v-else-if="!hasBufferedPreview" class="preview-state preview-empty-state">
             <div class="empty-state-copy preview-empty-copy">
-              <p class="message preview-empty-title">
-                Generate or open a song to see the PDF preview
-              </p>
-              <p class="empty-state-subtitle">
-                {{ songbook ? "Select a song from the list or convert a new song" : "Convert a new song to get started" }}
-              </p>
+              <div class="preview-context-block">
+                <p class="message preview-empty-title">
+                  Generate or open a song to see the PDF preview
+                </p>
+              </div>
+              <div class="preview-context-footer">
+                <span class="preview-context-separator" aria-hidden="true" />
+                <p class="empty-state-subtitle preview-context-hint">
+                  {{ songbook ? "Select a song from the list or convert a new song" : "Convert a new song to get started" }}
+                </p>
+              </div>
             </div>
           </div>
           <div v-else ref="previewViewerRef" class="preview-viewer">
@@ -2091,6 +2130,41 @@ async function clearApiKey(): Promise<void> {
 .preview-empty-copy {
   gap: 0.45rem;
   max-width: 28rem;
+}
+
+.preview-context-block {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.preview-context-meta {
+  font-size: 0.86rem;
+}
+
+.preview-context-file-name {
+  font-family: var(--editor-monospace-family);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.preview-context-footer {
+  display: grid;
+  justify-items: center;
+  margin-top: 1.25rem;
+  gap: 0.45rem;
+}
+
+.preview-context-separator {
+  width: 4.5rem;
+  border-top: 1px solid rgba(74, 86, 74, 0.18);
+}
+
+.preview-context-hint {
+  width: 100%;
+  color: rgba(74, 86, 74, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .preview-empty-title {

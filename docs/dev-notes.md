@@ -195,10 +195,13 @@ Export feedback behavior:
 
 Preview failure behavior:
 
-- if preview generation fails, the previous valid preview remains visible
+- real preview generation failures keep the previous valid preview visible
 - the frontend shows the backend error message returned by the failed preview command
 - while a new preview is being generated, the shared workspace exposes a dedicated preview-loading state so both `User` and `Playground` show either a centered loading placeholder (when no preview exists yet) or a soft overlay above the current PDF without clearing the previous valid preview
 - the backend now reuses a persistent preview cache under `$APPCONFIG/cache/previews/`, keyed by `SHA-256(chordProText + effective render style)`, so unchanged previews can be returned without invoking the CLI again without mixing different diagram-visibility or instrument variants
+- preview requests with no renderable song content (`empty` or metadata-only `.cho`) are now treated as a neutral preview state instead of a technical error, because the ChordPro CLI can exit successfully without emitting a PDF in those cases
+- that neutral preview state now shows contextual document information when available (`title`, stacked metadata and filename) in Convert, Songbook, Performance and Playground, while still reusing the same preview panel/layout
+- backend preview generation now deletes the previous temporary `preview.pdf` before each render attempt so bypassed-cache refreshes cannot accidentally reuse stale disk output when the CLI decides not to emit a new file
 - when `{title:}` is missing, the backend render preprocess now injects an in-memory derived title before calling ChordPro, using the same fallback criteria as Songbook UI and keeping preview cache validity aligned with the rendered title
 - the manual `Refresh` action in Convert, Songbook and Playground now reuses the same preview pipeline with an explicit `bypass_cache` flag, so users can force a fresh CLI render without introducing a parallel preview path
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview

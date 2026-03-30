@@ -28,6 +28,8 @@ const {
   previewPath,
   previewSrc,
   previewError,
+  hasRenderablePreviewSource,
+  previewPlaceholderInfo,
   copyToClipboard,
   pasteFromClipboard,
   requestClearAllState,
@@ -347,8 +349,48 @@ onMounted(async () => {
               <p class="preview-message">Generating preview...</p>
             </div>
           </div>
+          <div
+            v-else-if="!previewSrc && !hasRenderablePreviewSource && previewPlaceholderInfo.hasContext"
+            class="preview-state"
+          >
+            <div class="preview-empty-copy">
+              <div class="preview-context-block">
+                <p class="preview-message preview-context-title">
+                  {{ previewPlaceholderInfo.title || previewPlaceholderInfo.fileName }}
+                </p>
+                <p v-if="previewPlaceholderInfo.artist" class="preview-message preview-context-detail preview-context-meta">
+                  {{ previewPlaceholderInfo.artist }}
+                </p>
+                <p v-if="previewPlaceholderInfo.album" class="preview-message preview-context-detail preview-context-meta">
+                  {{ previewPlaceholderInfo.album }}
+                </p>
+                <p v-if="previewPlaceholderInfo.year" class="preview-message preview-context-detail preview-context-meta">
+                  {{ previewPlaceholderInfo.year }}
+                </p>
+                <p v-if="previewPlaceholderInfo.fileName" class="preview-message preview-context-detail preview-context-meta preview-context-file-name">
+                  {{ previewPlaceholderInfo.fileName }}
+                </p>
+              </div>
+              <div class="preview-context-footer">
+                <span class="preview-context-separator" aria-hidden="true" />
+                <p class="preview-message preview-context-hint">Preview will appear when the song has renderable content.</p>
+              </div>
+            </div>
+          </div>
           <div v-else-if="!previewSrc" class="preview-state">
-            <p class="preview-message">Run the pipeline to generate a ChordPro CLI preview PDF.</p>
+            <div class="preview-empty-copy">
+              <div class="preview-context-block">
+                <p class="preview-message preview-context-title">
+                  Run the pipeline to generate a ChordPro CLI preview PDF.
+                </p>
+              </div>
+              <div class="preview-context-footer">
+                <span class="preview-context-separator" aria-hidden="true" />
+                <p class="preview-message preview-context-hint">
+                  The preview will appear here after the pipeline produces renderable ChordPro content.
+                </p>
+              </div>
+            </div>
           </div>
           <div v-else class="preview-viewer">
             <iframe :key="previewSrc" :src="previewSrc" class="preview-frame" title="ChordPro PDF Preview" />
@@ -741,6 +783,58 @@ onMounted(async () => {
 
 .preview-message {
   color: #5f6c60;
+}
+
+.preview-empty-copy {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  max-width: 28rem;
+}
+
+.preview-context-block {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.preview-context-title {
+  color: #314034;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.preview-context-detail {
+  color: rgba(95, 108, 96, 0.84);
+}
+
+.preview-context-meta {
+  font-size: 0.88rem;
+}
+
+.preview-context-file-name {
+  font-family: var(--editor-monospace-family);
+  font-size: 0.84rem;
+  letter-spacing: 0.01em;
+}
+
+.preview-context-footer {
+  display: grid;
+  justify-items: center;
+  margin-top: 1.25rem;
+  gap: 0.45rem;
+}
+
+.preview-context-separator {
+  width: 4.5rem;
+  border-top: 1px solid rgba(95, 108, 96, 0.18);
+}
+
+.preview-context-hint {
+  width: 100%;
+  color: rgba(95, 108, 96, 0.74);
+  font-size: 0.87rem;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .preview-error {

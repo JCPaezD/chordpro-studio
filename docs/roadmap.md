@@ -84,6 +84,7 @@ Current status:
 - v1.4.x Songbook now resets the `.cho` editor scroll position to the top when the active song changes, while preserving normal scroll behavior during editing within the same song
 - v1.4.x missing song titles are now derived consistently from content across UI, preview, single-song PDF export and songbook export, skipping directives, tab blocks and chord-only lines, reusing the first valid lyric line when available, and falling back safely to artist, filename or `Untitled`; the active Songbook item now also updates and autoscrolls in real time while edits change its derived title or sort position
 - v1.4.x Songbook auto-preview now waits for a longer editor pause before refreshing, using a fixed `2000ms` debounce that keeps preview updates automatic while reducing disruptive refreshes during normal `.cho` editing
+- v1.4.x preview consistency is now corrected across Convert, Songbook, Performance and Playground: empty or metadata-only `.cho` states no longer surface stale or misleading PDF previews, instead falling back to a neutral contextual placeholder until renderable song content exists
 - v1.4.x unsaved-content protection is now unified across Songbook and Performance song changes, while Convert `New Sheet` and app close protect non-empty Original text through a separate app-modal confirmation without merging it into the `.cho` dirty state
 
 ## Completed work
