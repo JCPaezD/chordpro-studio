@@ -115,6 +115,18 @@ const conversionModeLabel = computed(() =>
 );
 
 const apiKeyButtonLabel = computed(() => (hasApiKey.value ? "Change API Key" : "Set API Key"));
+const userFacingGenerateError = computed(() => {
+  const technicalError = error.value.trim();
+  if (!technicalError) {
+    return "";
+  }
+
+  if (technicalError.toLowerCase().includes("api key not valid")) {
+    return "Invalid Gemini API key. Please check your API key.";
+  }
+
+  return "Failed to generate chords. Please try again.";
+});
 
 const songbookEditorTitle = computed(() => {
   if (!workspaceDocument.value.chordProText.trim()) {
@@ -1087,9 +1099,9 @@ async function clearApiKey(): Promise<void> {
                 </button>
               </div>
               <p v-if="!hasApiKey && !configLoading" class="action-feedback warning-message">
-                API key required to generate
+                Gemini API key required to generate
               </p>
-              <p v-if="error" class="action-feedback error-message">{{ error }}</p>
+              <p v-if="userFacingGenerateError" class="action-feedback error-message">{{ userFacingGenerateError }}</p>
             </div>
           </div>
 

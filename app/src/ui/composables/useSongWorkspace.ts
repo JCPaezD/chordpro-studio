@@ -1080,6 +1080,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         return;
       }
 
+      console.error("Pipeline execution failed.", err);
+
       if (err instanceof ChordProValidationError) {
         validationReason.value = err.details?.reason ?? "";
         validationRawOutput.value = err.details?.rawOutput ?? "";
