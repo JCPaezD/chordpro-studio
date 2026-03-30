@@ -129,6 +129,28 @@ Current status:
 
 ## Current roadmap
 
+## v1.4.x - Post-release friction fixes & UX improvements
+
+### Bug fixes
+
+- fix selection inconsistency when mixing keyboard navigation and mouse hover:
+  - current behavior allows mouse position to override keyboard selection during autoscroll
+  - expected behavior:
+    - keyboard navigation should remain authoritative unless explicit mouse interaction occurs
+
+### UX improvements (lightweight)
+
+- improve song title fallback when metadata is missing:
+  - avoid using chord-only lines as title
+  - expected fallback order:
+    - title metadata
+    - first lyric line
+    - artist
+    - filename or safe default
+- adjust preview auto-refresh debounce timing:
+  - increase delay to reduce interruptions during editing
+  - goal: improve editing flow without removing preview entirely
+
 ## v1.x - Additional UX / dev improvements
 
 ### Product clarification
@@ -158,11 +180,25 @@ Current status:
 - findings should be documented before implementing advanced features
 - improve index structure and metadata
 
+### Conversion / LLM improvements
+
+- improve the conversion prompt so custom chord definitions are included deterministically using `{define}`
+
+### Rendering / CLI
+
+- allow optional filtering of tab blocks (`{start_of_tab}` / `{end_of_tab}`) without modifying the original `.cho`
+
 ### Songbook management features
 
 - delete song/file from the songbook with proper confirmation
 - create a new empty song (`New`)
 - add `Save As` to duplicate or create a copy with a new name
+
+### Songbook / export improvements
+
+- improve PDF navigation:
+  - allow returning to the index from song pages
+  - explore header/footer or clickable elements
 
 ### Song list improvements
 
@@ -192,6 +228,8 @@ Current status:
   - improve colors, typography, spacing and visual hierarchy
   - introduce icons where appropriate
   - maintain current layout structure
+- improve visual distinction between `active` and `selected` song in the list with a non-intrusive indicator
+- add a UI-based rename capability as a complement to `Save As`
 - add feedback to the `Refresh songbook` action
 - add confirmation and feedback to `Clear songbook`
 

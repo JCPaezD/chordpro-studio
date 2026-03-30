@@ -101,6 +101,17 @@ Only record assumptions here when they materially affect behavior, UX, architect
   - these remain planned future improvements
 - Performance mode still has room for UX refinement, but those changes should be handled through a structured UX review rather than ad-hoc incremental tweaks
 
+## Post global usage review (v1.4.x stabilization)
+
+- a keyboard vs mouse selection conflict is still present in song-list interaction when autoscroll and hover compete
+- the current title fallback can still surface chord-only lines instead of a meaningful label when metadata is missing
+- preview auto-refresh timing can still interrupt editing flow and likely needs a slightly longer debounce
+- additional improvements were identified for:
+  - deterministic `{define}` inclusion during conversion
+  - optional tab-block render filtering without changing the original `.cho`
+  - PDF navigation usability around returning to the index
+  - clearer but still non-intrusive distinction between `active` and `selected` song states
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
