@@ -132,7 +132,7 @@ Preview flow:
 ChordPro text
 -> hash `chordProText` + effective render style
 -> check persistent preview cache in `$APPCONFIG/cache/previews/<hash>.pdf`
--> on cache miss: Tauri `generate_preview` -> temporary `preview.cho` -> ChordPro CLI -> `preview.pdf` -> persist cached PDF
+-> on cache miss: async Tauri `generate_preview` off the main thread -> temporary `preview.cho` -> ChordPro CLI -> `preview.pdf` -> persist cached PDF
 -> backend returns PDF bytes
 -> frontend `Blob` URL
 -> shared iframe-size-based fit composable computes the viewer URL (`fitv` / `fith` with A4-aware thresholds and a refresh token)
@@ -146,6 +146,8 @@ ChordPro text
 -> if `.cho`: direct filesystem write without invoking the CLI
 
 This keeps preview and exported PDF aligned on the same renderer. Before the CLI runs, the backend now also preprocesses explicit `{start_of_tab}` blocks with heuristic balanced splitting so long tabs fit more safely in one- and two-column layouts for preview, single-song export and songbook export without modifying the source `.cho` files. The preview cache only wraps that existing CLI path; it does not introduce a second renderer or an alternative preview pipeline.
+
+Preview execution still uses the same request -> response model (`invoke` -> result), but the blocking CLI work now runs outside the Tauri main thread. Cache hits still return immediately, cache misses still use the same renderer path, and stale preview requests are discarded with latest-wins protection instead of introducing an event-based preview channel or a second renderer.
 
 All ChordPro CLI executions now also share the same global style configuration.
 
@@ -221,6 +223,7 @@ The workspace owns:
 - export feedback
 - current songbook state
 - the active conversion request lifecycle, including cancellation and stale-response invalidation
+- the active preview request lifecycle, including debounce, latest-wins request ordering and stale-response invalidation
 
 `WorkspaceDocument` represents the active song in the workspace.
 

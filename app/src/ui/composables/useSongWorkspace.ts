@@ -450,11 +450,16 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   ): Promise<void> {
     const manageLoadingState = options?.manageLoadingState ?? true;
-    const requestId = options?.requestId;
+    const requestId = options?.requestId ?? previewRequestId + 1;
     const refreshingState = options?.refreshingState ?? false;
     const previewSource = analyzePreviewSource(chordPro);
     const bypassCache = (options?.bypassCache ?? false) || previewSource.isMetadataOnly;
-    const requestStillActive = () => requestId === undefined || requestId === previewRequestId;
+    const requestStillActive = () => requestId === previewRequestId;
+
+    if (options?.requestId === undefined) {
+      previewRequestId = requestId;
+    }
+
     previewError.value = "";
 
     if (previewSource.isEffectivelyEmpty) {
@@ -538,7 +543,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         requestId,
         refreshingState: true
       });
-    }, 2000);
+    }, 500);
   }
   function clearGeneratedState(): void {
     cleanedText.value = "";

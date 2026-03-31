@@ -86,6 +86,8 @@ Current status:
 - v1.4.x Songbook auto-preview now waits for a longer editor pause before refreshing, using a fixed `2000ms` debounce that keeps preview updates automatic while reducing disruptive refreshes during normal `.cho` editing
 - v1.4.x preview consistency is now corrected across Convert, Songbook, Performance and Playground: empty or metadata-only `.cho` states no longer surface stale or misleading PDF previews, instead falling back to a neutral contextual placeholder until renderable song content exists
 - v1.4.x unsaved-content protection is now unified across Songbook and Performance song changes, while Convert `New Sheet` and app close protect non-empty Original text through a separate app-modal confirmation without merging it into the `.cho` dirty state
+- v1.5 preview generation now runs the ChordPro CLI off the Tauri main thread while preserving the existing cache and renderer path, eliminates visible UI freezes during editing, and keeps latest-wins preview consistency through backend stale-request discarding plus frontend request ordering
+- v1.5 Songbook auto-preview debounce is now reduced to `500ms` after manual validation, keeping preview updates near-instant in normal editing without reintroducing blocking
 
 ## Completed work
 
@@ -135,20 +137,6 @@ Current status:
 ## Current roadmap
 
 ## v1.5 — Engine & Dev Foundations
-
-### Preview engine improvements
-
-- introduce asynchronous preview rendering to avoid blocking the UI during ChordPro CLI execution
-- support cancelable preview processes:
-  - abort in-flight CLI execution when new edits occur
-  - ensure only the latest state is rendered
-- adjust debounce strategy after async + cancellation:
-  - reduce current debounce delay
-  - keep debounce as a control mechanism to prevent excessive rendering
-- goal:
-  - eliminate visible UI blocking during editing
-  - maintain responsive and up-to-date preview
-  - avoid redundant or outdated renders
 
 ### Smoke test (basic validation workflow)
 

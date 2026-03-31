@@ -8,8 +8,12 @@ use std::{
   io,
   path::{Path, PathBuf},
   process::Command,
+  sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc, Mutex,
+  },
 };
-use tauri::{path::BaseDirectory, AppHandle, Manager};
+use tauri::{path::BaseDirectory, AppHandle, Manager, State};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -23,6 +27,12 @@ const DEFAULT_MULTI_COLUMN_TAB_MAX_CHARS: usize = 35;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+#[derive(Default)]
+pub struct PreviewExecutionState {
+  latest_request_id: AtomicU64,
+  execution_lock: Mutex<()>,
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,14 +88,18 @@ impl Default for RenderStyleOptions {
 }
 
 #[tauri::command]
-pub fn generate_preview(
+pub async fn generate_preview(
   app: AppHandle,
+  preview_execution_state: State<'_, Arc<PreviewExecutionState>>,
   chordpro_text: String,
   bypass_cache: bool,
   render_style: Option<RenderStyleOptions>,
   file_name: Option<String>,
 ) -> Result<PreviewResponse, ChordProCommandError> {
-  let preview_dir = ensure_preview_dir(&app)?;
+  let request_id = preview_execution_state
+    .latest_request_id
+    .fetch_add(1, Ordering::SeqCst)
+    + 1;
   let render_style = render_style.unwrap_or_default();
   let rendered_chordpro_text =
     preprocess_chordpro_for_render(&chordpro_text, &render_style, file_name.as_deref());
@@ -100,6 +114,38 @@ pub fn generate_preview(
     }
   }
 
+  let preview_execution_state = Arc::clone(preview_execution_state.inner());
+  let preview = tauri::async_runtime::spawn_blocking(move || {
+    let _execution_guard = preview_execution_state
+      .execution_lock
+      .lock()
+      .map_err(|_| preview_lock_error())?;
+
+    ensure_preview_request_is_latest(&preview_execution_state, request_id)?;
+    let preview =
+      generate_preview_uncached(&app, &rendered_chordpro_text, &render_style, &cache_path)?;
+    ensure_preview_request_is_latest(&preview_execution_state, request_id)?;
+    Ok(preview)
+  })
+  .await
+  .map_err(|error| ChordProCommandError {
+    code: "PREVIEW_TASK_JOIN_ERROR".into(),
+    message: format!("Preview generation task failed: {error}"),
+    stdout: None,
+    stderr: None,
+    details: None,
+  })??;
+
+  Ok(preview)
+}
+
+fn generate_preview_uncached(
+  app: &AppHandle,
+  rendered_chordpro_text: &str,
+  render_style: &RenderStyleOptions,
+  cache_path: &Path,
+) -> Result<PreviewResponse, ChordProCommandError> {
+  let preview_dir = ensure_preview_dir(app)?;
   let input_path = preview_dir.join(PREVIEW_CHO_FILENAME);
   let output_path = preview_dir.join(PREVIEW_PDF_FILENAME);
 
@@ -113,15 +159,15 @@ pub fn generate_preview(
     })?;
   }
 
-  write_text_file(&input_path, &rendered_chordpro_text)?;
+  write_text_file(&input_path, rendered_chordpro_text)?;
   run_chordpro_command(
-    &app,
+    app,
     [
       input_path.as_os_str(),
       "--output".as_ref(),
       output_path.as_os_str(),
     ],
-    &render_style,
+    render_style,
   )?;
 
   let generated_pdf_bytes = fs::read(&output_path).map_err(|error| ChordProCommandError {
@@ -132,8 +178,8 @@ pub fn generate_preview(
     details: Some(output_path.to_string_lossy().into_owned()),
   })?;
 
-  let response_path = if write_preview_cache_file(&cache_path, &generated_pdf_bytes).is_ok() {
-    cache_path
+  let response_path = if write_preview_cache_file(cache_path, &generated_pdf_bytes).is_ok() {
+    cache_path.to_path_buf()
   } else {
     output_path
   };
@@ -142,6 +188,33 @@ pub fn generate_preview(
     pdf_path: response_path.to_string_lossy().into_owned(),
     pdf_base64: STANDARD.encode(generated_pdf_bytes),
   })
+}
+
+fn ensure_preview_request_is_latest(
+  preview_execution_state: &PreviewExecutionState,
+  request_id: u64,
+) -> Result<(), ChordProCommandError> {
+  if preview_execution_state.latest_request_id.load(Ordering::SeqCst) == request_id {
+    return Ok(());
+  }
+
+  Err(ChordProCommandError {
+    code: "PREVIEW_SUPERSEDED".into(),
+    message: "Preview request was superseded by a newer one.".into(),
+    stdout: None,
+    stderr: None,
+    details: None,
+  })
+}
+
+fn preview_lock_error() -> ChordProCommandError {
+  ChordProCommandError {
+    code: "PREVIEW_LOCK_ERROR".into(),
+    message: "Preview execution state became unavailable.".into(),
+    stdout: None,
+    stderr: None,
+    details: None,
+  }
 }
 #[tauri::command]
 pub fn export_pdf(

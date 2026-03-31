@@ -9,6 +9,7 @@ fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
+    .manage(std::sync::Arc::new(chordpro_cli::PreviewExecutionState::default()))
     .setup(|app| {
       let base_title = "ChordPro Studio";
       let version = app.package_info().version.to_string();
