@@ -134,12 +134,45 @@ Current status:
 
 ## Current roadmap
 
-## Post v1.4.x — UX improvements & polish backlog
+## v1.5 — Engine & Dev Foundations
 
-### UX feedback consistency
+### Preview engine improvements
+
+- introduce asynchronous preview rendering to avoid blocking the UI during ChordPro CLI execution
+- support cancelable preview processes:
+  - abort in-flight CLI execution when new edits occur
+  - ensure only the latest state is rendered
+- adjust debounce strategy after async + cancellation:
+  - reduce current debounce delay
+  - keep debounce as a control mechanism to prevent excessive rendering
+- goal:
+  - eliminate visible UI blocking during editing
+  - maintain responsive and up-to-date preview
+  - avoid redundant or outdated renders
+
+### Smoke test (basic validation workflow)
+
+- add a one-command local smoke validation workflow
+- validate core deterministic pipeline flow:
+  - input → cleaning → conversion → parsing → preview/render
+- ensure outputs are generated without runtime errors
+- keep checks lightweight and focused on stability (not full test suite)
+
+### Playground improvements (debug-focused)
+
+- allow running the pipeline from intermediate steps in Playground:
+  - trigger pipeline execution from any block
+  - allow manual editing of intermediate outputs
+  - useful for debugging and validation of pipeline stages
+- add a minimal panel visibility toggle (no layout refactor):
+  - allow enabling/disabling panels for focused debugging
+
+### UX feedback improvements (light)
 
 - improve abort action feedback so cancellation is visible and non-ambiguous in the current view
 - improve songbook load feedback with clearer empty-folder guidance and visible loaded-song counts
+
+## Post v1.4.x — UX improvements & polish backlog
 
 ### Settings UX improvements
 
@@ -222,20 +255,6 @@ Current status:
   - cancelable
 - do not introduce automatic background preview generation
 
-### Preview rendering improvements
-
-- introduce asynchronous preview rendering to avoid blocking the UI during ChordPro CLI execution
-- support cancelable preview processes:
-  - abort in-flight CLI execution when new edits occur
-  - ensure only the latest state is rendered
-- adjust debounce strategy after async + cancellation:
-  - reduce current debounce delay
-  - keep debounce as a control mechanism to prevent excessive rendering
-- goal:
-  - eliminate visible UI blocking during editing
-  - maintain responsive and up-to-date preview
-  - avoid redundant or outdated renders
-
 ### Editor improvements
 
 - add basic syntax highlighting for the `.cho` editor:
@@ -260,19 +279,10 @@ Current status:
 - additional PDF/style options (fonts, spacing, layout tweaks)
 - configurable export options
 
-### Playground and dev workflow
-
-- add a side menu to the Playground to toggle panel visibility
-- allow running the pipeline from intermediate steps in Playground:
-  - trigger pipeline execution from any block
-  - allow manual editing of intermediate outputs
-  - useful for debugging and validation of pipeline stages
-
 ### Validation and diagnostics
 
 - add lightweight automated checks for core deterministic flows
 - introduce small regression tests for parser, cleaning, preview cache and render preprocessing
-- add a one-command local smoke validation workflow
 - introduce structured logging system (file-based, timestamped) for debugging and diagnostics
 
 ## v2 - Core feature expansion
