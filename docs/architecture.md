@@ -339,6 +339,7 @@ Purpose:
 
 - inspect intermediate pipeline output
 - test conversion models
+- run the pipeline from `raw`, `cleaned`, or editable `ChordPro` intermediate state
 - regenerate preview directly from editable `.cho`
 - inspect retries and validation failures
 

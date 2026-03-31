@@ -6,6 +6,13 @@ import type { CleaningService } from "../cleaning";
 import type { ConversionService } from "../conversion";
 import type { ChordProParser } from "../parser/ChordProParser";
 
+export type PipelineEntryPoint = "raw" | "cleaned" | "chordPro";
+
+export interface PipelineProcessRequest {
+  entryPoint: PipelineEntryPoint;
+  input: string;
+}
+
 const METADATA_DIRECTIVE_PATTERNS = {
   title: /^\{title:\s*(.*?)\s*\}$/im,
   artist: /^\{artist:\s*(.*?)\s*\}$/im
@@ -69,7 +76,7 @@ export class SongPipelineService {
   ) {}
 
   async process(
-    rawText: string,
+    requestOrRawText: string | PipelineProcessRequest,
     preferences?: Record<string, unknown>,
     options?: LLMGenerateOptions
   ): Promise<{
@@ -78,7 +85,28 @@ export class SongPipelineService {
     retryLog?: string[];
     song: Song;
   }> {
-    const cleanedText = this.cleaningService.clean(rawText);
+    const request =
+      typeof requestOrRawText === "string"
+        ? {
+            entryPoint: "raw" as const,
+            input: requestOrRawText
+          }
+        : requestOrRawText;
+
+    if (request.entryPoint === "chordPro") {
+      const song = this.chordProParser.parse(request.input);
+
+      return {
+        cleanedText: "",
+        chordPro: request.input,
+        song
+      };
+    }
+
+    const cleanedText =
+      request.entryPoint === "raw"
+        ? this.cleaningService.clean(request.input)
+        : request.input;
     const conversionResult = await this.conversionService.convert(cleanedText, preferences, options);
     ChordProOutputValidator.validate(conversionResult.text);
     const chordPro = normalizeConvertedChordPro(conversionResult.text);

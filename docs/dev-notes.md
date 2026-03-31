@@ -149,6 +149,13 @@ Limits:
 - because direct Node-to-Tauri command invocation is not part of the current app architecture, the dedicated smoke runner is treated as the minimal acceptable bridge for backend validation rather than as a parallel render pipeline
 - because the Tauri development workflow still launches the main desktop binary through `cargo run`, `src-tauri/Cargo.toml` now sets `default-run = "chordpro-studio"` so adding `smoke-runner` does not break `tauri dev`
 
+### Playground pipeline entry points
+
+- the Playground can now execute the shared pipeline from `raw`, `cleaned`, or editable `ChordPro` input without introducing a second pipeline implementation
+- execution rules are intentionally simple: `raw -> cleaning -> conversion -> parsing`, `cleaned -> conversion -> parsing`, `ChordPro -> parsing + preview`
+- every new Playground run overwrites the previous truth source and recomputes block state as `input`, `fresh`, or `stale`; the UI does not track historical dependencies or attempt partial invalidation
+- preview execution responsibility now effectively starts from the editable `ChordPro` block in Playground, so running from `ChordPro` updates both parsed JSON and preview while the Preview panel itself remains read-only
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:

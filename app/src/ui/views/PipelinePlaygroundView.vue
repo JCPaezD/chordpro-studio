@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
+import type { PipelineEntryPoint } from "../../services/pipeline/SongPipelineService";
 import { useAppConfig } from "../composables/useAppConfig";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
@@ -35,11 +36,14 @@ const {
   requestClearAllState,
   exportCurrent,
   runPipeline: runWorkspacePipeline,
-  abortConversion,
-  previewFromChordPro
+  abortConversion
 } = useSongWorkspace();
 
 const appConfig = useAppConfig();
+type PlaygroundStageId = "raw" | "cleaned" | "chordPro" | "json" | "preview";
+type PlaygroundStageState = "input" | "fresh" | "stale";
+
+const STAGE_ORDER: PlaygroundStageId[] = ["raw", "cleaned", "chordPro", "json", "preview"];
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
   "gemini-2.5-pro",
@@ -48,6 +52,8 @@ const availableGeminiModels = ref<string[]>([
 const selectedGeminiModel = ref<string | null>(null);
 const geminiModelOverride = ref("");
 const resolvedGeminiModel = computed(() => geminiModelOverride.value || selectedGeminiModel.value);
+const lastPipelineEntryPoint = ref<PipelineEntryPoint | null>(null);
+const lastFailedStage = ref<PlaygroundStageId | null>(null);
 
 function readGeminiApiKey(): string | undefined {
   const fromProcess = (
@@ -124,12 +130,137 @@ async function loadGeminiModels(): Promise<void> {
   }
 }
 
-async function runPipeline(): Promise<void> {
-  if (!resolvedGeminiModel.value) {
+function entryPointStage(entryPoint: PipelineEntryPoint): PlaygroundStageId {
+  if (entryPoint === "raw") {
+    return "raw";
+  }
+
+  if (entryPoint === "cleaned") {
+    return "cleaned";
+  }
+
+  return "chordPro";
+}
+
+function resolveFailedStage(entryPoint: PipelineEntryPoint): PlaygroundStageId | null {
+  if (previewError.value) {
+    return "preview";
+  }
+
+  if (!error.value && !validationReason.value) {
+    return null;
+  }
+
+  return entryPoint === "chordPro" ? "json" : "chordPro";
+}
+
+function getStageState(stage: PlaygroundStageId): PlaygroundStageState {
+  if (!lastPipelineEntryPoint.value) {
+    return "fresh";
+  }
+
+  const sourceStage = entryPointStage(lastPipelineEntryPoint.value);
+  if (stage === sourceStage) {
+    return "input";
+  }
+
+  const sourceIndex = STAGE_ORDER.indexOf(sourceStage);
+  const stageIndex = STAGE_ORDER.indexOf(stage);
+  const failedStage = lastFailedStage.value;
+
+  if (!failedStage) {
+    return stageIndex < sourceIndex ? "stale" : "fresh";
+  }
+
+  const failedIndex = STAGE_ORDER.indexOf(failedStage);
+  if (stageIndex < sourceIndex) {
+    return "stale";
+  }
+
+  if (stageIndex < failedIndex) {
+    return "fresh";
+  }
+
+  return "stale";
+}
+
+function getStageStatusLabel(stage: PlaygroundStageId): string {
+  const state = getStageState(stage);
+
+  if (state === "input") {
+    return "Source";
+  }
+
+  if (state === "stale") {
+    return "Stale";
+  }
+
+  return "";
+}
+
+function getStageError(stage: PlaygroundStageId): string {
+  if (stage === "preview") {
+    return previewError.value;
+  }
+
+  if (lastFailedStage.value !== stage) {
+    return "";
+  }
+
+  if (error.value) {
+    return error.value;
+  }
+
+  if (validationReason.value) {
+    return `Reason: ${validationReason.value}`;
+  }
+
+  return "Pipeline execution failed.";
+}
+
+function stageClasses(stage: PlaygroundStageId): string[] {
+  const state = getStageState(stage);
+  return [
+    `stage-state-${state}`,
+    stage === "raw" ? "stage-input" : ""
+  ].filter(Boolean);
+}
+
+async function runFromEntryPoint(entryPoint: PipelineEntryPoint): Promise<void> {
+  if ((entryPoint === "raw" || entryPoint === "cleaned") && !resolvedGeminiModel.value) {
     return;
   }
 
-  await runWorkspacePipeline({ model: resolvedGeminiModel.value, clearBeforeRun: true });
+  const executed = await runWorkspacePipeline({
+    model: entryPoint === "chordPro" ? undefined : resolvedGeminiModel.value ?? undefined,
+    clearBeforeRun: entryPoint === "raw",
+    entryPoint,
+    input:
+      entryPoint === "raw"
+        ? rawInput.value
+        : entryPoint === "cleaned"
+          ? cleanedText.value
+          : chordProText.value
+  });
+
+  if (!executed) {
+    return;
+  }
+
+  lastPipelineEntryPoint.value = entryPoint;
+  lastFailedStage.value = resolveFailedStage(entryPoint);
+}
+
+async function runPipeline(): Promise<void> {
+  await runFromEntryPoint("raw");
+}
+
+async function runFromCleanedText(): Promise<void> {
+  await runFromEntryPoint("cleaned");
+}
+
+async function runFromChordPro(): Promise<void> {
+  await runFromEntryPoint("chordPro");
 }
 
 function loadPlaygroundModel(): void {
@@ -227,12 +358,15 @@ onMounted(async () => {
     </section>
 
     <section class="playground-grid">
-      <section class="panel stage stage-input raw-panel card-shell">
+      <section :class="['panel', 'stage', 'raw-panel', 'card-shell', ...stageClasses('raw')]">
         <div class="panel-header stage-header raw-header">
           <span class="stage-index">01</span>
           <div class="stage-copy">
             <h2>Raw Input</h2>
-                      </div>
+            <span v-if="getStageStatusLabel('raw')" class="stage-status-chip">
+              {{ getStageStatusLabel('raw') }}
+            </span>
+          </div>
           <div class="panel-actions raw-actions">
             <label v-if="selectedGeminiModel" class="model-select">
               <span>Model</span>
@@ -266,28 +400,54 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section class="panel stage card-shell">
+      <section :class="['panel', 'stage', 'card-shell', ...stageClasses('cleaned')]">
         <div class="panel-header stage-header">
           <span class="stage-index">02</span>
           <div class="stage-copy">
             <h2>Cleaned Text</h2>
-                      </div>
+            <span v-if="getStageStatusLabel('cleaned')" class="stage-status-chip">
+              {{ getStageStatusLabel('cleaned') }}
+            </span>
+            <p v-if="getStageError('cleaned')" class="stage-error">{{ getStageError("cleaned") }}</p>
+          </div>
           <div class="panel-actions">
+            <button
+              class="run-button run-button-secondary"
+              :disabled="loading || isGeneratingPreview || !resolvedGeminiModel"
+              @click="runFromCleanedText"
+            >
+              <span class="button-content">
+                <span class="button-label">Run</span>
+              </span>
+            </button>
             <button class="mini-button" @click="copyToClipboard(cleanedText)">Copy</button>
           </div>
         </div>
         <div class="panel-content">
-          <textarea :value="cleanedText" class="editor-monospace" readonly />
+          <textarea v-model="cleanedText" class="editor-monospace" />
         </div>
       </section>
 
-      <section class="panel stage card-shell">
+      <section :class="['panel', 'stage', 'card-shell', ...stageClasses('chordPro')]">
         <div class="panel-header stage-header">
           <span class="stage-index">03</span>
           <div class="stage-copy">
             <h2>ChordPro Result</h2>
-                      </div>
+            <span v-if="getStageStatusLabel('chordPro')" class="stage-status-chip">
+              {{ getStageStatusLabel('chordPro') }}
+            </span>
+            <p v-if="getStageError('chordPro')" class="stage-error">{{ getStageError("chordPro") }}</p>
+          </div>
           <div class="panel-actions">
+            <button
+              class="run-button run-button-secondary"
+              :disabled="loading || isGeneratingPreview || !chordProText"
+              @click="runFromChordPro"
+            >
+              <span class="button-content">
+                <span class="button-label">Run</span>
+              </span>
+            </button>
             <button class="mini-button" @click="copyToClipboard(chordProText)">Copy</button>
           </div>
         </div>
@@ -296,12 +456,16 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section class="panel stage card-shell">
+      <section :class="['panel', 'stage', 'card-shell', ...stageClasses('json')]">
         <div class="panel-header stage-header">
           <span class="stage-index">04</span>
           <div class="stage-copy">
             <h2>Song JSON</h2>
-                      </div>
+            <span v-if="getStageStatusLabel('json')" class="stage-status-chip">
+              {{ getStageStatusLabel('json') }}
+            </span>
+            <p v-if="getStageError('json')" class="stage-error">{{ getStageError("json") }}</p>
+          </div>
           <div class="panel-actions">
             <button class="mini-button" @click="copyToClipboard(songJson)">Copy</button>
           </div>
@@ -311,20 +475,17 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section class="panel preview-panel card-shell">
+      <section :class="['panel', 'preview-panel', 'card-shell', ...stageClasses('preview')]">
         <div class="panel-header stage-header">
           <span class="stage-index">05</span>
           <div class="stage-copy">
             <h2>Preview</h2>
-                      </div>
+            <span v-if="getStageStatusLabel('preview')" class="stage-status-chip">
+              {{ getStageStatusLabel('preview') }}
+            </span>
+            <p v-if="getStageError('preview')" class="stage-error">{{ getStageError("preview") }}</p>
+          </div>
           <div class="panel-actions preview-actions">
-            <button
-              class="mini-button"
-              :disabled="loading || isGeneratingPreview || !isTauri() || !chordProText"
-              @click="previewFromChordPro"
-            >
-              Refresh preview
-            </button>
             <div class="export-actions">
               <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('pdf')">
                 Export PDF
@@ -658,6 +819,44 @@ onMounted(async () => {
 
 .stage-copy {
   min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.stage-status-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(247, 240, 225, 0.9);
+  color: #566359;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stage-error {
+  color: #8b1228;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.stage-state-input {
+  border-color: rgba(31, 49, 36, 0.42);
+  box-shadow: inset 0 0 0 3px rgba(31, 49, 36, 0.36), 0 18px 40px rgba(74, 58, 32, 0.08);
+}
+
+.stage-state-input .stage-status-chip {
+  border-color: rgba(31, 49, 36, 0.22);
+  background: rgba(31, 49, 36, 0.08);
+  color: #1f3124;
+}
+
+.stage-state-stale {
+  opacity: 0.5;
 }
 
 .panel-actions {
@@ -894,6 +1093,13 @@ pre {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+.run-button-secondary {
+  width: auto;
+  min-width: 7.2rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.95rem;
 }
 
 .button-content {

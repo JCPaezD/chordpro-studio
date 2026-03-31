@@ -16,7 +16,10 @@ import { ChordProValidationError } from "../../domain/validation/ChordProOutputV
 import { CleaningService } from "../../services/cleaning";
 import { ConversionService } from "../../services/conversion";
 import { ChordProParser } from "../../services/parser/ChordProParser";
-import { SongPipelineService } from "../../services/pipeline/SongPipelineService";
+import {
+  SongPipelineService,
+  type PipelineEntryPoint
+} from "../../services/pipeline/SongPipelineService";
 import { SongbookService } from "../../services/songbook/SongbookService";
 import { useFeedback } from "./useFeedback";
 
@@ -32,6 +35,8 @@ type RunPipelineOptions = {
   model?: string;
   preferences?: Record<string, unknown>;
   clearBeforeRun?: boolean;
+  entryPoint?: PipelineEntryPoint;
+  input?: string;
 };
 
 type PreviewPlaceholderInfo = {
@@ -111,7 +116,7 @@ export type SongWorkspace = {
   confirmSaveAsNewFile(): void;
   confirmSaveFilenameMismatchCancel(): void;
   abortConversion(): void;
-  runPipeline(options?: RunPipelineOptions): Promise<void>;
+  runPipeline(options?: RunPipelineOptions): Promise<boolean>;
   previewFromChordPro(): Promise<void>;
   dispose(): void;
 };
@@ -1030,38 +1035,29 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
   }
 
-  async function runPipeline(options?: RunPipelineOptions): Promise<void> {
-    if (!(await ensureDocumentCanBeReplaced())) {
+  function clearPipelineRunState(clearBeforeRun = false): void {
+    if (clearBeforeRun) {
+      clearGeneratedState();
       return;
     }
 
-    if (options?.clearBeforeRun) {
-      clearGeneratedState();
-    } else {
-      error.value = "";
-      retryLog.value = [];
-      validationReason.value = "";
-      validationRawOutput.value = "";
-      clearOperationMessages();
-    }
+    error.value = "";
+    retryLog.value = [];
+    validationReason.value = "";
+    validationRawOutput.value = "";
+    clearOperationMessages();
+  }
 
-    const localRequestId = currentPipelineRequestId + 1;
-    currentPipelineRequestId = localRequestId;
-    const abortController = typeof AbortController !== "undefined" ? new AbortController() : null;
-    currentAbortController = abortController;
-    loading.value = true;
-    isGeneratingPreview.value = true;
-
-    try {
-      const pipeline = createPipeline(options?.model);
-      const result = await pipeline.process(rawInput.value, options?.preferences, {
-        signal: abortController?.signal
-      });
-
-      if (localRequestId !== currentPipelineRequestId) {
-        return;
-      }
-
+  function applyGeneratedPipelineResult(
+    result: {
+      cleanedText: string;
+      chordPro: string;
+      song: Song;
+      retryLog?: string[];
+    },
+    entryPoint: PipelineEntryPoint
+  ): void {
+    if (entryPoint !== "chordPro") {
       cleanedText.value = result.cleanedText;
       replaceDocument(
         createDocumentFromChordPro(result.chordPro, {
@@ -1070,7 +1066,57 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           dirty: false
         })
       );
-      retryLog.value = result.retryLog ?? [];
+    } else {
+      cancelPendingPreviewRefresh();
+      document.value = {
+        ...document.value,
+        chordProText: result.chordPro,
+        song: result.song
+      };
+      songJson.value = JSON.stringify(result.song, null, 2);
+    }
+
+    retryLog.value = result.retryLog ?? [];
+  }
+
+  async function runPipeline(options?: RunPipelineOptions): Promise<boolean> {
+    if (!(await ensureDocumentCanBeReplaced())) {
+      return false;
+    }
+
+    const entryPoint = options?.entryPoint ?? "raw";
+    const pipelineInput = options?.input ?? (entryPoint === "raw" ? rawInput.value : entryPoint === "cleaned" ? cleanedText.value : document.value.chordProText);
+    clearPipelineRunState(options?.clearBeforeRun ?? false);
+
+    const localRequestId = currentPipelineRequestId + 1;
+    currentPipelineRequestId = localRequestId;
+    const canAbortPipeline = entryPoint !== "chordPro";
+    const abortController =
+      canAbortPipeline && typeof AbortController !== "undefined" ? new AbortController() : null;
+    currentAbortController = abortController;
+    loading.value = canAbortPipeline;
+    isGeneratingPreview.value = true;
+
+    try {
+      const pipeline = createPipeline(options?.model);
+      const result = await pipeline.process(
+        {
+          entryPoint,
+          input: pipelineInput
+        },
+        options?.preferences,
+        abortController
+          ? {
+              signal: abortController.signal
+            }
+          : undefined
+      );
+
+      if (localRequestId !== currentPipelineRequestId) {
+        return false;
+      }
+
+      applyGeneratedPipelineResult(result, entryPoint);
 
       const previewRequestIdForRun = previewRequestId + 1;
       previewRequestId = previewRequestIdForRun;
@@ -1080,14 +1126,15 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         manageLoadingState: false,
         requestId: previewRequestIdForRun
       });
+      return true;
     } catch (err) {
       if (localRequestId !== currentPipelineRequestId || isAbortError(err)) {
-        return;
+        return false;
       }
 
       console.error("Pipeline execution failed.", err);
 
-      if (err instanceof ChordProValidationError) {
+      if (err instanceof ChordProValidationError && entryPoint !== "chordPro") {
         validationReason.value = err.details?.reason ?? "";
         validationRawOutput.value = err.details?.rawOutput ?? "";
         replaceDocument(
@@ -1103,6 +1150,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       }
 
       error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
+      return true;
     } finally {
       clearCurrentAbortController(abortController);
 
