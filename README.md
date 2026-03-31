@@ -20,26 +20,32 @@ It may evolve over time, but no guarantees are provided.
 - LLM-assisted conversion from raw chord sheets to valid ChordPro
 - PDF preview generated with the bundled ChordPro CLI
 - PDF export and `.cho` export from the same ChordPro source
-- Filesystem-based songbook workflow for folders of `.cho` files
+- Filesystem-based songbook workflow for opening, editing and saving `.cho` files
+- Songbook browsing and Performance mode for local playback/reading workflows
 - Local-first desktop workflow with shared workspace state
 - User-managed Gemini API key stored in local app config
 - Desktop application built with Tauri
 
 ## Screenshots
 
-![Main window](docs/readme-assets/main-window.png)
-
 ![Convert view](docs/readme-assets/convert-view.png)
 
 ![Songbook view](docs/readme-assets/songbook-view.png)
 
+![Performance mode view](docs/readme-assets/performance-mode-view.png)
+
 ## Installation
 
-For the current v1 Windows release:
+For the current Windows release, you can use any of these artifacts:
 
-1. Download the release `.zip`.
-2. Extract it to a local folder.
-3. Run `ChordPro Studio.exe`.
+1. `ChordProStudio-v1.4.1.msi`
+2. `ChordProStudio-v1.4.1-setup.exe`
+3. `ChordProStudio-v1.4.1.zip`
+
+If you use the `.zip` package:
+
+1. Extract it to a local folder.
+2. Run `ChordPro Studio.exe`.
 
 ## Usage
 
@@ -49,7 +55,7 @@ For the current v1 Windows release:
 4. Generate ChordPro from the raw text.
 5. Review the PDF preview and export to `.pdf` or `.cho` as needed.
 
-You can also open a local folder of `.cho` files and use it as a simple songbook workspace.
+You can also open a local folder of `.cho` files, edit songs directly in the Songbook view, and use Performance mode for reading/navigation.
 
 ## Configuration
 
@@ -100,7 +106,7 @@ Source availability:
 - Tauri
 - ChordPro CLI
 
-## Known Issues (v1.0.0)
+## Known Issues
 
 - Windows SmartScreen may show a warning because the application is not code-signed.
 
