@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
@@ -13,6 +14,7 @@ import {
 } from "../../adapters/filesystem/ConfigRepository";
 import { buildSongDisplayTitle } from "../../domain/song/deriveDisplayTitle";
 import { useAppConfig } from "../composables/useAppConfig";
+import { useFeedback } from "../composables/useFeedback";
 import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
@@ -37,6 +39,7 @@ const emit = defineEmits<{
 
 const isDev = import.meta.env.DEV;
 const appConfig = useAppConfig();
+const feedback = useFeedback();
 const {
   activePanel,
   rawInput,
@@ -86,7 +89,11 @@ const showChordProEditor = ref(false);
 const showApiKeyModal = ref(false);
 const apiKeyDraft = ref("");
 const apiKeyFeedback = ref("");
+const apiKeyInputRef = ref<HTMLInputElement | null>(null);
 const isSavingApiKey = ref(false);
+const showApiKeyDraft = ref(false);
+const openedApiKeyWithExistingValue = ref(false);
+const hasEditedApiKeyDraft = ref(false);
 const showPreferencesMenu = ref(false);
 const preferencesButtonRef = ref<HTMLElement | null>(null);
 const preferencesPanelRef = ref<HTMLElement | null>(null);
@@ -114,7 +121,27 @@ const conversionModeLabel = computed(() =>
   conversionMode.value === "fast" ? "Fast" : "Quality"
 );
 
-const apiKeyButtonLabel = computed(() => (hasApiKey.value ? "Change API Key" : "Set API Key"));
+const apiKeyButtonLabel = computed(() => "Gemini API key");
+const isManagingApiKey = computed(() => openedApiKeyWithExistingValue.value);
+const apiKeyModalTitle = computed(() =>
+  isManagingApiKey.value ? "Manage Gemini API key" : "Set Gemini API key"
+);
+const apiKeyValidationMessage = computed(() => {
+  if (!hasEditedApiKeyDraft.value && apiKeyDraft.value.trim().length === 0) {
+    return "";
+  }
+
+  const normalizedKey = apiKeyDraft.value.trim();
+
+  if (!normalizedKey || !normalizedKey.startsWith("AIza") || normalizedKey.length < 30 || /\s/.test(normalizedKey)) {
+    return "Invalid Gemini API key format";
+  }
+
+  return "";
+});
+const canSaveApiKey = computed(() =>
+  !isSavingApiKey.value && apiKeyDraft.value.trim().length > 0 && !apiKeyValidationMessage.value
+);
 const userFacingGenerateError = computed(() => {
   const technicalError = error.value.trim();
   if (!technicalError) {
@@ -865,6 +892,9 @@ async function toggleConversionMode(): Promise<void> {
 function openApiKeyModal(): void {
   apiKeyDraft.value = appConfig.apiKey.value ?? "";
   apiKeyFeedback.value = "";
+  showApiKeyDraft.value = false;
+  openedApiKeyWithExistingValue.value = !!appConfig.apiKey.value;
+  hasEditedApiKeyDraft.value = false;
   showApiKeyModal.value = true;
 }
 
@@ -877,7 +907,9 @@ function closeApiKeyModal(): void {
 }
 
 async function saveApiKey(): Promise<void> {
-  if (!apiKeyDraft.value.trim()) {
+  hasEditedApiKeyDraft.value = true;
+
+  if (!canSaveApiKey.value) {
     return;
   }
 
@@ -887,6 +919,10 @@ async function saveApiKey(): Promise<void> {
   try {
     await appConfig.setApiKey(apiKeyDraft.value);
     showApiKeyModal.value = false;
+    feedback.showFeedback({
+      type: "success",
+      message: openedApiKeyWithExistingValue.value ? "API key updated" : "API key saved"
+    });
   } catch (err) {
     apiKeyFeedback.value = err instanceof Error ? err.message : "Could not save API key.";
   } finally {
@@ -902,10 +938,84 @@ async function clearApiKey(): Promise<void> {
     await appConfig.clearApiKey();
     apiKeyDraft.value = "";
     showApiKeyModal.value = false;
+    feedback.showFeedback({
+      type: "info",
+      message: "API key removed"
+    });
   } catch (err) {
     apiKeyFeedback.value = err instanceof Error ? err.message : "Could not clear API key.";
   } finally {
     isSavingApiKey.value = false;
+  }
+}
+
+async function copyApiKeyDraft(): Promise<void> {
+  const value = apiKeyDraft.value.trim();
+
+  if (!value) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(value);
+    feedback.showFeedback({
+      type: "info",
+      message: "API key copied"
+    });
+  } catch (err) {
+    apiKeyFeedback.value = err instanceof Error ? err.message : "Could not copy API key.";
+  }
+}
+
+function clearApiKeyDraft(): void {
+  apiKeyDraft.value = "";
+  hasEditedApiKeyDraft.value = true;
+  apiKeyFeedback.value = "";
+  void nextTick(() => apiKeyInputRef.value?.focus());
+}
+
+function toggleApiKeyVisibility(): void {
+  showApiKeyDraft.value = !showApiKeyDraft.value;
+}
+
+function handleApiKeyInput(): void {
+  hasEditedApiKeyDraft.value = true;
+  apiKeyFeedback.value = "";
+}
+
+function handleApiKeyFocus(): void {
+  if (!isManagingApiKey.value || !apiKeyInputRef.value || !apiKeyDraft.value.trim()) {
+    return;
+  }
+
+  apiKeyInputRef.value.select();
+}
+
+watch(showApiKeyModal, async (isOpen) => {
+  if (!isOpen) {
+    return;
+  }
+
+  await nextTick();
+  apiKeyInputRef.value?.focus();
+
+  if (isManagingApiKey.value && apiKeyInputRef.value && apiKeyDraft.value.trim()) {
+    apiKeyInputRef.value.select();
+  }
+});
+
+async function openGeminiApiKeyPage(): Promise<void> {
+  const url = "https://aistudio.google.com/app/apikey";
+
+  try {
+    if (isTauri()) {
+      await openUrl(url);
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (err) {
+    apiKeyFeedback.value = err instanceof Error ? err.message : "Could not open browser.";
   }
 }
 </script>
@@ -1382,35 +1492,141 @@ async function clearApiKey(): Promise<void> {
     </template>
 
     <div v-if="showApiKeyModal" class="modal-backdrop" @click.self="closeApiKeyModal">
-      <div class="modal-card">
+      <form class="modal-card" @submit.prevent="saveApiKey">
         <div class="modal-copy">
           <p class="eyebrow">Gemini</p>
-          <h2>{{ hasApiKey ? "Change API Key" : "Set API Key" }}</h2>
-          <p>Stored locally in the app config and used for new generation requests.</p>
+          <h2>{{ apiKeyModalTitle }}</h2>
+          <template v-if="isManagingApiKey">
+            <p>Update or remove your API key.</p>
+            <p>Changes will affect future conversions.</p>
+          </template>
+          <template v-else>
+            <p>Enter your Gemini API key to enable chord conversion.</p>
+            <p>
+              You can generate one at:
+              <button class="modal-link-button" type="button" @click="openGeminiApiKeyPage">
+                aistudio.google.com/app/apikey
+              </button>
+            </p>
+          </template>
         </div>
 
         <label class="modal-field">
           <span>API Key</span>
-          <input v-model="apiKeyDraft" type="password" autocomplete="off" placeholder="Paste your Gemini API key" />
+          <div class="modal-input-row">
+            <input
+              ref="apiKeyInputRef"
+              v-model="apiKeyDraft"
+              :type="showApiKeyDraft ? 'text' : 'password'"
+              autocomplete="off"
+              autofocus
+              placeholder="Paste your Gemini API key"
+              @focus="handleApiKeyFocus"
+              @input="handleApiKeyInput"
+            />
+            <button
+              class="modal-icon-button"
+              type="button"
+              :aria-label="showApiKeyDraft ? 'Hide API key' : 'Show API key'"
+              :title="showApiKeyDraft ? 'Hide API key' : 'Show API key'"
+              @click="toggleApiKeyVisibility"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="modal-icon">
+                <path
+                  d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.8"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+                <path
+                  v-if="showApiKeyDraft"
+                  d="M4 4l16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-width="1.8"
+                />
+              </svg>
+            </button>
+            <button
+              class="modal-icon-button"
+              type="button"
+              aria-label="Clear API key input"
+              title="Clear API key input"
+              :disabled="!apiKeyDraft.trim()"
+              @click="clearApiKeyDraft"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="modal-icon">
+                <path
+                  d="M6 6l12 12M18 6L6 18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-width="1.8"
+                />
+              </svg>
+            </button>
+            <button
+              class="modal-icon-button"
+              type="button"
+              aria-label="Copy API key"
+              title="Copy API key"
+              :disabled="!apiKeyDraft.trim()"
+              @click="copyApiKeyDraft"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="modal-icon">
+                <rect
+                  x="9"
+                  y="9"
+                  width="10"
+                  height="10"
+                  rx="1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+                <path
+                  d="M7 15H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.8"
+                />
+              </svg>
+            </button>
+          </div>
         </label>
 
+        <p v-if="apiKeyValidationMessage" class="action-feedback error-message">{{ apiKeyValidationMessage }}</p>
         <p v-if="apiKeyFeedback" class="action-feedback error-message">{{ apiKeyFeedback }}</p>
 
         <div class="modal-actions">
-          <button class="secondary-button" :disabled="isSavingApiKey" @click="closeApiKeyModal">Cancel</button>
+          <button class="secondary-button" type="button" :disabled="isSavingApiKey" @click="closeApiKeyModal">Cancel</button>
           <button
-            v-if="hasApiKey"
+            v-if="isManagingApiKey"
             class="mini-button"
+            type="button"
             :disabled="isSavingApiKey"
             @click="clearApiKey"
           >
             Clear Key
           </button>
-          <button class="primary-button" :disabled="isSavingApiKey || !apiKeyDraft.trim()" @click="saveApiKey">
+          <button class="primary-button" type="submit" :disabled="!canSaveApiKey">
             Save
           </button>
         </div>
-      </div>
+      </form>
     </div>
   </main>
 </template>
@@ -2310,7 +2526,7 @@ async function clearApiKey(): Promise<void> {
 .modal-card {
   display: grid;
   gap: 1rem;
-  width: min(100%, 28rem);
+  width: min(100%, 36rem);
   padding: 1.25rem;
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: #fffaf1;
@@ -2334,13 +2550,58 @@ async function clearApiKey(): Promise<void> {
   color: #233127;
 }
 
+.modal-link-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #7a6541;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.modal-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .modal-field input {
-  min-height: 2.75rem;
-  padding: 0.7rem 0.85rem;
+  min-height: 2.45rem;
+  padding: 0.48rem 0.75rem;
   border: 1px solid rgba(47, 59, 49, 0.16);
   background: #fffef9;
   color: #1f251f;
   font: inherit;
+}
+
+.modal-icon-button {
+  min-height: 2.45rem;
+  min-width: 2.45rem;
+  padding: 0.35rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: #f7f0e1;
+  color: #233127;
+  font: inherit;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.modal-icon-button[aria-label="Hide API key"] {
+  color: rgba(35, 49, 39, 0.7);
+}
+
+.modal-icon-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.modal-icon {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .modal-actions {
@@ -2449,6 +2710,10 @@ async function clearApiKey(): Promise<void> {
   .header-actions,
   .modal-actions {
     justify-content: flex-start;
+  }
+
+  .modal-input-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .songbook-path {

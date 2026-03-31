@@ -11,6 +11,14 @@
     "dialog:allow-open",
     "dialog:allow-message",
     "dialog:allow-save",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://aistudio.google.com/app/apikey"
+        }
+      ]
+    },
     "fs:create-app-specific-dirs",
     "fs:allow-read-dir",
     "fs:allow-read-text-file",

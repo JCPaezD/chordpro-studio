@@ -92,6 +92,7 @@ Current status:
 - v1.5 Playground can now run the shared pipeline from `raw`, `cleaned`, or editable `ChordPro`, with manual intermediate editing plus lightweight `input` / `fresh` / `stale` block states for debugging downstream regeneration
 - v1.5 Playground now includes lightweight panel visibility toggles integrated into the developer header, keeps hidden panels alive for focused debugging, and uses a more responsive one-row-or-one-column layout without changing pipeline behavior
 - v1.5 abort UX now shows a single global `Processing cancelled` info toast for real pipeline cancellations, covering manual aborts in `User` and `Playground` plus automatic aborts caused by switching to Songbook
+- v1.5 Gemini API key UX is now refined in `User` with a clearer set/manage modal, local format validation, show/hide plus copy/clear affordances, action toasts, and reliable external opening of the AI Studio key page in the system browser
 
 ## Completed work
 
@@ -149,8 +150,6 @@ Current status:
 ## Post v1.4.x — UX improvements & polish backlog
 
 ### Settings UX improvements
-
-- refine the Gemini API key modal with clearer copy, better visibility/editing ergonomics and stronger validation feedback
 
 ### Input validation (light UX)
 
