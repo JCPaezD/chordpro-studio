@@ -147,6 +147,7 @@ Limits:
 - parser and cleaning checks reuse the existing frontend services directly, while preview and PDF export run through a dedicated `smoke-runner` Tauri binary that reuses the same backend command logic and bundled ChordPro integration as the app
 - the smoke script leaves `.smoke/` on disk for inspection and keeps that folder ignored in Git
 - because direct Node-to-Tauri command invocation is not part of the current app architecture, the dedicated smoke runner is treated as the minimal acceptable bridge for backend validation rather than as a parallel render pipeline
+- because the Tauri development workflow still launches the main desktop binary through `cargo run`, `src-tauri/Cargo.toml` now sets `default-run = "chordpro-studio"` so adding `smoke-runner` does not break `tauri dev`
 
 ## Preview and Export Notes
 
