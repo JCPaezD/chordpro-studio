@@ -44,6 +44,20 @@ type PlaygroundStageId = "raw" | "cleaned" | "chordPro" | "json" | "preview";
 type PlaygroundStageState = "input" | "fresh" | "stale";
 
 const STAGE_ORDER: PlaygroundStageId[] = ["raw", "cleaned", "chordPro", "json", "preview"];
+const STAGE_NUMBERS: Record<PlaygroundStageId, string> = {
+  raw: "01",
+  cleaned: "02",
+  chordPro: "03",
+  json: "04",
+  preview: "05"
+};
+const STAGE_TOGGLE_LABELS: Record<PlaygroundStageId, string> = {
+  raw: "Raw",
+  cleaned: "Cleaned",
+  chordPro: "ChordPro",
+  json: "JSON",
+  preview: "Preview"
+};
 const availableGeminiModels = ref<string[]>([
   "gemini-2.5-flash",
   "gemini-2.5-pro",
@@ -54,6 +68,13 @@ const geminiModelOverride = ref("");
 const resolvedGeminiModel = computed(() => geminiModelOverride.value || selectedGeminiModel.value);
 const lastPipelineEntryPoint = ref<PipelineEntryPoint | null>(null);
 const lastFailedStage = ref<PlaygroundStageId | null>(null);
+const panelVisibility = ref<Record<PlaygroundStageId, boolean>>({
+  raw: true,
+  cleaned: true,
+  chordPro: true,
+  json: true,
+  preview: true
+});
 
 function readGeminiApiKey(): string | undefined {
   const fromProcess = (
@@ -226,6 +247,14 @@ function stageClasses(stage: PlaygroundStageId): string[] {
   ].filter(Boolean);
 }
 
+function isStageVisible(stage: PlaygroundStageId): boolean {
+  return panelVisibility.value[stage];
+}
+
+function toggleStageVisibility(stage: PlaygroundStageId): void {
+  panelVisibility.value[stage] = !panelVisibility.value[stage];
+}
+
 async function runFromEntryPoint(entryPoint: PipelineEntryPoint): Promise<void> {
   if ((entryPoint === "raw" || entryPoint === "cleaned") && !resolvedGeminiModel.value) {
     return;
@@ -299,8 +328,7 @@ onMounted(async () => {
           <span class="brand-title">ChordPro Studio</span>
         </div>
         <p class="eyebrow">Playground</p>
-        <h1>Inspect the pipeline and preview output</h1>
-        <p class="header-description">Developer view for pipeline inspection and debugging.</p>
+        <h1>Inspect and rerun the pipeline</h1>
       </div>
 
       <div class="header-controls">
@@ -317,6 +345,36 @@ onMounted(async () => {
           >
             Playground
           </button>
+        </div>
+
+        <div class="header-tools">
+          <label v-if="selectedGeminiModel" class="model-select playground-model-select">
+            <span>Model</span>
+            <select
+              v-model="selectedGeminiModel"
+              :disabled="loading || !!geminiModelOverride"
+              @change="persistPlaygroundModel"
+            >
+              <option v-for="model in availableGeminiModels" :key="model" :value="model">
+                {{ model }}
+              </option>
+            </select>
+          </label>
+
+          <div class="panel-toggle-cluster" aria-label="Panel visibility">
+            <button
+              v-for="stage in STAGE_ORDER"
+              :key="stage"
+              type="button"
+              class="panel-toggle-button"
+              :class="{ 'panel-toggle-button-active': isStageVisible(stage) }"
+              :aria-pressed="isStageVisible(stage)"
+              @click="toggleStageVisibility(stage)"
+            >
+              <span class="panel-toggle-index">{{ STAGE_NUMBERS[stage] }}</span>
+              <span class="panel-toggle-label">{{ STAGE_TOGGLE_LABELS[stage] }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -358,28 +416,18 @@ onMounted(async () => {
     </section>
 
     <section class="playground-grid">
-      <section :class="['panel', 'stage', 'raw-panel', 'card-shell', ...stageClasses('raw')]">
+      <section v-show="isStageVisible('raw')" :class="['panel', 'stage', 'raw-panel', 'card-shell', ...stageClasses('raw')]">
         <div class="panel-header stage-header raw-header">
-          <span class="stage-index">01</span>
-          <div class="stage-copy">
-            <h2>Raw Input</h2>
-            <span v-if="getStageStatusLabel('raw')" class="stage-status-chip">
-              {{ getStageStatusLabel('raw') }}
-            </span>
+          <div class="stage-title-row">
+            <span class="stage-index">01</span>
+            <div class="stage-copy">
+              <h2>Raw Input</h2>
+              <span v-if="getStageStatusLabel('raw')" class="stage-status-chip">
+                {{ getStageStatusLabel('raw') }}
+              </span>
+            </div>
           </div>
           <div class="panel-actions raw-actions">
-            <label v-if="selectedGeminiModel" class="model-select">
-              <span>Model</span>
-              <select
-                v-model="selectedGeminiModel"
-                :disabled="loading || !!geminiModelOverride"
-                @change="persistPlaygroundModel"
-              >
-                <option v-for="model in availableGeminiModels" :key="model" :value="model">
-                  {{ model }}
-                </option>
-              </select>
-            </label>
             <button class="mini-button" @click="pasteFromClipboard">Paste</button>
             <button class="mini-button" @click="copyToClipboard(rawInput)">Copy</button>
             <button class="mini-button" :disabled="loading" @click="requestClearAllState">Clear all</button>
@@ -400,15 +448,17 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section :class="['panel', 'stage', 'card-shell', ...stageClasses('cleaned')]">
+      <section v-show="isStageVisible('cleaned')" :class="['panel', 'stage', 'card-shell', ...stageClasses('cleaned')]">
         <div class="panel-header stage-header">
-          <span class="stage-index">02</span>
-          <div class="stage-copy">
-            <h2>Cleaned Text</h2>
-            <span v-if="getStageStatusLabel('cleaned')" class="stage-status-chip">
-              {{ getStageStatusLabel('cleaned') }}
-            </span>
-            <p v-if="getStageError('cleaned')" class="stage-error">{{ getStageError("cleaned") }}</p>
+          <div class="stage-title-row">
+            <span class="stage-index">02</span>
+            <div class="stage-copy">
+              <h2>Cleaned Text</h2>
+              <span v-if="getStageStatusLabel('cleaned')" class="stage-status-chip">
+                {{ getStageStatusLabel('cleaned') }}
+              </span>
+              <p v-if="getStageError('cleaned')" class="stage-error">{{ getStageError("cleaned") }}</p>
+            </div>
           </div>
           <div class="panel-actions">
             <button
@@ -428,15 +478,17 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section :class="['panel', 'stage', 'card-shell', ...stageClasses('chordPro')]">
+      <section v-show="isStageVisible('chordPro')" :class="['panel', 'stage', 'card-shell', ...stageClasses('chordPro')]">
         <div class="panel-header stage-header">
-          <span class="stage-index">03</span>
-          <div class="stage-copy">
-            <h2>ChordPro Result</h2>
-            <span v-if="getStageStatusLabel('chordPro')" class="stage-status-chip">
-              {{ getStageStatusLabel('chordPro') }}
-            </span>
-            <p v-if="getStageError('chordPro')" class="stage-error">{{ getStageError("chordPro") }}</p>
+          <div class="stage-title-row">
+            <span class="stage-index">03</span>
+            <div class="stage-copy">
+              <h2>ChordPro Result</h2>
+              <span v-if="getStageStatusLabel('chordPro')" class="stage-status-chip">
+                {{ getStageStatusLabel('chordPro') }}
+              </span>
+              <p v-if="getStageError('chordPro')" class="stage-error">{{ getStageError("chordPro") }}</p>
+            </div>
           </div>
           <div class="panel-actions">
             <button
@@ -456,15 +508,17 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section :class="['panel', 'stage', 'card-shell', ...stageClasses('json')]">
+      <section v-show="isStageVisible('json')" :class="['panel', 'stage', 'card-shell', ...stageClasses('json')]">
         <div class="panel-header stage-header">
-          <span class="stage-index">04</span>
-          <div class="stage-copy">
-            <h2>Song JSON</h2>
-            <span v-if="getStageStatusLabel('json')" class="stage-status-chip">
-              {{ getStageStatusLabel('json') }}
-            </span>
-            <p v-if="getStageError('json')" class="stage-error">{{ getStageError("json") }}</p>
+          <div class="stage-title-row">
+            <span class="stage-index">04</span>
+            <div class="stage-copy">
+              <h2>Song JSON</h2>
+              <span v-if="getStageStatusLabel('json')" class="stage-status-chip">
+                {{ getStageStatusLabel('json') }}
+              </span>
+              <p v-if="getStageError('json')" class="stage-error">{{ getStageError("json") }}</p>
+            </div>
           </div>
           <div class="panel-actions">
             <button class="mini-button" @click="copyToClipboard(songJson)">Copy</button>
@@ -475,15 +529,17 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section :class="['panel', 'preview-panel', 'card-shell', ...stageClasses('preview')]">
+      <section v-show="isStageVisible('preview')" :class="['panel', 'preview-panel', 'card-shell', ...stageClasses('preview')]">
         <div class="panel-header stage-header">
-          <span class="stage-index">05</span>
-          <div class="stage-copy">
-            <h2>Preview</h2>
-            <span v-if="getStageStatusLabel('preview')" class="stage-status-chip">
-              {{ getStageStatusLabel('preview') }}
-            </span>
-            <p v-if="getStageError('preview')" class="stage-error">{{ getStageError("preview") }}</p>
+          <div class="stage-title-row">
+            <span class="stage-index">05</span>
+            <div class="stage-copy">
+              <h2>Preview</h2>
+              <span v-if="getStageStatusLabel('preview')" class="stage-status-chip">
+                {{ getStageStatusLabel('preview') }}
+              </span>
+              <p v-if="getStageError('preview')" class="stage-error">{{ getStageError("preview") }}</p>
+            </div>
           </div>
           <div class="panel-actions preview-actions">
             <div class="export-actions">
@@ -618,10 +674,17 @@ onMounted(async () => {
   min-width: 0;
 }
 
+.header-copy {
+  display: block;
+}
+
 .header-controls {
-  display: grid;
-  gap: 1rem;
-  justify-items: end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: flex-end;
+  align-self: stretch;
+  justify-content: space-between;
 }
 
 .view-toggle {
@@ -686,10 +749,6 @@ onMounted(async () => {
   margin: 0;
 }
 
-.playground-header h1 {
-  font-size: 1.18rem;
-}
-
 .header-description {
   margin: 0.45rem 0 0;
   color: #4a564a;
@@ -701,6 +760,69 @@ onMounted(async () => {
   color: #5f6c60;
   font-size: 0.9rem;
   flex: 0 0 auto;
+}
+
+.header-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.panel-toggle-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 42rem;
+}
+
+.panel-toggle-button {
+  min-height: 2.7rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+  border: 1px solid rgba(35, 49, 39, 0.18);
+  background: rgba(247, 240, 225, 0.7);
+  color: #6a756c;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.panel-toggle-button-active {
+  background: linear-gradient(135deg, #1f3124, #37513b);
+  color: #f8f3e8;
+  border-color: rgba(31, 49, 36, 0.2);
+  box-shadow: 0 10px 24px rgba(35, 49, 39, 0.12);
+}
+
+.panel-toggle-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: rgba(35, 49, 39, 0.14);
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.panel-toggle-button-active .panel-toggle-index {
+  background: rgba(248, 243, 232, 0.18);
+}
+
+.panel-toggle-label {
+  white-space: nowrap;
 }
 
 .error {
@@ -765,15 +887,14 @@ onMounted(async () => {
 
 .playground-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
   flex: 1;
-  overflow: hidden;
-}
-
-.raw-panel {
-  grid-column: span 2;
+  min-height: 0;
+  overflow: auto;
+  align-content: stretch;
 }
 
 .panel {
@@ -784,9 +905,10 @@ onMounted(async () => {
 
 .panel-header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  align-items: flex-start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 0.7rem;
+  align-items: start;
   padding: 1rem 1rem 0.85rem;
   flex: 0 0 auto;
 }
@@ -800,10 +922,6 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.raw-header {
-  align-items: center;
-}
-
 .stage-index {
   display: inline-flex;
   align-items: center;
@@ -815,6 +933,13 @@ onMounted(async () => {
   color: #f6f1e7;
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.stage-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .stage-copy {
@@ -865,14 +990,15 @@ onMounted(async () => {
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .raw-actions {
-  align-items: end;
+  align-items: center;
 }
 
 .preview-actions {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .model-select {
@@ -885,10 +1011,14 @@ onMounted(async () => {
   text-transform: uppercase;
 }
 
+.playground-model-select {
+  min-width: 11.5rem;
+}
+
 .model-select select {
-  min-width: 14rem;
-  min-height: 2.75rem;
-  padding: 0.55rem 0.65rem;
+  min-width: 11.5rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: #f7f0e1;
   color: #233127;
@@ -905,7 +1035,6 @@ onMounted(async () => {
 }
 
 .export-action-button {
-  min-width: 7.9rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1081,11 +1210,12 @@ pre {
 }
 
 .run-button {
-  width: 12.75rem;
-  min-height: 2.75rem;
+  width: auto;
+  min-width: 0;
+  min-height: 2.5rem;
   box-sizing: border-box;
   position: relative;
-  padding: 0.85rem 1.35rem;
+  padding: 0.65rem 0.95rem;
   border: 0;
   background: linear-gradient(135deg, #1f3124, #37513b);
   color: #f8f3e8;
@@ -1096,10 +1226,8 @@ pre {
 }
 
 .run-button-secondary {
-  width: auto;
-  min-width: 7.2rem;
-  min-height: 2.75rem;
-  padding: 0.6rem 0.95rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.85rem;
 }
 
 .button-content {
@@ -1135,12 +1263,12 @@ pre {
 
 .mini-button {
   width: fit-content;
-  min-height: 2.75rem;
+  min-height: 2.5rem;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.45rem 0.75rem;
+  padding: 0.4rem 0.68rem;
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: #f7f0e1;
   color: #233127;
@@ -1167,14 +1295,18 @@ pre {
   animation: spin 0.9s linear infinite;
 }
 
-@media (max-width: 1200px) {
-  .playground-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+@media (max-width: 1280px) {
+  .panel-toggle-cluster {
+    max-width: 32rem;
   }
 
-  .raw-panel {
-    grid-column: 1 / -1;
+  .playground-grid {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-rows: minmax(20rem, auto);
+    padding-right: 0.2rem;
   }
 }
 
@@ -1183,7 +1315,6 @@ pre {
   .error,
   .retry-log-header,
   .subpanel-header,
-  .panel-header,
   .raw-header {
     display: flex;
     flex-direction: column;
@@ -1191,7 +1322,13 @@ pre {
   }
 
   .header-controls {
-    justify-items: start;
+    align-self: auto;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .header-tools {
+    justify-content: flex-start;
   }
 
   .panel-actions,
@@ -1202,17 +1339,24 @@ pre {
     justify-items: start;
   }
 
+  .panel-header {
+    display: grid;
+  }
+
+  .panel-toggle-cluster {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
   .action-feedback {
     text-align: left;
   }
 
   .playground-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(5, minmax(12rem, 1fr));
-  }
-
-  .raw-panel {
-    grid-column: auto;
+    grid-auto-rows: minmax(22rem, auto);
+    overflow: auto;
+    padding-right: 0.2rem;
   }
 }
 

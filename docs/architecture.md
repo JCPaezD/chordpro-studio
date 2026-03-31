@@ -342,6 +342,7 @@ Purpose:
 - run the pipeline from `raw`, `cleaned`, or editable `ChordPro` intermediate state
 - regenerate preview directly from editable `.cho`
 - inspect retries and validation failures
+- hide or show individual debug panels locally without changing pipeline state or persisted config
 
 It is intended for development and debugging, not for end-user workflow. The Playground is now exposed only in DEV builds; production builds always open the `User` view, do not render a Playground toggle, and also remove the extra `Workspace` label that only exists to distinguish the two modes during development.
 
