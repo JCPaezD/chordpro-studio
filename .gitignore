@@ -11,6 +11,7 @@ app/.env.local
 tauri-dev-out.log
 tauri-dev-err.log
 .tmp/
+.smoke/
 releases/
 *.zip
 .vscode/

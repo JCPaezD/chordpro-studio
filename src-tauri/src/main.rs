@@ -1,8 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod chordpro_cli;
-mod config;
-
+use chordpro_studio::{chordpro_cli, config};
 use tauri::Manager;
 
 fn main() {

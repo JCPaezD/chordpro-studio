@@ -96,6 +96,25 @@ pub async fn generate_preview(
   render_style: Option<RenderStyleOptions>,
   file_name: Option<String>,
 ) -> Result<PreviewResponse, ChordProCommandError> {
+  generate_preview_with_state(
+    app,
+    Arc::clone(preview_execution_state.inner()),
+    chordpro_text,
+    bypass_cache,
+    render_style,
+    file_name,
+  )
+  .await
+}
+
+pub(crate) async fn generate_preview_with_state(
+  app: AppHandle,
+  preview_execution_state: Arc<PreviewExecutionState>,
+  chordpro_text: String,
+  bypass_cache: bool,
+  render_style: Option<RenderStyleOptions>,
+  file_name: Option<String>,
+) -> Result<PreviewResponse, ChordProCommandError> {
   let request_id = preview_execution_state
     .latest_request_id
     .fetch_add(1, Ordering::SeqCst)
@@ -113,8 +132,6 @@ pub async fn generate_preview(
       });
     }
   }
-
-  let preview_execution_state = Arc::clone(preview_execution_state.inner());
   let preview = tauri::async_runtime::spawn_blocking(move || {
     let _execution_guard = preview_execution_state
       .execution_lock
@@ -218,6 +235,16 @@ fn preview_lock_error() -> ChordProCommandError {
 }
 #[tauri::command]
 pub fn export_pdf(
+  app: AppHandle,
+  chordpro_text: String,
+  output_path: String,
+  render_style: Option<RenderStyleOptions>,
+  file_name: Option<String>,
+) -> Result<ExportPdfResponse, ChordProCommandError> {
+  export_pdf_internal(app, chordpro_text, output_path, render_style, file_name)
+}
+
+pub(crate) fn export_pdf_internal(
   app: AppHandle,
   chordpro_text: String,
   output_path: String,

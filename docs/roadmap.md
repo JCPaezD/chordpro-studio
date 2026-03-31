@@ -88,6 +88,7 @@ Current status:
 - v1.4.x unsaved-content protection is now unified across Songbook and Performance song changes, while Convert `New Sheet` and app close protect non-empty Original text through a separate app-modal confirmation without merging it into the `.cho` dirty state
 - v1.5 preview generation now runs the ChordPro CLI off the Tauri main thread while preserving the existing cache and renderer path, eliminates visible UI freezes during editing, and keeps latest-wins preview consistency through backend stale-request discarding plus frontend request ordering
 - v1.5 Songbook auto-preview debounce is now reduced to `500ms` after manual validation, keeping preview updates near-instant in normal editing without reintroducing blocking
+- v1.5 local smoke validation is now available through `npm run smoke`, validates parser and cleaning without LLM usage, reuses the real preview/export backend path, repeats preview successfully for cache stability, and leaves generated artifacts under `.smoke/` for inspection
 
 ## Completed work
 
@@ -137,14 +138,6 @@ Current status:
 ## Current roadmap
 
 ## v1.5 — Engine & Dev Foundations
-
-### Smoke test (basic validation workflow)
-
-- add a one-command local smoke validation workflow
-- validate core deterministic pipeline flow:
-  - input → cleaning → conversion → parsing → preview/render
-- ensure outputs are generated without runtime errors
-- keep checks lightweight and focused on stability (not full test suite)
 
 ### Playground improvements (debug-focused)
 

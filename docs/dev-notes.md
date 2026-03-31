@@ -141,6 +141,13 @@ Limits:
 - the frontend keeps its existing preview pipeline, overlays and buffered iframe swap, and now reinforces latest-wins behavior by assigning request ordering even for preview calls that do not pass an explicit `requestId`
 - real process cancellation remains optional future work; current behavior is considered acceptable because the UI stays responsive and stale preview results are ignored
 
+### Local smoke validation
+
+- local smoke validation now runs through `npm run smoke` and is intentionally lightweight: no UI, no LLM calls, and no external testing framework
+- parser and cleaning checks reuse the existing frontend services directly, while preview and PDF export run through a dedicated `smoke-runner` Tauri binary that reuses the same backend command logic and bundled ChordPro integration as the app
+- the smoke script leaves `.smoke/` on disk for inspection and keeps that folder ignored in Git
+- because direct Node-to-Tauri command invocation is not part of the current app architecture, the dedicated smoke runner is treated as the minimal acceptable bridge for backend validation rather than as a parallel render pipeline
+
 ## Preview and Export Notes
 
 Preview generation now follows this flow:
