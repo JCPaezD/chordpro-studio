@@ -209,6 +209,7 @@ Export feedback behavior:
 - only one toast is shown at a time, so newer feedback replaces older feedback instead of queueing
 - success and info messages auto-dismiss, while errors remain visible until manually dismissed
 - success messages use the saved filename when available
+- intentional pipeline cancellation now reuses that same global toast system with a single `Processing cancelled` info message, triggered only when an active operation really existed and shared by both manual aborts and automatic Songbook-switch aborts
 - shared workspace cleanup is split between `clearGeneratedState()` (results only) and `clearAllState()` (raw input plus generated state) so `User` and `Playground` can choose the correct behavior without duplicating reset logic
 - Preview `.cho` export now follows the same conservative safe-rename rule used by direct editor save when it targets the current document
 

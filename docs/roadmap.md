@@ -91,6 +91,7 @@ Current status:
 - v1.5 local smoke validation is now available through `npm run smoke`, validates parser and cleaning without LLM usage, reuses the real preview/export backend path, repeats preview successfully for cache stability, and leaves generated artifacts under `.smoke/` for inspection
 - v1.5 Playground can now run the shared pipeline from `raw`, `cleaned`, or editable `ChordPro`, with manual intermediate editing plus lightweight `input` / `fresh` / `stale` block states for debugging downstream regeneration
 - v1.5 Playground now includes lightweight panel visibility toggles integrated into the developer header, keeps hidden panels alive for focused debugging, and uses a more responsive one-row-or-one-column layout without changing pipeline behavior
+- v1.5 abort UX now shows a single global `Processing cancelled` info toast for real pipeline cancellations, covering manual aborts in `User` and `Playground` plus automatic aborts caused by switching to Songbook
 
 ## Completed work
 
@@ -143,7 +144,6 @@ Current status:
 
 ### UX feedback improvements (light)
 
-- improve abort action feedback so cancellation is visible and non-ambiguous in the current view
 - improve songbook load feedback with clearer empty-folder guidance and visible loaded-song counts
 
 ## Post v1.4.x — UX improvements & polish backlog

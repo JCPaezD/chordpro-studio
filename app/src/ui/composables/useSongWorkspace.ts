@@ -57,6 +57,8 @@ type ExistingDocumentSaveTarget = {
   applyCaseOnlyRename: boolean;
 };
 
+const PROCESSING_CANCELLED_MESSAGE = "Processing cancelled";
+
 export type SongWorkspace = {
   activePanel: Ref<"songbook" | "convert">;
   rawInput: Ref<string>;
@@ -362,7 +364,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return;
     }
 
-    abortConversion();
+    abortActiveOperation();
   }
 
   function setActivePanel(panel: "songbook" | "convert"): void {
@@ -1023,7 +1025,13 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     currentAbortController = null;
   }
 
-  function abortConversion(): void {
+  function abortActiveOperation(options?: { showFeedback?: boolean }): boolean {
+    const hadActiveOperation = loading.value || isGeneratingPreview.value || currentAbortController !== null;
+
+    if (!hadActiveOperation) {
+      return false;
+    }
+
     currentPipelineRequestId += 1;
     loading.value = false;
     isGeneratingPreview.value = false;
@@ -1033,6 +1041,19 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       currentAbortController.abort();
       currentAbortController = null;
     }
+
+    if (options?.showFeedback !== false) {
+      feedback.showFeedback({
+        type: "info",
+        message: PROCESSING_CANCELLED_MESSAGE
+      });
+    }
+
+    return true;
+  }
+
+  function abortConversion(): void {
+    abortActiveOperation();
   }
 
   function clearPipelineRunState(clearBeforeRun = false): void {
@@ -1587,7 +1608,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   );
 
   function dispose(): void {
-    abortConversion();
+    abortActiveOperation({ showFeedback: false });
 
     if (unlistenWindowCloseRequested) {
       unlistenWindowCloseRequested();
