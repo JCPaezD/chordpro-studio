@@ -380,6 +380,8 @@ Songbook behavior:
 - frontend config is loaded once through `useAppConfig()`, kept in memory as the single source of truth, and persisted through Tauri backend commands
 - missing `config.json` now resolves to a default config with `geminiApiKey: null`, and the backend creates the file on first read when needed
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document
+- manual Songbook folder load and manual `Refresh` now report total song count through the shared global toast system, while internal Songbook refreshes triggered by save stay silent
+- clearing the active songbook now uses a lightweight confirmation modal in `User`; if the current document belongs to that Songbook, the workspace resets the active `.cho`, parsed song and preview together so no stale Songbook-derived state remains visible after clear
 
 Workspace document behavior:
 

@@ -5,6 +5,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
+import ClearSongbookModal from "../components/ClearSongbookModal.vue";
 import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
 import SongList from "../components/SongList.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
@@ -87,6 +88,7 @@ const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 const isPerformanceMode = ref(false);
 const showChordProEditor = ref(false);
 const showApiKeyModal = ref(false);
+const showClearSongbookModal = ref(false);
 const apiKeyDraft = ref("");
 const apiKeyFeedback = ref("");
 const apiKeyInputRef = ref<HTMLInputElement | null>(null);
@@ -806,6 +808,27 @@ async function openSongInPerformanceMode(filePath: string): Promise<boolean> {
   return openSongFile(filePath);
 }
 
+async function handleRefreshSongbook(): Promise<void> {
+  await refreshSongbook({ feedback: "refresh" });
+}
+
+function requestClearSongbook(): void {
+  if (!songbook.value) {
+    return;
+  }
+
+  showClearSongbookModal.value = true;
+}
+
+function cancelClearSongbook(): void {
+  showClearSongbookModal.value = false;
+}
+
+async function confirmClearSongbook(): Promise<void> {
+  showClearSongbookModal.value = false;
+  await clearSongbook();
+}
+
 function handleWindowKeydown(event: KeyboardEvent): void {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return;
@@ -1274,8 +1297,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
             <div class="panel-actions-stack align-end">
               <div class="header-actions">
                 <button class="mini-button" @click="openSongbookFolder">Open folder</button>
-                <button class="mini-button" :disabled="!songbook" @click="refreshSongbook">Refresh</button>
-                <button class="secondary-button" :disabled="!songbook" @click="clearSongbook">Clear</button>
+                <button class="mini-button" :disabled="!songbook" @click="handleRefreshSongbook">Refresh</button>
+                <button class="secondary-button" :disabled="!songbook" @click="requestClearSongbook">Clear</button>
                 <button class="mini-button songbook-export-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
                   {{ isExportingSongbook ? "Creating PDF..." : "Songbook PDF" }}
                 </button>
@@ -1490,6 +1513,12 @@ async function openGeminiApiKeyPage(): Promise<void> {
       </section>
     </section>
     </template>
+
+    <ClearSongbookModal
+      :visible="showClearSongbookModal"
+      @cancel="cancelClearSongbook"
+      @confirm="confirmClearSongbook"
+    />
 
     <div v-if="showApiKeyModal" class="modal-backdrop" @click.self="closeApiKeyModal">
       <form class="modal-card" @submit.prevent="saveApiKey">

@@ -57,6 +57,8 @@ type ExistingDocumentSaveTarget = {
   applyCaseOnlyRename: boolean;
 };
 
+type SongbookFeedbackKind = "load" | "refresh";
+
 const PROCESSING_CANCELLED_MESSAGE = "Processing cancelled";
 
 export type SongWorkspace = {
@@ -103,7 +105,7 @@ export type SongWorkspace = {
   exportCurrent(defaultExtension?: "pdf" | "cho"): Promise<void>;
   exportSongbookPdf(): Promise<void>;
   openSongbookFolder(): Promise<void>;
-  refreshSongbook(): Promise<void>;
+  refreshSongbook(options?: { feedback?: SongbookFeedbackKind | false }): Promise<void>;
   clearSongbook(): Promise<void>;
   openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<boolean>;
   saveDocument(): Promise<boolean>;
@@ -567,6 +569,25 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   function clearAllState(): void {
     rawInput.value = "";
     clearGeneratedState();
+  }
+
+  function formatSongbookFeedbackMessage(kind: SongbookFeedbackKind, count: number): string {
+    const noun = count === 1 ? "song" : "songs";
+    const action = kind === "load" ? "loaded" : "refreshed";
+
+    return `${count} ${noun} ${action}`;
+  }
+
+  function currentDocumentBelongsToSongbook(currentSongbook: Songbook | null): boolean {
+    const currentFilePath = document.value.filePath;
+    if (!currentSongbook?.songs.length || !currentFilePath) {
+      return false;
+    }
+
+    const normalizedCurrentPath = normalizeCaseInsensitivePath(currentFilePath);
+    return currentSongbook.songs.some((songEntry) =>
+      normalizeCaseInsensitivePath(songEntry.filePath) === normalizedCurrentPath
+    );
   }
 
   function hasRawInputContent(): boolean {
@@ -1206,7 +1227,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     schedulePreviewRefreshFromEditor(value);
   }
 
-  async function refreshSongbook(): Promise<void> {
+  async function refreshSongbook(options?: { feedback?: SongbookFeedbackKind | false }): Promise<void> {
     if (!songbook.value?.path) {
       return;
     }
@@ -1225,20 +1246,40 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     } catch (err) {
       console.error("Could not persist lastSongbookPath.", err);
     }
+
+    const feedbackKind = options?.feedback ?? false;
+    if (feedbackKind) {
+      feedback.showFeedback({
+        type: "success",
+        message: formatSongbookFeedbackMessage(feedbackKind, songbook.value.songs.length)
+      });
+    }
   }
 
   async function clearSongbook(): Promise<void> {
+    const currentSongbook = songbook.value;
+    const shouldResetActiveSong = currentDocumentBelongsToSongbook(currentSongbook);
+
     cancelActiveGeneration();
-    cancelPendingPreviewRefresh();
-    clearPreviewState();
+
+    if (shouldResetActiveSong) {
+      clearGeneratedState();
+    }
+
     songbook.value = null;
     songbookError.value = "";
+
     try {
       await appConfig.clearLastSongbookPath();
       await appConfig.clearLastOpenedSongPath();
     } catch (err) {
       console.error("Could not clear persisted songbook state.", err);
     }
+
+    feedback.showFeedback({
+      type: "success",
+      message: "Songbook cleared"
+    });
   }
 
   function requestUnsavedContentResolution(): Promise<UnsavedContentResolution> {
@@ -1491,7 +1532,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       console.error("Could not clear lastOpenedSongPath for the new songbook.", err);
     }
 
-    await refreshSongbook();
+    await refreshSongbook({ feedback: "load" });
   }
 
   async function initialize(): Promise<void> {

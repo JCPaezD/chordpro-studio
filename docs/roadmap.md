@@ -93,6 +93,7 @@ Current status:
 - v1.5 Playground now includes lightweight panel visibility toggles integrated into the developer header, keeps hidden panels alive for focused debugging, and uses a more responsive one-row-or-one-column layout without changing pipeline behavior
 - v1.5 abort UX now shows a single global `Processing cancelled` info toast for real pipeline cancellations, covering manual aborts in `User` and `Playground` plus automatic aborts caused by switching to Songbook
 - v1.5 Gemini API key UX is now refined in `User` with a clearer set/manage modal, local format validation, show/hide plus copy/clear affordances, action toasts, and reliable external opening of the AI Studio key page in the system browser
+- v1.5 Songbook UX now provides explicit total-count toast feedback for folder load and manual refresh, confirms `Clear` before removing the current folder, and fully resets Songbook-derived active document and preview state when the cleared song belonged to that folder
 
 ## Completed work
 
@@ -144,8 +145,6 @@ Current status:
 ## v1.5 — Engine & Dev Foundations
 
 ### UX feedback improvements (light)
-
-- improve songbook load feedback with clearer empty-folder guidance and visible loaded-song counts
 
 ## Post v1.4.x — UX improvements & polish backlog
 
