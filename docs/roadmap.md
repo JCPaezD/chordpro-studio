@@ -164,11 +164,16 @@ Current status:
 
 Pending, planned or possible work.
 
+## v1.5.1 — Stability & UX fixes
+
+- protect unsaved changes on clear songbook
+- protect unsaved changes on open folder
+- autoscroll in performance mode when navigating with prev/next controls
+- show `Unsaved changes` in Convert when editing a file with an associated path
+- prevent generation on empty input with explicit user-facing behavior
+- prevent LLM from inventing full content when input is insufficient
+
 ## v1.x backlog
-
-### Input validation (light UX)
-
-- guide empty `Generate` actions without turning the flow into a hard-blocking form
 
 ### Desktop polish
 
@@ -182,6 +187,7 @@ Pending, planned or possible work.
   - lightweight regex-based approach
   - no heavy editor refactor yet
   - avoid breaking current input behavior
+- add an explicit discard / revert flow for file-backed editor changes instead of relying on indirect workarounds such as changing song or clearing context
 
 ### Product clarification
 
@@ -200,9 +206,12 @@ Pending, planned or possible work.
   - app shell (header, layout, global consistency)
 - treat this as a dedicated pass rather than a sequence of scattered incremental tweaks
 - include a focused Performance mode UX refinement review:
+  - address keyboard focus loss after interacting with the PDF viewer
   - evaluate close button placement
   - evaluate the song-list toggle affordance (e.g. handle / trigger)
+  - evaluate prev / next navigation controls and overall control clarity
   - improve intuitiveness without breaking the current interaction model
+- keep these as dedicated UX review topics rather than patch-fix candidates
 
 ### Songbook PDF improvements (incremental)
 
@@ -213,6 +222,17 @@ Pending, planned or possible work.
 ### Conversion / LLM improvements
 
 - improve the conversion prompt so custom chord definitions are included deterministically using `{define}`
+- clarify and document that the default pipeline should behave as a transformer, not a generator
+- current minimal-input generation behavior should not be treated as intended default behavior
+- explore optional generative modes separately:
+  - generate from title / artist
+  - generate from example song
+  - completion / continuation workflows
+- define a section-header language policy for generated output:
+  - respect source language
+  - enforce a specific language
+  - future preference-based configuration
+- current generated section header language remains inconsistent across Spanish and English
 
 ### Rendering / CLI
 
@@ -280,6 +300,8 @@ Pending, planned or possible work.
 
 ### Distribution / installation
 
+- clarify the current installation model as per-user under AppData
+- evaluate whether per-machine installation should be supported in the future
 - improve local installation workflow:
   - use installer-based setup (MSI / NSIS)
   - allow upgrade over existing installations
