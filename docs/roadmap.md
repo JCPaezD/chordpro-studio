@@ -160,6 +160,10 @@ Current status:
 - v1.5 Gemini API key UX is now refined in `User` with a clearer set/manage modal, local format validation, show/hide plus copy/clear affordances, action toasts, and reliable external opening of the AI Studio key page in the system browser
 - v1.5 Songbook UX now provides explicit total-count toast feedback for folder load and manual refresh, confirms `Clear` before removing the current folder, and fully resets Songbook-derived active document and preview state when the cleared song belonged to that folder
 
+### v1.5.1
+
+- v1.5.1 destructive Songbook actions now protect unsaved `.cho` changes consistently: `Clear` resolves the standard `Save / Discard / Cancel` flow before its own Songbook confirmation, and `Open folder` resolves the same `.cho` protection before explicitly confirming replacement of the currently loaded Songbook
+
 ## Current roadmap
 
 Pending, planned or possible work.
