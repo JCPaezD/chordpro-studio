@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
 const props = defineProps<{
   visible: boolean;
+  mode: "clear" | "replace";
 }>();
 
 const emit = defineEmits<{
@@ -11,6 +12,13 @@ const emit = defineEmits<{
 }>();
 
 const cancelButtonRef = ref<HTMLButtonElement | null>(null);
+const modalTitle = computed(() => (props.mode === "replace" ? "Replace songbook?" : "Clear songbook?"));
+const modalDescription = computed(() =>
+  props.mode === "replace"
+    ? "This will remove all loaded songs from the current view and replace them with the selected folder."
+    : "This will remove all loaded songs from the current view."
+);
+const confirmButtonLabel = computed(() => (props.mode === "replace" ? "Replace" : "Clear"));
 
 function emitCancel(): void {
   emit("cancel");
@@ -55,8 +63,8 @@ onBeforeUnmount(() => {
         <div class="modal-card">
           <div class="modal-copy">
             <p class="eyebrow">Songbook</p>
-            <h2>Clear songbook?</h2>
-            <p class="modal-description">This will remove all loaded songs from the current view.</p>
+            <h2>{{ modalTitle }}</h2>
+            <p class="modal-description">{{ modalDescription }}</p>
           </div>
 
           <div class="modal-actions">
@@ -73,7 +81,7 @@ onBeforeUnmount(() => {
               type="button"
               @click="emit('confirm')"
             >
-              Clear
+              {{ confirmButtonLabel }}
             </button>
           </div>
         </div>

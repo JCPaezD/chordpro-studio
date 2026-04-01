@@ -51,6 +51,8 @@ type PreviewPlaceholderInfo = {
 type UnsavedContentResolution = "save" | "discard" | "cancel";
 type RawInputDiscardResolution = "discard" | "cancel";
 type SaveFilenameMismatchResolution = "keep-current" | "save-as-new" | "cancel";
+type UnsavedContentModalMode = "dirty" | "raw-input";
+type SongbookActionConfirmMode = "clear" | "replace";
 type ExistingDocumentSaveTarget = {
   writePath: string;
   finalPath: string;
@@ -88,7 +90,9 @@ export type SongWorkspace = {
   selectedSongPath: ComputedRef<string>;
   hasUnsavedChanges: ComputedRef<boolean>;
   showUnsavedContentModal: ComputedRef<boolean>;
-  unsavedContentModalMode: Ref<"dirty" | "raw-input" | null>;
+  unsavedContentModalMode: Ref<UnsavedContentModalMode | null>;
+  showSongbookActionConfirmModal: ComputedRef<boolean>;
+  songbookActionConfirmMode: Ref<SongbookActionConfirmMode | null>;
   unsavedContentMetadataLine: ComputedRef<string>;
   rawInputDiscardMessage: Ref<string>;
   isResolvingUnsavedContent: Ref<boolean>;
@@ -104,6 +108,7 @@ export type SongWorkspace = {
   requestClearAllState(): Promise<void>;
   exportCurrent(defaultExtension?: "pdf" | "cho"): Promise<void>;
   exportSongbookPdf(): Promise<void>;
+  requestClearSongbook(): Promise<void>;
   openSongbookFolder(): Promise<void>;
   refreshSongbook(options?: { feedback?: SongbookFeedbackKind | false }): Promise<void>;
   clearSongbook(): Promise<void>;
@@ -111,6 +116,8 @@ export type SongWorkspace = {
   saveDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
+  confirmSongbookAction(): void;
+  cancelSongbookAction(): void;
   confirmUnsavedContentSave(): Promise<void>;
   confirmUnsavedContentDiscard(): void;
   confirmUnsavedContentCancel(): void;
@@ -164,8 +171,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     return document.value.chordProText.trim().length > 0;
   });
-  const unsavedContentModalMode = ref<"dirty" | "raw-input" | null>(null);
+  const unsavedContentModalMode = ref<UnsavedContentModalMode | null>(null);
   const showUnsavedContentModal = computed(() => unsavedContentModalMode.value !== null);
+  const songbookActionConfirmMode = ref<SongbookActionConfirmMode | null>(null);
+  const showSongbookActionConfirmModal = computed(() => songbookActionConfirmMode.value !== null);
   const isResolvingUnsavedContent = ref(false);
   const showSaveFilenameMismatchModal = ref(false);
   const saveFilenameMismatchCurrentName = ref("");
@@ -196,6 +205,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let currentAbortController: AbortController | null = null;
   let pendingUnsavedContentResolution: Promise<UnsavedContentResolution> | null = null;
   let resolveUnsavedContentResolution: ((choice: UnsavedContentResolution) => void) | null = null;
+  let pendingSongbookActionConfirmation: Promise<boolean> | null = null;
+  let resolveSongbookActionConfirmation: ((confirmed: boolean) => void) | null = null;
   let pendingRawInputDiscardResolution: Promise<RawInputDiscardResolution> | null = null;
   let resolveRawInputDiscardResolution: ((choice: RawInputDiscardResolution) => void) | null = null;
   let pendingSaveFilenameMismatchResolution: Promise<SaveFilenameMismatchResolution> | null = null;
@@ -597,6 +608,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   function clearUnsavedModalState(): void {
     unsavedContentModalMode.value = null;
     rawInputDiscardMessage.value = "";
+  }
+
+  function clearSongbookActionConfirmState(): void {
+    songbookActionConfirmMode.value = null;
   }
 
   function requestRawInputDiscardResolution(message: string): Promise<RawInputDiscardResolution> {
@@ -1282,13 +1297,13 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     });
   }
 
-  function requestUnsavedContentResolution(): Promise<UnsavedContentResolution> {
+  function requestUnsavedContentResolution(mode: Exclude<UnsavedContentModalMode, "raw-input"> = "dirty"): Promise<UnsavedContentResolution> {
     if (pendingUnsavedContentResolution) {
       return pendingUnsavedContentResolution;
     }
 
     isResolvingUnsavedContent.value = false;
-    unsavedContentModalMode.value = "dirty";
+    unsavedContentModalMode.value = mode;
     pendingUnsavedContentResolution = new Promise<UnsavedContentResolution>((resolve) => {
       resolveUnsavedContentResolution = (choice) => {
         clearUnsavedModalState();
@@ -1313,6 +1328,40 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   async function ensureDocumentCanBeReplaced(): Promise<boolean> {
     const resolution = await resolveUnsavedChanges();
     return resolution !== "cancel";
+  }
+
+  function requestSongbookActionConfirmation(mode: SongbookActionConfirmMode): Promise<boolean> {
+    if (pendingSongbookActionConfirmation) {
+      return pendingSongbookActionConfirmation;
+    }
+
+    songbookActionConfirmMode.value = mode;
+    pendingSongbookActionConfirmation = new Promise<boolean>((resolve) => {
+      resolveSongbookActionConfirmation = (confirmed) => {
+        clearSongbookActionConfirmState();
+        pendingSongbookActionConfirmation = null;
+        resolveSongbookActionConfirmation = null;
+        resolve(confirmed);
+      };
+    });
+
+    return pendingSongbookActionConfirmation;
+  }
+
+  async function requestClearSongbook(): Promise<void> {
+    if (!songbook.value) {
+      return;
+    }
+
+    if (!(await ensureDocumentCanBeReplaced())) {
+      return;
+    }
+
+    if (!(await requestSongbookActionConfirmation("clear"))) {
+      return;
+    }
+
+    await clearSongbook();
   }
 
   async function requestClearAllState(): Promise<void> {
@@ -1368,6 +1417,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     resolveUnsavedContentResolution?.("cancel");
+  }
+
+  function confirmSongbookAction(): void {
+    resolveSongbookActionConfirmation?.(true);
+  }
+
+  function cancelSongbookAction(): void {
+    resolveSongbookActionConfirmation?.(false);
   }
 
   function confirmRawInputDiscard(): void {
@@ -1508,7 +1565,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   }
 
   async function openSongbookFolder(): Promise<void> {
-    cancelActiveGeneration();
     const selectedFolder = await open({
       title: "Open songbook folder",
       directory: true,
@@ -1519,6 +1575,16 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     if (!selectedFolder || Array.isArray(selectedFolder)) {
       return;
     }
+
+    if (!(await ensureDocumentCanBeReplaced())) {
+      return;
+    }
+
+    if (songbook.value && !(await requestSongbookActionConfirmation("replace"))) {
+      return;
+    }
+
+    cancelActiveGeneration();
 
     songbook.value = {
       path: selectedFolder,
@@ -1687,6 +1753,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     hasUnsavedChanges,
     showUnsavedContentModal,
     unsavedContentModalMode,
+    showSongbookActionConfirmModal,
+    songbookActionConfirmMode,
     unsavedContentMetadataLine,
     rawInputDiscardMessage,
     isResolvingUnsavedContent,
@@ -1702,6 +1770,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     requestClearAllState,
     exportCurrent,
     exportSongbookPdf,
+    requestClearSongbook,
     openSongbookFolder,
     refreshSongbook,
     clearSongbook,
@@ -1709,6 +1778,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     saveDocument,
     setChordProText,
     setActivePanel,
+    confirmSongbookAction,
+    cancelSongbookAction,
     confirmUnsavedContentSave,
     confirmUnsavedContentDiscard,
     confirmUnsavedContentCancel,

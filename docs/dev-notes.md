@@ -381,7 +381,9 @@ Songbook behavior:
 - missing `config.json` now resolves to a default config with `geminiApiKey: null`, and the backend creates the file on first read when needed
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document
 - manual Songbook folder load and manual `Refresh` now report total song count through the shared global toast system, while internal Songbook refreshes triggered by save stay silent
-- clearing the active songbook now uses a lightweight confirmation modal in `User`; if the current document belongs to that Songbook, the workspace resets the active `.cho`, parsed song and preview together so no stale Songbook-derived state remains visible after clear
+- clearing the active songbook now runs through the shared workspace guard path: unsaved `.cho` changes are resolved first through the standard `Save / Discard / Cancel` modal, then a lightweight Songbook confirmation modal is shown before the clear is applied
+- opening a different Songbook folder now follows the same workspace-owned protection flow: after the folder is chosen, unsaved `.cho` changes are resolved first and any existing Songbook is then explicitly confirmed for replacement before the new folder is loaded
+- if the current document belongs to the Songbook being cleared, the workspace resets the active `.cho`, parsed song and preview together so no stale Songbook-derived state remains visible after clear
 
 Workspace document behavior:
 
@@ -394,6 +396,7 @@ Workspace document behavior:
 - Songbook list interaction in the main `User` view now mirrors the performance-mode list model: `active` stays tied to the song currently opened in preview, `selected` tracks keyboard or mouse browsing, hover can update selection without opening the song, and the list container keeps keyboard ownership so `ArrowUp` / `ArrowDown` / `Enter` / `Space` behave consistently even after focus leaves the list
 - view transitions between Songbook and Performance preserve that separate `selected` state by default, but the destination list recenters the visible viewport on the current `active` song; if the preserved selection would end up fully outside the visible list after that re-entry alignment, the UI may realign `selected` to `active` as a local orientation fallback rather than as a general synchronization rule
 - Performance mode now reuses the same `.cho` dirty protection as normal Songbook song changes instead of bypassing it, while `New Sheet` and app close apply any needed original-text protection only after the `.cho` decision has been resolved
+- destructive Songbook actions that replace or clear the current folder now also reuse that same `.cho` dirty protection path instead of bypassing it or maintaining a Songbook-specific discard-only branch
 - Songbook list sorting preserves both the active previewed song and the locally selected list item by `filePath` rather than by index, so reordering does not silently change the song or break the existing keyboard navigation model
 - unified unsaved-change protection now covers songbook navigation, rerunning `Convert`, and closing the application window
 - unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`

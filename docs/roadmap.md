@@ -166,8 +166,6 @@ Pending, planned or possible work.
 
 ## v1.5.1 — Stability & UX fixes
 
-- protect unsaved changes on clear songbook
-- protect unsaved changes on open folder
 - autoscroll in performance mode when navigating with prev/next controls
 - show `Unsaved changes` in Convert when editing a file with an associated path
 - prevent generation on empty input with explicit user-facing behavior

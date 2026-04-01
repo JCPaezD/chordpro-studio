@@ -62,6 +62,7 @@ const {
   selectedSongPath,
   pasteFromClipboard,
   requestClearAllState,
+  requestClearSongbook,
   exportCurrent,
   exportSongbookPdf,
   runPipeline,
@@ -69,11 +70,14 @@ const {
   previewFromChordPro,
   openSongbookFolder,
   refreshSongbook,
-  clearSongbook,
+  showSongbookActionConfirmModal,
+  songbookActionConfirmMode,
   openSongFile,
   saveDocument,
   setChordProText,
-  setActivePanel
+  setActivePanel,
+  confirmSongbookAction,
+  cancelSongbookAction
 } = useSongWorkspace();
 
 type PreviewFrameId = "A" | "B";
@@ -88,7 +92,6 @@ const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 const isPerformanceMode = ref(false);
 const showChordProEditor = ref(false);
 const showApiKeyModal = ref(false);
-const showClearSongbookModal = ref(false);
 const apiKeyDraft = ref("");
 const apiKeyFeedback = ref("");
 const apiKeyInputRef = ref<HTMLInputElement | null>(null);
@@ -812,23 +815,6 @@ async function handleRefreshSongbook(): Promise<void> {
   await refreshSongbook({ feedback: "refresh" });
 }
 
-function requestClearSongbook(): void {
-  if (!songbook.value) {
-    return;
-  }
-
-  showClearSongbookModal.value = true;
-}
-
-function cancelClearSongbook(): void {
-  showClearSongbookModal.value = false;
-}
-
-async function confirmClearSongbook(): Promise<void> {
-  showClearSongbookModal.value = false;
-  await clearSongbook();
-}
-
 function handleWindowKeydown(event: KeyboardEvent): void {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return;
@@ -1515,9 +1501,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
     </template>
 
     <ClearSongbookModal
-      :visible="showClearSongbookModal"
-      @cancel="cancelClearSongbook"
-      @confirm="confirmClearSongbook"
+      :visible="showSongbookActionConfirmModal"
+      :mode="songbookActionConfirmMode ?? 'clear'"
+      @cancel="cancelSongbookAction"
+      @confirm="confirmSongbookAction"
     />
 
     <div v-if="showApiKeyModal" class="modal-backdrop" @click.self="closeApiKeyModal">
