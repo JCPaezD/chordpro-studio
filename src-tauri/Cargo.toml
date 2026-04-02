@@ -1,7 +1,7 @@
 [package]
 name = "chordpro-studio"
 default-run = "chordpro-studio"
-version = "1.5.0"
+version = "1.5.1"
 description = "Desktop-first ChordPro Studio"
 authors = ["ChordPro Studio"]
 license = ""
