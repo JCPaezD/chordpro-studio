@@ -19,6 +19,8 @@ Use this skill to run the full release flow for this repository with the project
 
 Keep the workflow sequential. Do not skip the human checkpoints.
 
+Follow the project-wide shell and Git safety rules from `AGENTS.md` throughout the release flow.
+
 ## Workflow
 
 ### 1. Confirm scope and release type

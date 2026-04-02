@@ -187,6 +187,7 @@ When modifying code:
 - when changing central or complex logic, prioritize clarity and determinism over the smallest possible diff
 - avoid parallel edits or commands that compete for the same file or resource
 - keep git index operations such as `git add` and `git commit` strictly sequential to avoid transient lock conflicts
+- these rules reinforce the project-wide shell, editing, and Git safety policy in `AGENTS.md`
 
 
 # UI Changes
