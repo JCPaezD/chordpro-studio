@@ -35,6 +35,9 @@ Only record assumptions here when they materially affect behavior, UX, architect
 * [assumption] the conversion model is treated as a deterministic ChordPro transformer, and output is validated before parsing
   impact: high
   revisitable: yes
+* [assumption] empty cleaned input is insufficient for conversion, while metadata-only and lyric-only content remain valid minimal ChordPro output as long as the model does not invent additional lyrics or chords
+  impact: high
+  revisitable: yes
 * [assumption] preview and PDF export continue to rely on the bundled ChordPro CLI plus native WebView PDF rendering via Blob URLs instead of alternative viewer pipelines
   impact: high
   revisitable: yes
@@ -114,6 +117,7 @@ Limits:
 
 ## Post v1.4.x friction findings
 
+- deterministic conversion now rejects empty cleaned input before calling the LLM, while metadata-only and lyric-only inputs remain valid transformation targets if the resulting ChordPro output stays faithful to the provided content
 - save behavior couples metadata changes with filename suggestion, which can create unintended file duplication
 - the `.cho` editor scroll reset issue on song change is now resolved in Songbook by resetting the editor textarea only when the active song path changes, not during edits within the same song
 - Songbook management is still intentionally minimal:

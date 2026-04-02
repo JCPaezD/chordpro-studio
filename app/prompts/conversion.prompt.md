@@ -117,6 +117,14 @@ immediately after the metadata section.
 
 If the text indicates that a section repeats another one (for example "Estrofa 2 igual que la 1"), expand the section and include the chords again instead of leaving the instruction.
 
+8. Input sufficiency
+
+- Only transform the provided input.
+- Do NOT generate any lyrics or chords that are not explicitly present in the input.
+- If the input contains lyrics but no explicit chords, preserve the lyrics as valid ChordPro and do NOT invent chords.
+- If the input does not contain enough information to produce a valid ChordPro result, return exactly:
+  ERROR: insufficient input
+
 INPUT
 
 User preferences:

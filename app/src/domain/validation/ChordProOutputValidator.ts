@@ -4,9 +4,6 @@ const EXPLANATORY_PATTERNS = [
   /(^|\n)\s*notes?\b/i
 ];
 
-const CHORDPRO_TAG_PATTERN = /\{(?:title|artist|album|year)\s*:|\{start_of_/i;
-const CHORD_PATTERN = /\[[A-G](?:#|b)?(?:m|maj|min|sus|add|dim|aug)?\d*(?:\/[A-G](?:#|b)?)?\]/i;
-
 export interface ChordProValidationDetails {
   reason: string;
   rawOutput?: string;
@@ -48,20 +45,6 @@ export class ChordProOutputValidator {
         rawOutput: output
       });
     }
-
-    if (!CHORDPRO_TAG_PATTERN.test(normalizedOutput)) {
-      throw new ChordProValidationError("INVALID_CHORDPRO_OUTPUT", {
-        reason: "missing_chordpro_tag",
-        rawOutput: output
-      });
-    }
-
-    if (!CHORD_PATTERN.test(normalizedOutput)) {
-      throw new ChordProValidationError("INVALID_CHORDPRO_OUTPUT", {
-        reason: "missing_chord",
-        rawOutput: output
-      });
-    }
   }
 
   private static buildMessage(details?: ChordProValidationDetails): string {
@@ -77,3 +60,9 @@ export class ChordProOutputValidator {
 // Valid:
 // {title: Test}
 // [C]Hello world
+// Valid:
+// {start_of_verse}
+// Hello world
+// {end_of_verse}
+// Valid:
+// Hello world

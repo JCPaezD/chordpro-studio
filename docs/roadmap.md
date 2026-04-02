@@ -163,6 +163,7 @@ Current status:
 ### v1.5.1
 
 - v1.5.1 destructive Songbook actions now protect unsaved `.cho` changes consistently: `Clear` resolves the standard `Save / Discard / Cancel` flow before its own Songbook confirmation, and `Open folder` resolves the same `.cho` protection before explicitly confirming replacement of the currently loaded Songbook
+- v1.5.1 conversion now blocks empty cleaned input before reaching the LLM, surfaces a dedicated insufficient-input message for real no-content cases, preserves metadata-only ChordPro as valid minimal output, and accepts lyric-only ChordPro results without requiring invented chords or mandatory metadata tags
 
 ## Current roadmap
 
@@ -172,8 +173,6 @@ Pending, planned or possible work.
 
 - autoscroll in performance mode when navigating with prev/next controls
 - show `Unsaved changes` in Convert when editing a file with an associated path
-- prevent generation on empty input with explicit user-facing behavior
-- prevent LLM from inventing full content when input is insufficient
 
 ## v1.x backlog
 

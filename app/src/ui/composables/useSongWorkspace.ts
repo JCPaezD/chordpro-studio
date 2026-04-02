@@ -14,7 +14,7 @@ import type { Song, SongMetadata } from "../../domain/song";
 import type { Songbook } from "../../domain/songbook";
 import { ChordProValidationError } from "../../domain/validation/ChordProOutputValidator";
 import { CleaningService } from "../../services/cleaning";
-import { ConversionService } from "../../services/conversion";
+import { ConversionService, InsufficientInputError } from "../../services/conversion";
 import { ChordProParser } from "../../services/parser/ChordProParser";
 import {
   SongPipelineService,
@@ -1204,6 +1204,11 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
       if (err instanceof GeminiRetryError) {
         retryLog.value = err.retryLog;
+      }
+
+      if (err instanceof InsufficientInputError) {
+        error.value = err.message;
+        return true;
       }
 
       error.value = err instanceof Error ? err.message : "Pipeline execution failed.";

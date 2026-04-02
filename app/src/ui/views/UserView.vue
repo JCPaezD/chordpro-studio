@@ -18,6 +18,7 @@ import { useAppConfig } from "../composables/useAppConfig";
 import { useFeedback } from "../composables/useFeedback";
 import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
+import { NOT_ENOUGH_INPUT_MESSAGE } from "../../services/conversion";
 
 type ChordProEditorPaneExpose = {
   scrollToTop: () => void;
@@ -151,6 +152,10 @@ const userFacingGenerateError = computed(() => {
   const technicalError = error.value.trim();
   if (!technicalError) {
     return "";
+  }
+
+  if (technicalError === NOT_ENOUGH_INPUT_MESSAGE) {
+    return technicalError;
   }
 
   if (technicalError.toLowerCase().includes("api key not valid")) {
