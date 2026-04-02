@@ -36,11 +36,11 @@ It may evolve over time, but no guarantees are provided.
 
 ## Installation
 
-For the current Windows release, you can use any of these artifacts:
+For the current Windows release (`v1.5.1`), you can use any of these artifacts:
 
-1. `ChordProStudio-v1.4.1.msi`
-2. `ChordProStudio-v1.4.1-setup.exe`
-3. `ChordProStudio-v1.4.1.zip`
+1. `ChordProStudio-v1.5.1.msi`
+2. `ChordProStudio-v1.5.1-setup.exe`
+3. `ChordProStudio-v1.5.1.zip`
 
 If you use the `.zip` package:
 
