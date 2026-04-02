@@ -5,6 +5,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
+import ChordProEditorHeader from "../components/ChordProEditorHeader.vue";
 import ClearSongbookModal from "../components/ClearSongbookModal.vue";
 import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
 import SongList from "../components/SongList.vue";
@@ -61,6 +62,7 @@ const {
   songbook,
   songbookError,
   selectedSongPath,
+  hasUnsavedChanges,
   pasteFromClipboard,
   requestClearAllState,
   requestClearSongbook,
@@ -180,6 +182,17 @@ const songbookEditorTitle = computed(() => {
 const songbookEditorSubtitle = computed(() =>
   workspaceDocument.value.fileName || "Open a song from the list to edit its `.cho` content."
 );
+const convertEditorSubtitle = computed(() => {
+  if (!chordProText.value.trim()) {
+    return "Generated ChordPro output.";
+  }
+
+  if (workspaceDocument.value.filePath) {
+    return workspaceDocument.value.fileName || "Linked to the current file.";
+  }
+
+  return "Not saved to a file yet.";
+});
 const songbookHeaderLabel = computed(() => {
   const path = songbook.value?.path?.trim();
   if (!path) {
@@ -1259,19 +1272,20 @@ async function openGeminiApiKeyPage(): Promise<void> {
                   @update:model-value="updateChordPro"
                 >
                   <template #header>
-                    <div class="editor-heading convert-heading">
-                      <div>
-                        <h3>ChordPro source</h3>
-                      </div>
-                      <div class="header-actions">
+                    <ChordProEditorHeader
+                      title="ChordPro source"
+                      :subtitle="convertEditorSubtitle"
+                      :show-unsaved-changes="hasUnsavedChanges"
+                    >
+                      <template #actions>
                         <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
                           Refresh
                         </button>
                         <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
                           Save
                         </button>
-                      </div>
-                    </div>
+                      </template>
+                    </ChordProEditorHeader>
                   </template>
                 </ChordProEditorPane>
               </section>
@@ -1360,25 +1374,20 @@ async function openGeminiApiKeyPage(): Promise<void> {
               </aside>
 
               <section class="editor-panel card-subsection">
-                <div class="editor-heading">
-                  <div>
-                    <h3>{{ songbookEditorTitle }}</h3>
-                    <p>
-                      {{ songbookEditorSubtitle }}
-                    </p>
-                  </div>
-                  <div class="editor-heading-aside">
-                    <span v-if="workspaceDocument.dirty" class="dirty-badge">Unsaved changes</span>
-                    <div class="header-actions">
-                      <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
-                        Save
-                      </button>
-                      <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
-                        Refresh
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ChordProEditorHeader
+                  :title="songbookEditorTitle"
+                  :subtitle="songbookEditorSubtitle"
+                  :show-unsaved-changes="hasUnsavedChanges"
+                >
+                  <template #actions>
+                    <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
+                      Save
+                    </button>
+                    <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
+                      Refresh
+                    </button>
+                  </template>
+                </ChordProEditorHeader>
 
                 <ChordProEditorPane
                   ref="songbookEditorPaneRef"
@@ -2035,23 +2044,21 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .panel-header,
 .secondary-header,
 .editor-heading,
-.song-list-header,
-.editor-heading-aside {
+.song-list-header {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
 }
 
 .secondary-header,
-.preview-header,
 .editor-heading,
-.editor-heading-aside {
+.preview-header {
   align-items: flex-start;
 }
 
 .panel-header,
-.song-list-header,
-.editor-heading {
+.editor-heading,
+.song-list-header {
   flex: 0 0 auto;
 }
 
@@ -2395,16 +2402,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
   gap: 0.85rem;
 }
 
-.dirty-badge {
-  padding: 0.35rem 0.55rem;
-  background: #f0dfb9;
-  color: #5b4320;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .preview-panel .message {
   margin: 0;
   text-align: center;
@@ -2714,8 +2711,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   .user-header,
   .panel-header,
   .secondary-header,
-  .editor-heading,
-  .editor-heading-aside {
+  .editor-heading {
     flex-direction: column;
   }
 

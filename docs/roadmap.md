@@ -165,14 +165,11 @@ Current status:
 - v1.5.1 destructive Songbook actions now protect unsaved `.cho` changes consistently: `Clear` resolves the standard `Save / Discard / Cancel` flow before its own Songbook confirmation, and `Open folder` resolves the same `.cho` protection before explicitly confirming replacement of the currently loaded Songbook
 - v1.5.1 conversion now blocks empty cleaned input before reaching the LLM, surfaces a dedicated insufficient-input message for real no-content cases, preserves metadata-only ChordPro as valid minimal output, and accepts lyric-only ChordPro results without requiring invented chords or mandatory metadata tags
 - v1.5.1 Performance mode now keeps the active song visible when navigating with the dock or relative prev/next keyboard flow, reusing the existing viewport-alignment logic without collapsing the separate `active` and `selected` song states
+- v1.5.1 Convert and Songbook now share the same ChordPro editor header pattern, and both surfaces expose the same `Unsaved changes` badge whenever the shared workspace still holds ChordPro content that is not safely persisted to disk
 
 ## Current roadmap
 
 Pending, planned or possible work.
-
-## v1.5.1 — Stability & UX fixes
-
-- show `Unsaved changes` in Convert when editing a file with an associated path
 
 ## v1.x backlog
 

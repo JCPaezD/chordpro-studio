@@ -361,6 +361,7 @@ The User View now keeps `Convert` as the default active panel, preserves the VSC
 - the sidebar now also includes a light Preferences entry at the bottom and subtle button borders so the navigation affordances remain visible even when only one button is active nearby
 - the main sidebar buttons now stretch to the full available width of the rail, and the rail itself is slightly wider in desktop layout, resolving the previous `Songbook` label/icon alignment bug without changing the overall panel structure
 - sidebar navigation buttons now use square hit areas derived from the rail sizing itself, with centered icon/label layout and larger lower-stroke icons so the rail reads more clearly without adding a separate button system or changing navigation behavior
+- Convert and Songbook now reuse the same small presentational ChordPro editor header, and both surfaces expose `Unsaved changes` from the shared `hasUnsavedChanges` workspace state instead of relying on separate view-local dirty indicators
 
 ## Songbook and Persistence Notes
 
