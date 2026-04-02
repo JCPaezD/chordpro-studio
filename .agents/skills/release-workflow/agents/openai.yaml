@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Workflow"
+  short_description: "Prepare and publish project releases"
+  default_prompt: "Use $release-workflow to prepare a local build or publish a versioned release for this project."
