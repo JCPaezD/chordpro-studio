@@ -808,6 +808,8 @@ async function selectRelativeSong(delta: number): Promise<void> {
     focusTarget: "preserve",
     preserveListSelection: true
   });
+
+  alignPerformanceViewportToActiveSong("smooth");
 }
 
 function handleSongListKeydown(event: KeyboardEvent): void {
