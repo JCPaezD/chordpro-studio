@@ -75,11 +75,23 @@ Then stop for human review and approval of the notes.
 When the version is approved, update synchronized version metadata:
 
 - `package.json`
+- regenerate `package-lock.json` from npm after the package version updates; do not hand-edit the lockfile
 - `app/package.json`
 - `src-tauri/tauri.conf.json`
 - `src-tauri/Cargo.toml`
 
 Allow `src-tauri/Cargo.lock` to update through normal Rust tooling when needed.
+
+After the edits and lockfile regeneration, run an automatic consistency check before continuing. Verify that all of these match the target version:
+
+- root `package.json`
+- root `package-lock.json`
+- workspace `app` entry inside the root `package-lock.json`
+- `app/package.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+
+If any of them differ, stop and fix the mismatch before building.
 
 In the same phase, review visible release-facing documentation:
 
@@ -171,7 +183,8 @@ If a post-release documentation issue appears, fix it in a separate follow-up co
 ## Project-specific rules
 
 - `src-tauri/tauri.conf.json` is the source of truth for app version
-- keep the four version files synchronized
+- keep the npm/Tauri/Rust version files synchronized
+- update the root npm lockfile through npm tooling such as `npm install --package-lock-only`, not manual JSON edits
 - do not track build artifacts in Git
 - keep release notes concise and factual
 - prefer MSI-to-MSI validation when checking installer upgrade behavior
