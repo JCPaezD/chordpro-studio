@@ -297,6 +297,8 @@ Pending, planned or possible work.
 
 - extend the current smoke validation with small regression coverage for deterministic core flows
 - introduce small regression tests for parser, cleaning, preview cache and render preprocessing
+- extend the Playground with a post-LLM editable entry point to inject raw conversion output before validation, normalization and parsing
+- keep the existing editable `ChordPro` stage as a downstream final-source entry point instead of overloading it with post-LLM validation behavior
 - introduce structured logging system (file-based, timestamped) for debugging and diagnostics
 
 ### Technical improvements
