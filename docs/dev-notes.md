@@ -41,6 +41,9 @@ Only record assumptions here when they materially affect behavior, UX, architect
 * [assumption] preview and PDF export continue to rely on the bundled ChordPro CLI plus native WebView PDF rendering via Blob URLs instead of alternative viewer pipelines
   impact: high
   revisitable: yes
+* [assumption] future Gemini error UX should classify provider failures in the shared workspace with semi-structured reliability levels, improve contextual user messages, and keep Playground as the place where raw technical error detail remains visible without modifying provider adapters or inventing unsupported diagnostics
+  impact: medium
+  revisitable: yes
 * [assumption] metadata normalization applies only to fresh LLM conversion output, not to existing `.cho` files or later manual edits
   impact: medium
   revisitable: no
@@ -71,6 +74,12 @@ Only record assumptions here when they materially affect behavior, UX, architect
 * [assumption] local rebuilds must keep version metadata synchronized across Tauri, workspace package files and Cargo metadata, and Windows upgrade checks should compare the same installer family, preferably MSI
   impact: high
   revisitable: no
+* [assumption] `Quality` / `Fast` should remain the primary user-facing conversion modes even if model selection becomes hierarchical underneath, and any automatic fallback should stay within the same mode with explicit user feedback rather than silently crossing between modes or exposing low-level model toggles by default
+  impact: medium
+  revisitable: yes
+* [assumption] a future performance-oriented HTML viewer should render from the internal `Song` model rather than the ChordPro CLI, use continuous scrolling plus basic dynamic controls, optimize for adaptive readability and navigation instead of PDF fidelity, stay initially limited in scope, remain reusable beyond performance mode, and keep PDF as the reference/export output
+  impact: medium
+  revisitable: yes
 
 ## Local rebuild notes
 
@@ -120,12 +129,13 @@ Limits:
 - deterministic conversion now rejects empty cleaned input before calling the LLM, while metadata-only and lyric-only inputs remain valid transformation targets if the resulting ChordPro output stays faithful to the provided content
 - save behavior couples metadata changes with filename suggestion, which can create unintended file duplication
 - the `.cho` editor scroll reset issue on song change is now resolved in Songbook by resetting the editor textarea only when the active song path changes, not during edits within the same song
+- future Gemini error UX should improve the current User View generic failure handling by classifying provider failures in the workspace with semi-structured heuristics, keeping contextual messaging user-facing, and preserving the raw technical detail already exposed in Playground
 - Songbook management is still intentionally minimal:
   - no delete flow yet
   - no new empty song creation yet
   - no explicit duplication / `Save As` flow yet
   - these remain planned future improvements
-- Performance mode still has room for UX refinement, but those changes should be handled through a structured UX review rather than ad-hoc incremental tweaks
+- Performance mode still has room for UX refinement, but those changes should be handled through a structured UX review rather than ad-hoc incremental tweaks; current future direction is a more direct navigation model with immediate UI feedback independent of preview completion, a secondary song list, a dual `full preview` / `split list + preview` layout strategy, and render debounce applied to preview refresh rather than to navigation itself
 
 ## Post global usage review (v1.4.x stabilization)
 

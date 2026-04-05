@@ -205,9 +205,13 @@ Pending, planned or possible work.
 - treat this as a dedicated pass rather than a sequence of scattered incremental tweaks
 - include a focused Performance mode UX refinement review:
   - address keyboard focus loss after interacting with the PDF viewer
+  - simplify the navigation model around direct song navigation instead of maintaining a long-term `selected` / `active` split
+  - evaluate a dual layout strategy (`full preview` / `list + preview split`) for different reading and navigation contexts
   - evaluate close button placement
   - evaluate the song-list toggle affordance (e.g. handle / trigger)
   - evaluate prev / next navigation controls and overall control clarity
+  - keep keyboard controls simple and allow optional explicit controls for mouse users
+  - optimize preview refresh behavior during rapid navigation without tying navigation responsiveness to render completion
   - improve intuitiveness without breaking the current interaction model
 - keep these as dedicated UX review topics rather than patch-fix candidates
 
@@ -222,6 +226,10 @@ Pending, planned or possible work.
 - improve the conversion prompt so custom chord definitions are included deterministically using `{define}`
 - clarify and document that the default pipeline should behave as a transformer, not a generator
 - current minimal-input generation behavior should not be treated as intended default behavior
+- improve Gemini error feedback in User View with contextual and actionable provider-aware messaging while preserving technical detail in Playground
+- classify provider failures more explicitly in the shared workspace path (for example invalid key, rate limit or network failure) without inventing unsupported details
+- keep `Quality` / `Fast` as the primary user-facing model modes while evolving model selection underneath into a hierarchical mode -> model strategy
+- allow automatic fallback only within the current mode and surface explicit user feedback when that fallback is used
 - explore optional generative modes separately:
   - generate from title / artist
   - generate from example song
@@ -339,6 +347,9 @@ Pending, planned or possible work.
 ### Potential preview system evolution
 
 - evaluate a non-native PDF viewer such as PDF.js if advanced preview features require it
+- evaluate an adaptive HTML performance viewer rendered from the internal `Song` model instead of the CLI/PDF path
+- prioritize readability, continuous scrolling and dynamic controls such as zoom or font size over strict PDF fidelity in that alternative viewer
+- keep PDF as the reference/export renderer and evaluate an optional HTML / PDF toggle for future performance-oriented reading flows
 
 ---
 
