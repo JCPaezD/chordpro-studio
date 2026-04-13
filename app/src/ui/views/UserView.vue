@@ -1075,7 +1075,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
           <img :src="appLogo" alt="" class="brand-mark" />
           <span class="brand-title">ChordPro Studio</span>
         </div>
-        <p v-if="isDev" class="eyebrow">Workspace</p>
+        <p v-if="isDev" class="eyebrow">User</p>
         <h1>Convert songs and manage your ChordPro songbook</h1>
       </div>
 

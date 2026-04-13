@@ -172,8 +172,8 @@ Limits:
 
 ### Playground panel visibility
 
-- the Playground now includes local panel-visibility toggles for `raw`, `cleaned`, `ChordPro`, `JSON` and `preview`, intended only for focused debugging
-- visibility is purely visual and intentionally non-persistent: hidden panels keep their state and data because the UI uses local toggles plus `v-show` rather than destroying panel content or moving it into shared workspace state
+- the Playground now includes panel-visibility toggles for `raw`, `cleaned`, `ChordPro`, `JSON` and `preview`, intended only for focused debugging
+- panel visibility is now persisted in AppConfig as a developer preference, while remaining purely visual: hidden panels keep their state and data because the UI uses `v-show` rather than destroying panel content or moving it into shared workspace state
 - the responsive Playground layout now prefers a single wide row on desktop when space allows, then falls back directly to a one-column scrolling stack in narrower windows instead of maintaining compressed multi-column intermediate layouts
 
 ## Preview and Export Notes

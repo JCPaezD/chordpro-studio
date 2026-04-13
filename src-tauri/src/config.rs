@@ -6,6 +6,29 @@ use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct PlaygroundPanelVisibility {
+  pub raw: bool,
+  pub cleaned: bool,
+  #[serde(rename = "chordPro")]
+  pub chord_pro: bool,
+  pub json: bool,
+  pub preview: bool,
+}
+
+impl Default for PlaygroundPanelVisibility {
+  fn default() -> Self {
+    Self {
+      raw: true,
+      cleaned: true,
+      chord_pro: true,
+      json: true,
+      preview: true,
+    }
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
   #[serde(rename = "geminiApiKey")]
   pub gemini_api_key: Option<String>,
@@ -17,6 +40,8 @@ pub struct AppConfig {
   pub conversion_mode: Option<String>,
   #[serde(rename = "playgroundModel")]
   pub playground_model: Option<String>,
+  #[serde(rename = "playgroundPanelVisibility")]
+  pub playground_panel_visibility: PlaygroundPanelVisibility,
   #[serde(rename = "showChordDiagrams")]
   pub show_chord_diagrams: bool,
   pub instrument: String,
@@ -30,6 +55,7 @@ impl Default for AppConfig {
       last_opened_song_path: None,
       conversion_mode: None,
       playground_model: None,
+      playground_panel_visibility: PlaygroundPanelVisibility::default(),
       show_chord_diagrams: true,
       instrument: "piano".into(),
     }

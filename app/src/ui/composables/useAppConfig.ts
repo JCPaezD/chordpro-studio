@@ -5,7 +5,8 @@ import {
   DEFAULT_APP_CONFIG,
   type AppConfig,
   type ChordDiagramInstrument,
-  type ConversionMode
+  type ConversionMode,
+  type PlaygroundPanelVisibility
 } from "../../adapters/filesystem/ConfigRepository";
 
 export type AppConfigStore = {
@@ -13,6 +14,7 @@ export type AppConfigStore = {
   loading: Ref<boolean>;
   conversionMode: ComputedRef<ConversionMode | undefined>;
   playgroundModel: ComputedRef<string | undefined>;
+  playgroundPanelVisibility: ComputedRef<PlaygroundPanelVisibility>;
   showChordDiagrams: ComputedRef<boolean>;
   instrument: ComputedRef<ChordDiagramInstrument>;
   lastSongbookPath: ComputedRef<string | undefined>;
@@ -22,6 +24,7 @@ export type AppConfigStore = {
   clearApiKey(): Promise<void>;
   setConversionMode(mode: ConversionMode): Promise<void>;
   setPlaygroundModel(model: string): Promise<void>;
+  setPlaygroundPanelVisibility(value: PlaygroundPanelVisibility): Promise<void>;
   setShowChordDiagrams(value: boolean): Promise<void>;
   setInstrument(value: ChordDiagramInstrument): Promise<void>;
   setLastSongbookPath(path: string): Promise<void>;
@@ -88,6 +91,10 @@ async function setPlaygroundModel(model: string): Promise<void> {
   await updateConfig({ playgroundModel: model });
 }
 
+async function setPlaygroundPanelVisibility(value: PlaygroundPanelVisibility): Promise<void> {
+  await updateConfig({ playgroundPanelVisibility: { ...value } });
+}
+
 async function setShowChordDiagrams(value: boolean): Promise<void> {
   await updateConfig({ showChordDiagrams: value });
 }
@@ -121,6 +128,7 @@ export function useAppConfig(): AppConfigStore {
     loading,
     conversionMode: computed(() => config.value.conversionMode),
     playgroundModel: computed(() => config.value.playgroundModel),
+    playgroundPanelVisibility: computed(() => config.value.playgroundPanelVisibility ?? { ...DEFAULT_APP_CONFIG.playgroundPanelVisibility! }),
     showChordDiagrams: computed(() => config.value.showChordDiagrams ?? true),
     instrument: computed(() => config.value.instrument ?? "piano"),
     lastSongbookPath: computed(() => config.value.lastSongbookPath),
@@ -130,6 +138,7 @@ export function useAppConfig(): AppConfigStore {
     clearApiKey,
     setConversionMode,
     setPlaygroundModel,
+    setPlaygroundPanelVisibility,
     setShowChordDiagrams,
     setInstrument,
     setLastSongbookPath,

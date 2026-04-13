@@ -4,6 +4,10 @@ import { computed, onMounted, ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
 import type { PipelineEntryPoint } from "../../services/pipeline/SongPipelineService";
+import {
+  DEFAULT_PLAYGROUND_PANEL_VISIBILITY,
+  type PlaygroundPanelVisibility
+} from "../../adapters/filesystem/ConfigRepository";
 import { useAppConfig } from "../composables/useAppConfig";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
@@ -68,12 +72,8 @@ const geminiModelOverride = ref("");
 const resolvedGeminiModel = computed(() => geminiModelOverride.value || selectedGeminiModel.value);
 const lastPipelineEntryPoint = ref<PipelineEntryPoint | null>(null);
 const lastFailedStage = ref<PlaygroundStageId | null>(null);
-const panelVisibility = ref<Record<PlaygroundStageId, boolean>>({
-  raw: true,
-  cleaned: true,
-  chordPro: true,
-  json: true,
-  preview: true
+const panelVisibility = ref<PlaygroundPanelVisibility>({
+  ...DEFAULT_PLAYGROUND_PANEL_VISIBILITY
 });
 
 function readGeminiApiKey(): string | undefined {
@@ -251,8 +251,19 @@ function isStageVisible(stage: PlaygroundStageId): boolean {
   return panelVisibility.value[stage];
 }
 
-function toggleStageVisibility(stage: PlaygroundStageId): void {
-  panelVisibility.value[stage] = !panelVisibility.value[stage];
+async function toggleStageVisibility(stage: PlaygroundStageId): Promise<void> {
+  const nextVisibility: PlaygroundPanelVisibility = {
+    ...panelVisibility.value,
+    [stage]: !panelVisibility.value[stage]
+  };
+
+  panelVisibility.value = nextVisibility;
+
+  try {
+    await appConfig.setPlaygroundPanelVisibility(nextVisibility);
+  } catch (err) {
+    console.error("Could not persist Playground panel visibility.", err);
+  }
 }
 
 async function runFromEntryPoint(entryPoint: PipelineEntryPoint): Promise<void> {
@@ -296,6 +307,12 @@ function loadPlaygroundModel(): void {
   selectedGeminiModel.value = geminiModelOverride.value || (appConfig.playgroundModel.value ?? "gemini-flash-latest");
 }
 
+function loadPlaygroundPanelVisibility(): void {
+  panelVisibility.value = {
+    ...appConfig.playgroundPanelVisibility.value
+  };
+}
+
 async function persistPlaygroundModel(): Promise<void> {
   if (!selectedGeminiModel.value || geminiModelOverride.value) {
     return;
@@ -308,6 +325,7 @@ onMounted(async () => {
   geminiModelOverride.value = readGeminiModelOverride() ?? "";
 
   loadPlaygroundModel();
+  loadPlaygroundPanelVisibility();
   await loadGeminiModels();
 
   if (
