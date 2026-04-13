@@ -1,0 +1,6 @@
+interface:
+  display_name: "Refine Item"
+  short_description: "Clarify captured items before planning or design"
+  icon_small: "./assets/logo-64.png"
+  icon_large: "./assets/logo-256.png"
+  default_prompt: "Use $refine-item to clarify this captured item, reduce ambiguity, surface edge cases, and suggest the right next workflow step."
