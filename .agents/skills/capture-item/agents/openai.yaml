@@ -1,0 +1,4 @@
+interface:
+  display_name: "Capture Item"
+  short_description: "Structure messy notes into tracked items"
+  default_prompt: "Use $capture-item to turn these notes into clear tracked items, classify them, and suggest the next workflow step."

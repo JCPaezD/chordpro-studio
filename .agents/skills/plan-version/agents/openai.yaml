@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Version"
+  short_description: "Plan or reorganize roadmap work blocks"
+  default_prompt: "Use $plan-version to decide what belongs in the next block, where each item should live in the roadmap, and what should move or wait."
