@@ -1,4 +1,6 @@
 interface:
   display_name: "Plan Version"
   short_description: "Plan or reorganize roadmap work blocks"
+  icon_small: "./assets/logo-64.png"
+  icon_large: "./assets/logo-256.png"
   default_prompt: "Use $plan-version to decide what belongs in the next block, where each item should live in the roadmap, and what should move or wait."

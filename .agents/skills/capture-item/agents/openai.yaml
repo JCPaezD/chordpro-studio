@@ -1,4 +1,7 @@
 interface:
   display_name: "Capture Item"
   short_description: "Structure messy notes into tracked items"
+  icon_small: "./assets/logo-64.png"
+  icon_large: "./assets/logo-256.png"
+  brand_color: "#2F6FED"
   default_prompt: "Use $capture-item to turn these notes into clear tracked items, classify them, and suggest the next workflow step."
