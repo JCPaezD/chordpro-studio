@@ -65,4 +65,12 @@ export class SongbookService {
   async saveSong(filePath: string, chordProText: string): Promise<void> {
     await this.repository.writeSong(filePath, chordProText);
   }
+
+  async renameSong(oldPath: string, newPath: string): Promise<void> {
+    await this.repository.renameSong(oldPath, newPath);
+  }
+
+  async deleteSong(filePath: string): Promise<void> {
+    await this.repository.deleteSong(filePath);
+  }
 }

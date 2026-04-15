@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 
+import ModalShell from "./ModalShell.vue";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const workspace = useSongWorkspace();
@@ -33,74 +34,47 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal-fade">
-      <div
-        v-if="workspace.showSaveFilenameMismatchModal.value"
-        class="modal-backdrop"
-        @click.self="workspace.confirmSaveFilenameMismatchCancel()"
+  <ModalShell
+    :visible="workspace.showSaveFilenameMismatchModal.value"
+    width="wide"
+    @backdrop="workspace.confirmSaveFilenameMismatchCancel()"
+  >
+    <div class="modal-copy">
+      <p class="eyebrow">Filename change</p>
+      <h2>The song metadata has changed.</h2>
+      <p class="modal-description">Do you want to update the file name?</p>
+    </div>
+
+    <div class="modal-context">
+      <p class="modal-row">
+        <span class="modal-label">Current</span>
+        <span class="modal-value">{{ workspace.saveFilenameMismatchCurrentName.value }}</span>
+      </p>
+      <p class="modal-row">
+        <span class="modal-label">Suggested</span>
+        <span class="modal-value">{{ workspace.saveFilenameMismatchSuggestedName.value }}</span>
+      </p>
+    </div>
+
+    <div class="modal-actions">
+      <button
+        ref="keepCurrentButtonRef"
+        class="secondary-button"
+        @click="workspace.confirmKeepCurrentFileName()"
       >
-        <div class="modal-card">
-          <div class="modal-copy">
-            <p class="eyebrow">Filename change</p>
-            <h2>The song metadata has changed.</h2>
-            <p class="modal-description">Do you want to update the file name?</p>
-          </div>
-
-          <div class="modal-context">
-            <p class="modal-row">
-              <span class="modal-label">Current</span>
-              <span class="modal-value">{{ workspace.saveFilenameMismatchCurrentName.value }}</span>
-            </p>
-            <p class="modal-row">
-              <span class="modal-label">Suggested</span>
-              <span class="modal-value">{{ workspace.saveFilenameMismatchSuggestedName.value }}</span>
-            </p>
-          </div>
-
-          <div class="modal-actions">
-            <button
-              ref="keepCurrentButtonRef"
-              class="secondary-button"
-              @click="workspace.confirmKeepCurrentFileName()"
-            >
-              Keep current file name
-            </button>
-            <button
-              class="primary-button"
-              @click="workspace.confirmSaveAsNewFile()"
-            >
-              Save as new file
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+        Keep current file name
+      </button>
+      <button
+        class="primary-button"
+        @click="workspace.confirmSaveAsNewFile()"
+      >
+        Save as new file
+      </button>
+    </div>
+  </ModalShell>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1400;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: rgba(28, 32, 26, 0.24);
-}
-
-.modal-card {
-  width: min(30rem, 100%);
-  padding: 1.4rem 1.5rem;
-  border-radius: 22px;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 250, 241, 0.95);
-  box-shadow: 0 24px 48px rgba(44, 33, 16, 0.18);
-  font: inherit;
-}
-
 .modal-copy {
   display: grid;
   gap: 0.35rem;
@@ -180,21 +154,7 @@ onBeforeUnmount(() => {
   color: #f8f3e8;
 }
 
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 160ms ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
 @media (max-width: 800px) {
-  .modal-card {
-    padding: 1.2rem 1.1rem;
-  }
-
   .modal-actions {
     justify-content: stretch;
   }

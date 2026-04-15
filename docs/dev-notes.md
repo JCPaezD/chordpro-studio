@@ -130,11 +130,11 @@ Limits:
 - save behavior couples metadata changes with filename suggestion, which can create unintended file duplication
 - the `.cho` editor scroll reset issue on song change is now resolved in Songbook by resetting the editor textarea only when the active song path changes, not during edits within the same song
 - future Gemini error UX should improve the current User View generic failure handling by classifying provider failures in the workspace with semi-structured heuristics, keeping contextual messaging user-facing, and preserving the raw technical detail already exposed in Playground
-- Songbook management is still intentionally minimal:
-  - no delete flow yet
-  - no new empty song creation yet
-  - no explicit duplication / `Save As` flow yet
-  - these remain planned future improvements
+- Songbook file workflow is no longer minimal:
+  - `New` creates a detached draft inside the active Songbook context without writing a file yet
+  - `Save As` creates a new `.cho` file without silently overwriting an existing one
+  - `Rename`, `Delete` and `Revert` are now explicit Songbook actions for the active persisted file
+  - destructive file actions still reuse the shared `Save / Discard / Cancel` protection before their own confirmation step
 - Performance mode still has room for UX refinement, but those changes should be handled through a structured UX review rather than ad-hoc incremental tweaks; current future direction is a more direct navigation model with immediate UI feedback independent of preview completion, a secondary song list, a dual `full preview` / `split list + preview` layout strategy, and render debounce applied to preview refresh rather than to navigation itself
 
 ## Post global usage review (v1.4.x stabilization)
@@ -371,7 +371,7 @@ The User View now keeps `Convert` as the default active panel, preserves the VSC
 - the sidebar now also includes a light Preferences entry at the bottom and subtle button borders so the navigation affordances remain visible even when only one button is active nearby
 - the main sidebar buttons now stretch to the full available width of the rail, and the rail itself is slightly wider in desktop layout, resolving the previous `Songbook` label/icon alignment bug without changing the overall panel structure
 - sidebar navigation buttons now use square hit areas derived from the rail sizing itself, with centered icon/label layout and larger lower-stroke icons so the rail reads more clearly without adding a separate button system or changing navigation behavior
-- Convert and Songbook now reuse the same small presentational ChordPro editor header, and both surfaces expose `Unsaved changes` from the shared `hasUnsavedChanges` workspace state instead of relying on separate view-local dirty indicators
+- Convert and Songbook now reuse the same small presentational ChordPro editor header, while keeping slightly different status affordances on top of the shared workspace state: Convert still shows `Unsaved changes`, Songbook shows `Unsaved draft` for detached drafts, and persisted dirty Songbook files surface that state through the highlighted `Revert changes` action instead of a duplicate badge
 
 ## Songbook and Persistence Notes
 
@@ -388,6 +388,11 @@ Songbook behavior:
 - a songbook is a user-selected folder scanned for `.cho` files only
 - song entries are sorted alphabetically by their derived `displayTitle`
 - opening a song clears the raw conversion input, loads the ChordPro source directly, parses it into the Song domain model and refreshes the preview without calling the LLM pipeline
+- `New` in Songbook creates a detached draft with a minimal `.cho` template, keeps it out of the folder list until first save, and routes destructive replacement through the shared workspace guard first
+- `Save As` is explicitly available from Songbook for both drafts and persisted files, always creates a new target file, and never silently overwrites an existing one
+- `Rename` is limited to the current songbook folder, preserves `.cho`, blocks path conflicts, and keeps the existing controlled case-only rename handling on Windows
+- `Delete` acts on the active persisted Songbook file only, resolves unsaved changes first, and then refreshes the list plus a deterministic next active document state
+- `Revert` is available only for persisted dirty Songbook files and reloads the current file from disk through the normal open-song path instead of maintaining a parallel restore flow
 - the main Songbook list now presents each entry as a compact two-line `title` / `artist` block with a folder-name header badge, keeping the underlying songbook data flow unchanged while improving scanability
 - the main Songbook view now applies local in-memory sorting controls for `artist` / `title` with asc/desc toggling; ordering stays deterministic through primary field, secondary field and filename fallback without mutating the underlying songbook data
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
@@ -418,6 +423,7 @@ Workspace document behavior:
 - unsaved detection is centralized in `hasUnsavedChanges`: saved document + `dirty`, or unsaved document + non-empty `chordProText`
 - Tauri close interception for this flow depends on explicit main-window permissions for `window.close` / `window.destroy` in `src-tauri/capabilities/main.json`
 - conservative filename normalization for existing files also depends on explicit `fs:allow-rename` permission in `src-tauri/capabilities/main.json`
+- explicit Songbook file deletion depends on `fs:allow-remove` permission in `src-tauri/capabilities/main.json`
 
 Future improvements kept explicitly out of this phase:
 

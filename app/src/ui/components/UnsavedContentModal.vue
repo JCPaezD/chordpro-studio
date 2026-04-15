@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
+import ModalShell from "./ModalShell.vue";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 
 const workspace = useSongWorkspace();
@@ -48,96 +49,68 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal-fade">
-      <div
-        v-if="workspace.showUnsavedContentModal.value"
-        class="modal-backdrop"
-        @click.self="isRawInputMode ? workspace.confirmRawInputCancel() : workspace.confirmUnsavedContentCancel()"
-      >
-        <div class="modal-card">
-          <div class="modal-copy">
-            <p class="eyebrow">{{ modalEyebrow }}</p>
-            <h2>{{ modalTitle }}</h2>
-          </div>
+  <ModalShell
+    :visible="workspace.showUnsavedContentModal.value"
+    @backdrop="isRawInputMode ? workspace.confirmRawInputCancel() : workspace.confirmUnsavedContentCancel()"
+  >
+    <div class="modal-copy">
+      <p class="eyebrow">{{ modalEyebrow }}</p>
+      <h2>{{ modalTitle }}</h2>
+    </div>
 
-          <div v-if="isDirtyMode && workspace.unsavedContentMetadataLine.value" class="modal-context">
-            <p class="modal-meta">
-              {{ workspace.unsavedContentMetadataLine.value }}
-            </p>
-          </div>
-          <p class="modal-question">{{ modalQuestion }}</p>
+    <div v-if="isDirtyMode && workspace.unsavedContentMetadataLine.value" class="modal-context">
+      <p class="modal-meta">
+        {{ workspace.unsavedContentMetadataLine.value }}
+      </p>
+    </div>
+    <p class="modal-question">{{ modalQuestion }}</p>
 
-          <div class="modal-actions">
-            <template v-if="isDirtyMode">
-              <button
-                ref="primaryActionButtonRef"
-                class="primary-button"
-                :disabled="workspace.isResolvingUnsavedContent.value"
-                @click="workspace.confirmUnsavedContentSave()"
-              >
-                Save
-              </button>
-              <button
-                class="mini-button"
-                :disabled="workspace.isResolvingUnsavedContent.value"
-                @click="workspace.confirmUnsavedContentDiscard()"
-              >
-                Discard
-              </button>
-              <button
-                class="secondary-button"
-                :disabled="workspace.isResolvingUnsavedContent.value"
-                @click="workspace.confirmUnsavedContentCancel()"
-              >
-                Cancel
-              </button>
-            </template>
+    <div class="modal-actions">
+      <template v-if="isDirtyMode">
+        <button
+          ref="primaryActionButtonRef"
+          class="primary-button"
+          :disabled="workspace.isResolvingUnsavedContent.value"
+          @click="workspace.confirmUnsavedContentSave()"
+        >
+          Save
+        </button>
+        <button
+          class="mini-button"
+          :disabled="workspace.isResolvingUnsavedContent.value"
+          @click="workspace.confirmUnsavedContentDiscard()"
+        >
+          Discard
+        </button>
+        <button
+          class="secondary-button"
+          :disabled="workspace.isResolvingUnsavedContent.value"
+          @click="workspace.confirmUnsavedContentCancel()"
+        >
+          Cancel
+        </button>
+      </template>
 
-            <template v-else>
-              <button
-                ref="primaryActionButtonRef"
-                class="primary-button"
-                @click="workspace.confirmRawInputDiscard()"
-              >
-                Discard
-              </button>
-              <button
-                class="secondary-button"
-                @click="workspace.confirmRawInputCancel()"
-              >
-                Cancel
-              </button>
-            </template>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+      <template v-else>
+        <button
+          ref="primaryActionButtonRef"
+          class="primary-button"
+          @click="workspace.confirmRawInputDiscard()"
+        >
+          Discard
+        </button>
+        <button
+          class="secondary-button"
+          @click="workspace.confirmRawInputCancel()"
+        >
+          Cancel
+        </button>
+      </template>
+    </div>
+  </ModalShell>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1400;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: rgba(28, 32, 26, 0.24);
-}
-
-.modal-card {
-  width: min(28rem, 100%);
-  padding: 1.4rem 1.5rem;
-  border-radius: 22px;
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 250, 241, 0.95);
-  box-shadow: 0 24px 48px rgba(44, 33, 16, 0.18);
-  font: inherit;
-}
-
 .modal-copy {
   display: grid;
   gap: 0.35rem;
@@ -219,21 +192,7 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 160ms ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
 @media (max-width: 800px) {
-  .modal-card {
-    padding: 1.2rem 1.1rem;
-  }
-
   .modal-actions {
     justify-content: stretch;
   }

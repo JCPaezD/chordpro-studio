@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 
 import ModalShell from "./ModalShell.vue";
 
 const props = defineProps<{
   visible: boolean;
-  mode: "clear" | "replace";
+  fileName: string;
+  busy?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -14,15 +15,12 @@ const emit = defineEmits<{
 }>();
 
 const cancelButtonRef = ref<HTMLButtonElement | null>(null);
-const modalTitle = computed(() => (props.mode === "replace" ? "Replace songbook?" : "Clear songbook?"));
-const modalDescription = computed(() =>
-  props.mode === "replace"
-    ? "This will remove all loaded songs from the current view and replace them with the selected folder."
-    : "This will remove all loaded songs from the current view."
-);
-const confirmButtonLabel = computed(() => (props.mode === "replace" ? "Replace" : "Clear"));
 
 function emitCancel(): void {
+  if (props.busy) {
+    return;
+  }
+
   emit("cancel");
 }
 
@@ -58,25 +56,26 @@ onBeforeUnmount(() => {
   <ModalShell :visible="visible" @backdrop="emitCancel">
     <div class="modal-copy">
       <p class="eyebrow">Songbook</p>
-      <h2>{{ modalTitle }}</h2>
-      <p class="modal-description">{{ modalDescription }}</p>
+      <h2>Delete current song?</h2>
+      <p class="modal-description">This removes the `.cho` file from the current songbook folder.</p>
     </div>
+
+    <p class="modal-context">
+      File: <span>{{ fileName }}</span>
+    </p>
 
     <div class="modal-actions">
       <button
         ref="cancelButtonRef"
         class="secondary-button"
         type="button"
+        :disabled="busy"
         @click="emitCancel"
       >
         Cancel
       </button>
-      <button
-        class="primary-button"
-        type="button"
-        @click="emit('confirm')"
-      >
-        {{ confirmButtonLabel }}
+      <button class="primary-button danger-button" type="button" :disabled="busy" @click="emit('confirm')">
+        Delete
       </button>
     </div>
   </ModalShell>
@@ -89,7 +88,8 @@ onBeforeUnmount(() => {
 }
 
 .modal-copy h2,
-.modal-copy p {
+.modal-copy p,
+.modal-context {
   margin: 0;
 }
 
@@ -100,8 +100,19 @@ onBeforeUnmount(() => {
   color: #7a6541;
 }
 
-.modal-description {
+.modal-description,
+.modal-context {
   color: #5c654f;
+}
+
+.modal-context {
+  margin-top: 0.9rem;
+  font-size: 0.92rem;
+}
+
+.modal-context span {
+  color: #233127;
+  font-weight: 700;
 }
 
 .modal-actions {
@@ -131,6 +142,16 @@ onBeforeUnmount(() => {
   min-width: 8rem;
   background: linear-gradient(135deg, #1f3124, #37513b);
   color: #f8f3e8;
+}
+
+.danger-button {
+  background: linear-gradient(135deg, #5b1f1f, #7a3535);
+}
+
+.secondary-button:disabled,
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 @media (max-width: 800px) {

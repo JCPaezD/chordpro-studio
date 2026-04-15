@@ -62,6 +62,7 @@ type ExistingDocumentSaveTarget = {
 type SongbookFeedbackKind = "load" | "refresh";
 
 const PROCESSING_CANCELLED_MESSAGE = "Processing cancelled";
+const NEW_SONGBOOK_DRAFT_TEMPLATE = "{title: }\n{artist: }\n\n";
 
 export type SongWorkspace = {
   activePanel: Ref<"songbook" | "convert">;
@@ -112,8 +113,14 @@ export type SongWorkspace = {
   openSongbookFolder(): Promise<void>;
   refreshSongbook(options?: { feedback?: SongbookFeedbackKind | false }): Promise<void>;
   clearSongbook(): Promise<void>;
+  createNewSongbookDraft(): Promise<boolean>;
+  prepareDocumentForSongbookFileAction(): Promise<boolean>;
   openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<boolean>;
   saveDocument(): Promise<boolean>;
+  saveDocumentAs(): Promise<boolean>;
+  renameSongbookDocument(nextFileName: string, options?: { bypassUnsavedChanges?: boolean }): Promise<boolean>;
+  deleteSongbookDocument(options?: { nextFilePath?: string | null; bypassUnsavedChanges?: boolean }): Promise<boolean>;
+  revertSongbookDocument(): Promise<boolean>;
   setChordProText(value: string): void;
   setActivePanel(panel: "songbook" | "convert"): void;
   confirmSongbookAction(): void;
@@ -601,6 +608,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     );
   }
 
+  function canManageCurrentSongbookDocument(): boolean {
+    return !!document.value.filePath && currentDocumentBelongsToSongbook(songbook.value);
+  }
+
   function hasRawInputContent(): boolean {
     return rawInput.value.trim().length > 0;
   }
@@ -708,6 +719,17 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   async function normalizeChoSavePath(selectedPath: string): Promise<string> {
     return selectedPath.toLowerCase().endsWith(".cho") ? selectedPath : selectedPath + ".cho";
+  }
+
+  async function buildSuggestedSaveAsPath(): Promise<string> {
+    if (!document.value.filePath) {
+      return buildSuggestedExportPath("cho");
+    }
+
+    const folderPath = await dirname(document.value.filePath);
+    const currentFileName = getFilenameFromPath(document.value.filePath);
+    const baseName = currentFileName.replace(/\.cho$/i, "");
+    return join(folderPath, `${baseName} - copy.cho`);
   }
 
   async function buildTemporaryRenamePath(filePath: string): Promise<string> {
@@ -837,6 +859,75 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       finalPath: saveAsPath,
       applyCaseOnlyRename: false
     };
+  }
+
+  function getDocumentSaveState(): {
+    parsedSong: Song | null;
+    metadata: SongMetadata;
+  } {
+    let parsedSong = document.value.song;
+    let metadata = extractChordProMetadata(document.value.chordProText);
+
+    try {
+      parsedSong = parser.parse(document.value.chordProText);
+      metadata = parsedSong.metadata;
+    } catch {
+      // Keep the previous valid song snapshot if the current draft cannot be parsed.
+    }
+
+    return {
+      parsedSong,
+      metadata
+    };
+  }
+
+  function resetWorkspaceDocumentSideState(): void {
+    rawInput.value = "";
+    cleanedText.value = "";
+    error.value = "";
+    songbookError.value = "";
+    retryLog.value = [];
+    validationReason.value = "";
+    validationRawOutput.value = "";
+  }
+
+  async function applySavedDocumentState(targetPath: string, parsedSong: Song | null): Promise<void> {
+    replaceDocument(
+      createDocumentFromChordPro(document.value.chordProText, {
+        filePath: targetPath,
+        song: parsedSong,
+        dirty: false
+      })
+    );
+
+    if (songbook.value) {
+      await refreshSongbook();
+    }
+  }
+
+  async function promptExplicitSaveAsPath(): Promise<string | null> {
+    return promptSaveAsNewDocument(await buildSuggestedSaveAsPath());
+  }
+
+  async function reloadOrClearSongbookDocument(
+    filePath: string | null,
+    options?: { persistLastOpenedSong?: boolean }
+  ): Promise<void> {
+    if (!filePath) {
+      clearGeneratedState();
+
+      try {
+        await appConfig.clearLastOpenedSongPath();
+      } catch (err) {
+        console.error("Could not clear lastOpenedSongPath.", err);
+      }
+      return;
+    }
+
+    await openSongFile(filePath, {
+      bypassUnsavedChanges: true,
+      persistLastOpenedSong: options?.persistLastOpenedSong ?? true
+    });
   }
 
   async function buildSuggestedSongbookExportPath(): Promise<string> {
@@ -1335,6 +1426,11 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     return resolution !== "cancel";
   }
 
+  async function prepareDocumentForSongbookFileAction(): Promise<boolean> {
+    const resolution = await resolveUnsavedChanges();
+    return resolution !== "cancel";
+  }
+
   function requestSongbookActionConfirmation(mode: SongbookActionConfirmMode): Promise<boolean> {
     if (pendingSongbookActionConfirmation) {
       return pendingSongbookActionConfirmation;
@@ -1452,6 +1548,23 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     resolveSaveFilenameMismatchResolution?.("cancel");
   }
 
+  async function createNewSongbookDraft(): Promise<boolean> {
+    if (!songbook.value) {
+      return false;
+    }
+
+    if (!(await ensureDocumentCanBeReplaced())) {
+      return false;
+    }
+
+    cancelActiveGeneration();
+    resetWorkspaceDocumentSideState();
+    replaceDocument(createDocumentFromChordPro(NEW_SONGBOOK_DRAFT_TEMPLATE));
+    clearPreviewState();
+    activePanel.value = "songbook";
+    return true;
+  }
+
   async function saveDocument(): Promise<boolean> {
     if (!document.value.chordProText) {
       return false;
@@ -1461,14 +1574,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     songbookError.value = "";
 
     try {
-      let parsedSong = document.value.song;
-      let currentMetadata = extractChordProMetadata(document.value.chordProText);
-      try {
-        parsedSong = parser.parse(document.value.chordProText);
-        currentMetadata = parsedSong.metadata;
-      } catch {
-        // Keep the previous valid song snapshot if the current draft cannot be parsed.
-      }
+      const { parsedSong, metadata } = getDocumentSaveState();
 
       let targetPath = document.value.filePath;
 
@@ -1491,7 +1597,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         targetPath = await normalizeChoSavePath(selectedPath);
         await songbookService.saveSong(targetPath, document.value.chordProText);
       } else {
-        const saveTarget = await resolveSaveTargetPathForExistingDocument(targetPath, currentMetadata);
+        const saveTarget = await resolveSaveTargetPathForExistingDocument(targetPath, metadata);
         if (!saveTarget) {
           return false;
         }
@@ -1502,17 +1608,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           : saveTarget.finalPath;
       }
 
-      replaceDocument(
-        createDocumentFromChordPro(document.value.chordProText, {
-          filePath: targetPath,
-          song: parsedSong,
-          dirty: false
-        })
-      );
-
-      if (songbook.value) {
-        await refreshSongbook();
-      }
+      await applySavedDocumentState(targetPath, parsedSong);
 
       feedback.showFeedback({
         type: "success",
@@ -1528,6 +1624,202 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       return false;
     }
   }
+
+  async function saveDocumentAs(): Promise<boolean> {
+    if (!document.value.chordProText) {
+      return false;
+    }
+
+    error.value = "";
+    songbookError.value = "";
+
+    try {
+      const { parsedSong } = getDocumentSaveState();
+      const targetPath = await promptExplicitSaveAsPath();
+
+      if (!targetPath) {
+        return false;
+      }
+
+      if (
+        document.value.filePath &&
+        normalizeCaseInsensitivePath(targetPath) === normalizeCaseInsensitivePath(document.value.filePath)
+      ) {
+        feedback.showFeedback({
+          type: "error",
+          message: "Save As requires a different file name."
+        });
+        return false;
+      }
+
+      if (await songRepository.songExists(targetPath)) {
+        feedback.showFeedback({
+          type: "error",
+          message: "File already exists. Save As was cancelled and no new file was created."
+        });
+        return false;
+      }
+
+      await songbookService.saveSong(targetPath, document.value.chordProText);
+      await applySavedDocumentState(targetPath, parsedSong);
+
+      feedback.showFeedback({
+        type: "success",
+        message: "Saved to: " + getFilenameFromPath(targetPath)
+      });
+
+      return true;
+    } catch (err) {
+      feedback.showFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Could not save file."
+      });
+      return false;
+    }
+  }
+
+  async function renameSongbookDocument(
+    nextFileName: string,
+    options?: { bypassUnsavedChanges?: boolean }
+  ): Promise<boolean> {
+    if (!canManageCurrentSongbookDocument()) {
+      return false;
+    }
+
+    if (!options?.bypassUnsavedChanges && !(await prepareDocumentForSongbookFileAction())) {
+      return false;
+    }
+
+    const currentPath = document.value.filePath;
+    if (!currentPath) {
+      return false;
+    }
+
+    const normalizedBaseName = nextFileName.trim().replace(/\.cho$/i, "");
+    if (!normalizedBaseName) {
+      feedback.showFeedback({
+        type: "error",
+        message: "Rename requires a file name."
+      });
+      return false;
+    }
+
+    if (/[\\/]/.test(normalizedBaseName)) {
+      feedback.showFeedback({
+        type: "error",
+        message: "Rename cannot include path separators."
+      });
+      return false;
+    }
+
+    const currentFileName = getFilenameFromPath(currentPath);
+    const targetFileName = `${normalizedBaseName}.cho`;
+    if (targetFileName === currentFileName) {
+      feedback.showFeedback({
+        type: "info",
+        message: "The file name is unchanged."
+      });
+      return false;
+    }
+
+    try {
+      const folderPath = await dirname(currentPath);
+      const targetPath = await join(folderPath, targetFileName);
+
+      if (
+        normalizeCaseInsensitivePath(targetPath) !== normalizeCaseInsensitivePath(currentPath) &&
+        (await songRepository.songExists(targetPath))
+      ) {
+        feedback.showFeedback({
+          type: "error",
+          message: "A song with that file name already exists in this songbook."
+        });
+        return false;
+      }
+
+      if (normalizeCaseInsensitivePath(targetPath) === normalizeCaseInsensitivePath(currentPath)) {
+        await applyCaseOnlyRename(currentPath, targetPath);
+      } else {
+        await songbookService.renameSong(currentPath, targetPath);
+      }
+
+      await refreshSongbook();
+      await reloadOrClearSongbookDocument(targetPath, { persistLastOpenedSong: true });
+
+      feedback.showFeedback({
+        type: "success",
+        message: "Renamed to: " + getFilenameFromPath(targetPath)
+      });
+      return true;
+    } catch (err) {
+      feedback.showFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Could not rename file."
+      });
+      return false;
+    }
+  }
+
+  async function deleteSongbookDocument(options?: { nextFilePath?: string | null; bypassUnsavedChanges?: boolean }): Promise<boolean> {
+    if (!canManageCurrentSongbookDocument()) {
+      return false;
+    }
+
+    if (!options?.bypassUnsavedChanges && !(await prepareDocumentForSongbookFileAction())) {
+      return false;
+    }
+
+    const currentPath = document.value.filePath;
+    if (!currentPath) {
+      return false;
+    }
+
+    try {
+      await songbookService.deleteSong(currentPath);
+      await refreshSongbook();
+
+      const remainingSongs = songbook.value?.songs ?? [];
+      const preferredNextPath = options?.nextFilePath
+        ? remainingSongs.some((songEntry) =>
+            normalizeCaseInsensitivePath(songEntry.filePath) === normalizeCaseInsensitivePath(options.nextFilePath ?? "")
+          )
+          ? options.nextFilePath
+          : null
+        : null;
+      const nextPath = preferredNextPath ?? remainingSongs[0]?.filePath ?? null;
+
+      await reloadOrClearSongbookDocument(nextPath, { persistLastOpenedSong: true });
+
+      feedback.showFeedback({
+        type: "success",
+        message: "Deleted: " + getFilenameFromPath(currentPath)
+      });
+      return true;
+    } catch (err) {
+      feedback.showFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Could not delete file."
+      });
+      return false;
+    }
+  }
+
+  async function revertSongbookDocument(): Promise<boolean> {
+    if (!canManageCurrentSongbookDocument() || !document.value.dirty) {
+      return false;
+    }
+
+    const currentPath = document.value.filePath;
+    if (!currentPath) {
+      return false;
+    }
+
+    return openSongFile(currentPath, {
+      bypassUnsavedChanges: true,
+      persistLastOpenedSong: true
+    });
+  }
+
   async function openSongFile(filePath: string, options?: { bypassUnsavedChanges?: boolean; persistLastOpenedSong?: boolean }): Promise<boolean> {
     if (!options?.bypassUnsavedChanges && !(await ensureDocumentCanBeReplaced())) {
       return false;
@@ -1535,8 +1827,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
     cancelActiveGeneration();
     clearOperationMessages();
-    error.value = "";
-    songbookError.value = "";
+    resetWorkspaceDocumentSideState();
 
     try {
       const loadedSong = await songbookService.openSong(filePath);
@@ -1547,11 +1838,6 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
           dirty: false
         })
       );
-      rawInput.value = "";
-      cleanedText.value = "";
-      retryLog.value = [];
-      validationReason.value = "";
-      validationRawOutput.value = "";
       await refreshPreview(loadedSong.chordProText);
 
       if (options?.persistLastOpenedSong !== false) {
@@ -1779,8 +2065,14 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     openSongbookFolder,
     refreshSongbook,
     clearSongbook,
+    createNewSongbookDraft,
+    prepareDocumentForSongbookFileAction,
     openSongFile,
     saveDocument,
+    saveDocumentAs,
+    renameSongbookDocument,
+    deleteSongbookDocument,
+    revertSongbookDocument,
     setChordProText,
     setActivePanel,
     confirmSongbookAction,

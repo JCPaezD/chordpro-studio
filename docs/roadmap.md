@@ -283,8 +283,9 @@ Pending, planned or possible work.
   - introduce icons where appropriate
   - maintain current layout structure
 - improve visual distinction between `active` and `selected` song in the list with a non-intrusive indicator
+- evaluate inline rename in the Songbook editor header as a future UX refinement once the current modal-based file workflow settles
 - extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
-- evaluate a lightweight shared modal shell for common modal behavior:
+- extend the lightweight shared modal shell to additional app modals where it improves consistency without over-generalizing modal-specific behavior:
   - backdrop
   - transition
   - Escape handling

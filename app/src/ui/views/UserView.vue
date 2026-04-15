@@ -7,7 +7,10 @@ import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import ChordProEditorHeader from "../components/ChordProEditorHeader.vue";
 import ClearSongbookModal from "../components/ClearSongbookModal.vue";
+import DeleteSongModal from "../components/DeleteSongModal.vue";
 import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
+import RenameSongModal from "../components/RenameSongModal.vue";
+import RevertSongModal from "../components/RevertSongModal.vue";
 import SongList from "../components/SongList.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
 import {
@@ -75,8 +78,14 @@ const {
   refreshSongbook,
   showSongbookActionConfirmModal,
   songbookActionConfirmMode,
+  createNewSongbookDraft,
+  prepareDocumentForSongbookFileAction,
   openSongFile,
   saveDocument,
+  saveDocumentAs,
+  renameSongbookDocument,
+  deleteSongbookDocument,
+  revertSongbookDocument,
   setChordProText,
   setActivePanel,
   confirmSongbookAction,
@@ -102,6 +111,12 @@ const isSavingApiKey = ref(false);
 const showApiKeyDraft = ref(false);
 const openedApiKeyWithExistingValue = ref(false);
 const hasEditedApiKeyDraft = ref(false);
+const showRenameSongModal = ref(false);
+const showDeleteSongModal = ref(false);
+const showRevertSongModal = ref(false);
+const isRenamingSong = ref(false);
+const isDeletingSong = ref(false);
+const isRevertingSong = ref(false);
 const showPreferencesMenu = ref(false);
 const preferencesButtonRef = ref<HTMLElement | null>(null);
 const preferencesPanelRef = ref<HTMLElement | null>(null);
@@ -120,6 +135,22 @@ const hasApiKey = computed(() => !!appConfig.apiKey.value);
 const showChordDiagrams = computed(() => appConfig.showChordDiagrams.value);
 const chordDiagramInstrument = computed(() => appConfig.instrument.value);
 const canGenerate = computed(() => !configLoading.value && hasApiKey.value && !loading.value);
+const canCreateSongbookDraft = computed(() => !!songbook.value);
+const canSaveSongbookDocument = computed(() => chordProText.value.trim().length > 0);
+const isSongbookDraftDocument = computed(() => !!songbook.value && !workspaceDocument.value.filePath);
+const canManageCurrentSongbookFile = computed(() =>
+  !!workspaceDocument.value.filePath &&
+  songbookListItems.value.some((songEntry) => songEntry.filePath === workspaceDocument.value.filePath)
+);
+const canRevertCurrentSongbookFile = computed(() => canManageCurrentSongbookFile.value && workspaceDocument.value.dirty);
+const showSongbookUnsavedBadge = computed(() => hasUnsavedChanges.value && !canRevertCurrentSongbookFile.value);
+const songbookUnsavedLabel = computed(() => {
+  if (isSongbookDraftDocument.value) {
+    return "Unsaved draft";
+  }
+
+  return "Unsaved changes";
+});
 
 const selectedModel = computed(() =>
   conversionMode.value === "fast" ? "gemini-flash-lite-latest" : "gemini-flash-latest"
@@ -169,6 +200,10 @@ const userFacingGenerateError = computed(() => {
 
 const songbookEditorTitle = computed(() => {
   if (!workspaceDocument.value.chordProText.trim()) {
+    if (isSongbookDraftDocument.value) {
+      return "New song draft";
+    }
+
     return workspaceDocument.value.fileName || "ChordPro source";
   }
 
@@ -179,9 +214,27 @@ const songbookEditorTitle = computed(() => {
   );
 });
 
-const songbookEditorSubtitle = computed(() =>
-  workspaceDocument.value.fileName || "Open a song from the list to edit its `.cho` content."
-);
+const songbookEditorSubtitle = computed(() => {
+  if (workspaceDocument.value.fileName) {
+    return workspaceDocument.value.fileName;
+  }
+
+  if (isSongbookDraftDocument.value) {
+    return "Not saved yet.";
+  }
+
+  return "Open a song from the list to edit its `.cho` content.";
+});
+const songbookEditorPlaceholder = computed(() => {
+  return "Open a song from the list to edit it here.";
+});
+const songbookDraftHint = computed(() => {
+  if (!isSongbookDraftDocument.value) {
+    return "";
+  }
+
+  return "Fill in the template, then use Save or Save As to create its `.cho` file in this songbook.";
+});
 const convertEditorSubtitle = computed(() => {
   if (!chordProText.value.trim()) {
     return "Generated ChordPro output.";
@@ -833,6 +886,128 @@ async function handleRefreshSongbook(): Promise<void> {
   await refreshSongbook({ feedback: "refresh" });
 }
 
+async function openRenameCurrentSongModal(): Promise<void> {
+  if (!canManageCurrentSongbookFile.value) {
+    return;
+  }
+
+  if (!(await prepareDocumentForSongbookFileAction())) {
+    return;
+  }
+
+  showRenameSongModal.value = true;
+}
+
+function closeRenameSongModal(): void {
+  if (isRenamingSong.value) {
+    return;
+  }
+
+  showRenameSongModal.value = false;
+}
+
+async function openDeleteCurrentSongModal(): Promise<void> {
+  if (!canManageCurrentSongbookFile.value) {
+    return;
+  }
+
+  if (!(await prepareDocumentForSongbookFileAction())) {
+    return;
+  }
+
+  showDeleteSongModal.value = true;
+}
+
+function closeDeleteSongModal(): void {
+  if (isDeletingSong.value) {
+    return;
+  }
+
+  showDeleteSongModal.value = false;
+}
+
+function openRevertCurrentSongModal(): void {
+  if (!canRevertCurrentSongbookFile.value) {
+    return;
+  }
+
+  showRevertSongModal.value = true;
+}
+
+function closeRevertSongModal(): void {
+  if (isRevertingSong.value) {
+    return;
+  }
+
+  showRevertSongModal.value = false;
+}
+
+function getPreferredSongPathAfterDelete(): string | null {
+  const songs = songbookListItems.value;
+  const currentIndex = currentSongbookIndex.value;
+
+  if (currentIndex < 0 || songs.length <= 1) {
+    return null;
+  }
+
+  return songs[currentIndex + 1]?.filePath ?? songs[currentIndex - 1]?.filePath ?? null;
+}
+
+async function handleRenameSongConfirm(nextFileName: string): Promise<void> {
+  if (isRenamingSong.value) {
+    return;
+  }
+
+  isRenamingSong.value = true;
+
+  try {
+    const renamed = await renameSongbookDocument(nextFileName, { bypassUnsavedChanges: true });
+    if (renamed) {
+      showRenameSongModal.value = false;
+    }
+  } finally {
+    isRenamingSong.value = false;
+  }
+}
+
+async function handleDeleteSongConfirm(): Promise<void> {
+  if (isDeletingSong.value) {
+    return;
+  }
+
+  isDeletingSong.value = true;
+
+  try {
+    const deleted = await deleteSongbookDocument({
+      bypassUnsavedChanges: true,
+      nextFilePath: getPreferredSongPathAfterDelete()
+    });
+
+    if (deleted) {
+      showDeleteSongModal.value = false;
+    }
+  } finally {
+    isDeletingSong.value = false;
+  }
+}
+
+async function handleRevertSongConfirm(): Promise<void> {
+  if (isRevertingSong.value) {
+    return;
+  }
+
+  isRevertingSong.value = true;
+
+  try {
+    const reverted = await revertSongbookDocument();
+    if (reverted) {
+      showRevertSongModal.value = false;
+    }
+  } finally {
+    isRevertingSong.value = false;
+  }
+}
+
 function handleWindowKeydown(event: KeyboardEvent): void {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return;
@@ -1377,22 +1552,48 @@ async function openGeminiApiKeyPage(): Promise<void> {
                 <ChordProEditorHeader
                   :title="songbookEditorTitle"
                   :subtitle="songbookEditorSubtitle"
-                  :show-unsaved-changes="hasUnsavedChanges"
+                  :show-unsaved-changes="showSongbookUnsavedBadge"
+                  :unsaved-changes-label="songbookUnsavedLabel"
                 >
-                  <template #actions>
-                    <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
+                  <template #primaryActions>
+                    <button class="mini-button" :disabled="!canSaveSongbookDocument" @click="saveDocument">
                       Save
                     </button>
-                    <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
+                    <button
+                      :class="['mini-button', { 'warning-button': canRevertCurrentSongbookFile }]"
+                      :disabled="!canRevertCurrentSongbookFile || isRevertingSong"
+                      @click="openRevertCurrentSongModal"
+                    >
+                      Revert changes
+                    </button>
+                  </template>
+                  <template #actions>
+                    <button class="mini-button" :disabled="!canCreateSongbookDraft" @click="createNewSongbookDraft">
+                      New
+                    </button>
+                    <button class="mini-button" :disabled="!canSaveSongbookDocument" @click="saveDocumentAs">
+                      Save As
+                    </button>
+                    <button class="mini-button" :disabled="!canManageCurrentSongbookFile || isRenamingSong" @click="openRenameCurrentSongModal">
+                      Rename
+                    </button>
+                    <button class="secondary-button" :disabled="!canManageCurrentSongbookFile || isDeletingSong" @click="openDeleteCurrentSongModal">
+                      Delete
+                    </button>
+                    <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !canSaveSongbookDocument" @click="previewFromChordPro">
                       Refresh
                     </button>
                   </template>
                 </ChordProEditorHeader>
 
+                <p v-if="songbookDraftHint" class="songbook-draft-hint">
+                  {{ songbookDraftHint }}
+                </p>
+
                 <ChordProEditorPane
                   ref="songbookEditorPaneRef"
                   :model-value="chordProText"
-                  placeholder="Open a song from the list to edit it here."
+                  :placeholder="songbookEditorPlaceholder"
                   @update:model-value="updateChordPro"
                 />
               </section>
@@ -1519,6 +1720,30 @@ async function openGeminiApiKeyPage(): Promise<void> {
       :mode="songbookActionConfirmMode ?? 'clear'"
       @cancel="cancelSongbookAction"
       @confirm="confirmSongbookAction"
+    />
+
+    <RenameSongModal
+      :visible="showRenameSongModal"
+      :current-file-name="workspaceDocument.fileName"
+      :busy="isRenamingSong"
+      @cancel="closeRenameSongModal"
+      @confirm="handleRenameSongConfirm"
+    />
+
+    <DeleteSongModal
+      :visible="showDeleteSongModal"
+      :file-name="workspaceDocument.fileName"
+      :busy="isDeletingSong"
+      @cancel="closeDeleteSongModal"
+      @confirm="handleDeleteSongConfirm"
+    />
+
+    <RevertSongModal
+      :visible="showRevertSongModal"
+      :file-name="workspaceDocument.fileName"
+      :busy="isRevertingSong"
+      @cancel="closeRevertSongModal"
+      @confirm="handleRevertSongConfirm"
     />
 
     <div v-if="showApiKeyModal" class="modal-backdrop" @click.self="closeApiKeyModal">
@@ -2145,6 +2370,18 @@ async function openGeminiApiKeyPage(): Promise<void> {
   background: #f7efe0;
 }
 
+.warning-button {
+  border-color: rgba(91, 67, 32, 0.22);
+  background: #f0dfb9;
+  color: #5b4320;
+}
+
+.warning-button:disabled {
+  border-color: rgba(91, 67, 32, 0.18);
+  background: #f0dfb9;
+  color: #5b4320;
+}
+
 .primary-button {
   min-width: 10.5rem;
   background: linear-gradient(135deg, #1f3124, #37513b);
@@ -2353,6 +2590,12 @@ async function openGeminiApiKeyPage(): Promise<void> {
   padding: 1rem;
   border: 1px dashed rgba(47, 59, 49, 0.18);
   color: #4a564a;
+}
+
+.songbook-draft-hint {
+  margin: -0.2rem 0 0;
+  color: #6a755f;
+  font-size: 0.9rem;
 }
 
 .song-list-hint,
