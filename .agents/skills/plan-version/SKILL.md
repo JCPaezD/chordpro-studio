@@ -28,6 +28,7 @@ When using this skill:
 - explain why included items belong together
 - explain why excluded or moved items do not belong where they were
 - make the next workflow step explicit
+- when a version or work block is already sufficiently decided, prefer recording it in `docs/roadmap.md` before moving into feature-level design work
 
 Do not turn planning into technical design.
 
@@ -171,6 +172,9 @@ Typical updates include:
 - reordering priorities
 - clarifying block boundaries
 
+When the conversation has already converged on a clear version or work block, prefer `document-now` as the next step before `design-spec`.
+Use `design-spec` after that for the main selected features or technical blocks inside the approved version, not as a substitute for recording the version decision itself.
+
 Do not update `docs/dev-notes.md` unless the planning discussion itself establishes a stable process or decision rule worth recording.
 
 ## Valid Outcomes
@@ -188,7 +192,7 @@ Return one of these:
 Escalate instead of over-solving:
 
 - use `refine-item` when an item is not clear enough to place confidently
-- use `design-spec` when a selected item is approved and needs implementation design
+- use `design-spec` when a selected feature or technical block inside an approved version needs implementation design
 - use `breakdown-feature` when a selected item is too large and must be split before implementation
 
 ## Style Rules

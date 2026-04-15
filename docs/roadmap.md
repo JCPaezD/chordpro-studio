@@ -173,6 +173,23 @@ Pending, planned or possible work.
 
 ## v1.x backlog
 
+### v1.6 - Songbook Workflow + Validation
+
+- goal:
+  - turn Songbook from a minimal management surface into a more complete working flow
+  - strengthen the technical base of the project with broader smoke coverage and the first small regression checks
+- visible scope:
+  - create a new empty song directly from Songbook (`New`)
+  - add `Save As` / duplication from Songbook
+  - add UI-based rename as a complement to `Save As`
+  - delete song/file from Songbook with proper confirmation
+  - add an explicit discard / revert flow for file-backed editor changes
+- validation scope:
+  - extend the current smoke validation to cover more real Songbook and persistence flows
+  - introduce a first small layer of regression tests for deterministic core behaviors such as parser, cleaning, preview cache and render preprocessing
+- stretch:
+  - add basic Songbook filtering or metadata search by `title` / `artist` if the core scope lands cleanly
+
 ### Desktop polish
 
 - persist window size and position between desktop sessions
@@ -185,7 +202,6 @@ Pending, planned or possible work.
   - lightweight regex-based approach
   - no heavy editor refactor yet
   - avoid breaking current input behavior
-- add an explicit discard / revert flow for file-backed editor changes instead of relying on indirect workarounds such as changing song or clearing context
 
 ### Product clarification
 
@@ -244,22 +260,11 @@ Pending, planned or possible work.
 
 - allow optional filtering of tab blocks (`{start_of_tab}` / `{end_of_tab}`) without modifying the original `.cho`
 
-### Songbook management features
-
-- delete song/file from the songbook with proper confirmation
-- create a new empty song from scratch directly in the songbook (`New`) instead of relying on the current convert/save workaround
-- add `Save As` to duplicate or create a copy with a new name
-
 ### Songbook / export improvements
 
 - improve PDF navigation:
   - allow returning to the index from song pages
   - explore header/footer or clickable elements
-
-### Song list improvements
-
-- add filtering by artist and title
-- add basic metadata-only search without searching full song content yet
 
 ### Preview cache management
 
@@ -278,7 +283,6 @@ Pending, planned or possible work.
   - introduce icons where appropriate
   - maintain current layout structure
 - improve visual distinction between `active` and `selected` song in the list with a non-intrusive indicator
-- add a UI-based rename capability as a complement to `Save As`
 - extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
 - evaluate a lightweight shared modal shell for common modal behavior:
   - backdrop
@@ -295,8 +299,6 @@ Pending, planned or possible work.
 
 ### Validation and diagnostics
 
-- extend the current smoke validation with small regression coverage for deterministic core flows
-- introduce small regression tests for parser, cleaning, preview cache and render preprocessing
 - extend the Playground with a post-LLM editable entry point to inject raw conversion output before validation, normalization and parsing
 - keep the existing editable `ChordPro` stage as a downstream final-source entry point instead of overloading it with post-LLM validation behavior
 - introduce structured logging system (file-based, timestamped) for debugging and diagnostics
