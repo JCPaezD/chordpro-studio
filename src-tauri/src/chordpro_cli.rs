@@ -1474,6 +1474,24 @@ E|-------------------1-1-1-1-1-1-1-1--------|
   }
 
   #[test]
+  fn preview_cache_hash_changes_when_diagram_visibility_changes() {
+    let chordpro_text = "{title: Test}\n[C]Hello\n";
+    let diagrams_visible = RenderStyleOptions {
+      show_chord_diagrams: true,
+      instrument: DiagramInstrument::Piano,
+    };
+    let diagrams_hidden = RenderStyleOptions {
+      show_chord_diagrams: false,
+      instrument: DiagramInstrument::Piano,
+    };
+
+    assert_ne!(
+      hash_preview_input(chordpro_text, &diagrams_visible),
+      hash_preview_input(chordpro_text, &diagrams_hidden)
+    );
+  }
+
+  #[test]
   fn preview_cache_hash_changes_when_derived_title_changes() {
     let render_style = RenderStyleOptions::default();
     let first = preprocess_chordpro_for_render("[C]Hello world\n", &render_style, Some("demo.cho"));

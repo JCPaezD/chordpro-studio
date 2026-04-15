@@ -167,28 +167,20 @@ Current status:
 - v1.5.1 Performance mode now keeps the active song visible when navigating with the dock or relative prev/next keyboard flow, reusing the existing viewport-alignment logic without collapsing the separate `active` and `selected` song states
 - v1.5.1 Convert and Songbook now share the same ChordPro editor header pattern, and both surfaces expose the same `Unsaved changes` badge whenever the shared workspace still holds ChordPro content that is not safely persisted to disk
 
+### v1.6
+
+- v1.6 Songbook now supports a fuller file workflow directly from the editor surface: `New` creates a detached draft with a minimal template, `Save As` duplicates into a new `.cho`, `Rename` stays inside the current songbook folder with conflict-safe casing behavior on Windows, `Delete` removes the active persisted file after the standard unsaved-content guard, and `Revert changes` reloads the current file from disk without introducing a parallel restore path
+- v1.6 Songbook and Convert now share a more stable two-row editor header layout with reusable primary/secondary action zones; Songbook uses `Unsaved draft` for detached drafts and surfaces persisted dirty state through the highlighted `Revert changes` action instead of a duplicate badge
+- v1.6 app modals now share a lightweight reusable modal shell for common backdrop, layout and interaction behavior while keeping modal-specific copy and actions local
+- v1.6 local smoke validation now gives progressive step-by-step terminal feedback, covers parser, cleaning, Songbook title derivation, preview generation, repeated preview, render-style cache variation, and export, and still leaves `.smoke/` artifacts on disk for inspection
+- v1.6 local regression validation is now available through `npm run regression`, combining a small frontend Node test suite for deterministic core behaviors with backend `cargo test` coverage for render preprocessing and preview-cache rules
+- v1.6 preview-cache validation now explicitly checks that effective render-style changes such as instrument or chord-diagram visibility produce distinct cache inputs instead of reusing incompatible preview artifacts
+
 ## Current roadmap
 
 Pending, planned or possible work.
 
 ## v1.x backlog
-
-### v1.6 - Songbook Workflow + Validation
-
-- goal:
-  - turn Songbook from a minimal management surface into a more complete working flow
-  - strengthen the technical base of the project with broader smoke coverage and the first small regression checks
-- visible scope:
-  - create a new empty song directly from Songbook (`New`)
-  - add `Save As` / duplication from Songbook
-  - add UI-based rename as a complement to `Save As`
-  - delete song/file from Songbook with proper confirmation
-  - add an explicit discard / revert flow for file-backed editor changes
-- validation scope:
-  - extend the current smoke validation to cover more real Songbook and persistence flows
-  - introduce a first small layer of regression tests for deterministic core behaviors such as parser, cleaning, preview cache and render preprocessing
-- stretch:
-  - add basic Songbook filtering or metadata search by `title` / `artist` if the core scope lands cleanly
 
 ### Desktop polish
 

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run dev --workspace app",
     "build": "npm run build --workspace app",
+    "regression": "node scripts/regression.js",
     "smoke": "node scripts/smoke.js",
     "preview": "npm run preview --workspace app",
     "tauri": "npm run tauri --workspace app --"

@@ -158,10 +158,26 @@ Limits:
 ### Local smoke validation
 
 - local smoke validation now runs through `npm run smoke` and is intentionally lightweight: no UI, no LLM calls, and no external testing framework
-- parser and cleaning checks reuse the existing frontend services directly, while preview and PDF export run through a dedicated `smoke-runner` Tauri binary that reuses the same backend command logic and bundled ChordPro integration as the app
+- the smoke command now reports progress step-by-step in terminal (`Running ...`, `[OK] ...`) so failures are easier to place in the current workflow
+- parser, cleaning and Songbook title-derivation checks reuse the existing frontend services directly, while preview and PDF export run through a dedicated `smoke-runner` Tauri binary that reuses the same backend command logic and bundled ChordPro integration as the app
+- smoke now also checks a render-style preview variant so cache validation is not limited to repeating the exact same request
 - the smoke script leaves `.smoke/` on disk for inspection and keeps that folder ignored in Git
 - because direct Node-to-Tauri command invocation is not part of the current app architecture, the dedicated smoke runner is treated as the minimal acceptable bridge for backend validation rather than as a parallel render pipeline
 - because the Tauri development workflow still launches the main desktop binary through `cargo run`, `src-tauri/Cargo.toml` now sets `default-run = "chordpro-studio"` so adding `smoke-runner` does not break `tauri dev`
+
+### Local regression validation
+
+- local regression validation now runs through `npm run regression`
+- the current first layer intentionally stays lightweight:
+  - frontend uses the Node test runner with `--experimental-strip-types` against deterministic pure or near-pure modules
+  - backend reuses `cargo test`, extending the existing `chordpro_cli.rs` unit coverage instead of introducing a second Rust test harness
+- the current frontend regression suite focuses on stable behaviors that are cheap to validate and important not to break:
+  - parser section recognition
+  - cleaning of boilerplate while preserving useful text
+  - Songbook title derivation from lyric content
+  - metadata normalization
+  - ChordPro output validation rules
+- the current backend regression layer continues to protect render preprocessing and preview-cache invalidation rules, including cache-key changes when diagram visibility or instrument changes
 
 ### Playground pipeline entry points
 

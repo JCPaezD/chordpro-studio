@@ -1,6 +1,6 @@
 use crate::chordpro_cli::{
   export_pdf_internal, generate_preview_with_state, ChordProCommandError, PreviewExecutionState,
-  RenderStyleOptions,
+  DiagramInstrument, RenderStyleOptions,
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
@@ -20,6 +20,8 @@ pub struct SmokeSummary {
   pub preview_size: u64,
   pub second_preview_path: String,
   pub second_preview_size: u64,
+  pub variant_preview_path: String,
+  pub variant_preview_size: u64,
   pub export_pdf_path: String,
   pub export_pdf_size: u64,
   pub export_cho_path: String,
@@ -61,6 +63,22 @@ pub async fn run(app: AppHandle, output_dir: PathBuf) -> Result<SmokeSummary, St
   .map_err(format_backend_error)?;
   let second_preview_bytes = decode_pdf_bytes(&second_preview.pdf_base64)?;
 
+  let variant_render_style = Some(RenderStyleOptions {
+    show_chord_diagrams: true,
+    instrument: DiagramInstrument::Guitar,
+  });
+  let variant_preview = generate_preview_with_state(
+    app.clone(),
+    Arc::clone(&preview_state),
+    SMOKE_CHORDPRO_TEXT.to_string(),
+    false,
+    variant_render_style,
+    file_name.clone(),
+  )
+  .await
+  .map_err(format_backend_error)?;
+  let variant_preview_bytes = decode_pdf_bytes(&variant_preview.pdf_base64)?;
+
   let export_pdf_path = output_dir.join("export.pdf");
   export_pdf_internal(
     app,
@@ -84,6 +102,8 @@ pub async fn run(app: AppHandle, output_dir: PathBuf) -> Result<SmokeSummary, St
     preview_size: preview_bytes.len() as u64,
     second_preview_path: second_preview.pdf_path,
     second_preview_size: second_preview_bytes.len() as u64,
+    variant_preview_path: variant_preview.pdf_path,
+    variant_preview_size: variant_preview_bytes.len() as u64,
     export_pdf_path: export_pdf_path.to_string_lossy().into_owned(),
     export_pdf_size,
     export_cho_path: export_cho_path.to_string_lossy().into_owned(),

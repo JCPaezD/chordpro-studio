@@ -12,6 +12,15 @@ const CHORDPRO_TEXT = `{title: Smoke Test}
 [C]Hello [G]world
 [F]This is a [C]test
 `;
+const TITLELESS_CHORDPRO_TEXT = `{artist: Smoke Artist}
+{comment: Intro}
+[C] [G]
+{start_of_tab}
+E|--0--|
+{end_of_tab}
+
+[F]Late smoke line
+`;
 const RAW_TEXT = `Ultimate Guitar
 
   ${CHORDPRO_TEXT}
@@ -24,28 +33,49 @@ async function main() {
   try {
     await prepareSmokeDir();
 
-    const frontendResult = await runFrontendChecks();
-    ensureParserResult(frontendResult.parser);
-    steps.push("[OK] Parser");
+    await runStep("Parser", steps, async () => {
+      const parserResult = await runParserCheck();
+      ensureParserResult(parserResult);
+    });
 
-    ensureCleaningResult(frontendResult.cleaning);
-    steps.push("[OK] Cleaning");
+    await runStep("Cleaning", steps, async () => {
+      const cleaningResult = await runCleaningCheck();
+      ensureCleaningResult(cleaningResult);
+    });
 
-    const backendResult = await runBackendChecks();
-    ensurePreviewResult(backendResult);
-    steps.push("[OK] Preview");
+    await runStep("Display title derivation", steps, async () => {
+      const displayTitleResult = await runDisplayTitleCheck();
+      ensureDisplayTitleResult(displayTitleResult);
+    });
 
-    ensureCacheResult(backendResult);
-    steps.push("[OK] Cache");
+    const backendResult = await runStep("Preview / export backend bridge", steps, async () => {
+      return runBackendChecks();
+    });
 
-    ensureExportResult(backendResult);
-    steps.push("[OK] Export");
+    await runStep("Preview", steps, async () => {
+      ensurePreviewResult(backendResult);
+    });
 
-    console.log(steps.join("\n"));
-    console.log("\nSMOKE TEST PASSED");
+    await runStep("Cache", steps, async () => {
+      ensureCacheResult(backendResult);
+    });
+
+    await runStep("Render style cache variant", steps, async () => {
+      ensureRenderStyleVariantResult(backendResult);
+    });
+
+    await runStep("Export", steps, async () => {
+      ensureExportResult(backendResult);
+    });
+
+    console.log(`\nCompleted ${steps.length} smoke checks.`);
+    console.log("SMOKE TEST PASSED");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(message);
+    if (steps.length > 0) {
+      console.error(`Last completed step: ${steps[steps.length - 1].replace("[OK] ", "")}`);
+    }
     console.error("\nSMOKE TEST FAILED");
     process.exitCode = 1;
   }
@@ -56,37 +86,87 @@ async function prepareSmokeDir() {
   await fs.mkdir(SMOKE_DIR, { recursive: true });
 }
 
-async function runFrontendChecks() {
+async function runParserCheck() {
   const parserModuleUrl = pathToFileURL(
     path.join(ROOT_DIR, "app/src/services/parser/ChordProParser.ts")
   ).href;
+
+  return runFrontendCheck(
+    `import { ChordProParser } from ${JSON.stringify(parserModuleUrl)};
+
+const chordPro = process.env.SMOKE_CHORDPRO_TEXT ?? "";
+
+const parser = new ChordProParser();
+const song = parser.parse(chordPro);
+
+console.log(JSON.stringify({
+  title: song.metadata?.title ?? "",
+  artist: song.metadata?.artist ?? "",
+  sectionCount: Array.isArray(song.sections) ? song.sections.length : 0
+}));`,
+    {
+      SMOKE_CHORDPRO_TEXT: CHORDPRO_TEXT
+    },
+    "Parser bridge"
+  );
+}
+
+async function runCleaningCheck() {
   const cleaningModuleUrl = pathToFileURL(
     path.join(ROOT_DIR, "app/src/services/cleaning/CleaningService.ts")
   ).href;
 
-  const frontendScript = `import { ChordProParser } from ${JSON.stringify(parserModuleUrl)};
-import { CleaningService } from ${JSON.stringify(cleaningModuleUrl)};
+  return runFrontendCheck(
+    `import { CleaningService } from ${JSON.stringify(cleaningModuleUrl)};
 
-const chordPro = process.env.SMOKE_CHORDPRO_TEXT ?? "";
 const rawText = process.env.SMOKE_RAW_TEXT ?? "";
 
-const parser = new ChordProParser();
-const song = parser.parse(chordPro);
 const cleaning = new CleaningService();
 const cleanedText = cleaning.clean(rawText);
 
 console.log(JSON.stringify({
-  parser: {
-    title: song.metadata?.title ?? "",
-    artist: song.metadata?.artist ?? "",
-    sectionCount: Array.isArray(song.sections) ? song.sections.length : 0
-  },
-  cleaning: {
-    cleanedText,
-    length: cleanedText.length
-  }
-}));`;
+  cleanedText,
+  length: cleanedText.length
+}));`,
+    {
+      SMOKE_RAW_TEXT: RAW_TEXT
+    },
+    "Cleaning bridge"
+  );
+}
 
+async function runDisplayTitleCheck() {
+  const parserModuleUrl = pathToFileURL(
+    path.join(ROOT_DIR, "app/src/services/parser/ChordProParser.ts")
+  ).href;
+  const deriveDisplayTitleModuleUrl = pathToFileURL(
+    path.join(ROOT_DIR, "app/src/domain/song/deriveDisplayTitle.ts")
+  ).href;
+
+  return runFrontendCheck(
+    `import { ChordProParser } from ${JSON.stringify(parserModuleUrl)};
+import { buildSongDisplayTitle, deriveDisplayTitle } from ${JSON.stringify(deriveDisplayTitleModuleUrl)};
+
+const chordPro = process.env.SMOKE_TITLELESS_CHORDPRO_TEXT ?? "";
+const fileName = process.env.SMOKE_TITLELESS_FILE_NAME ?? "";
+
+const parser = new ChordProParser();
+const song = parser.parse(chordPro);
+const metadata = song.metadata ?? {};
+
+console.log(JSON.stringify({
+  title: deriveDisplayTitle(chordPro, metadata, fileName),
+  displayTitle: buildSongDisplayTitle(chordPro, metadata, fileName)
+}));`,
+    {
+      SMOKE_TITLELESS_CHORDPRO_TEXT: TITLELESS_CHORDPRO_TEXT,
+      SMOKE_TITLELESS_FILE_NAME: "fallback-demo.cho"
+    },
+    "Display title bridge"
+  );
+}
+
+async function runFrontendCheck(frontendScript, env, label) {
   await fs.writeFile(FRONTEND_SMOKE_SCRIPT, frontendScript, "utf8");
 
   const { stdout } = await runCommand(
@@ -96,8 +176,7 @@ console.log(JSON.stringify({
       env: {
         ...process.env,
         NODE_NO_WARNINGS: "1",
-        SMOKE_CHORDPRO_TEXT: CHORDPRO_TEXT,
-        SMOKE_RAW_TEXT: RAW_TEXT
+        ...env
       }
     }
   );
@@ -105,7 +184,7 @@ console.log(JSON.stringify({
   try {
     return JSON.parse(stdout.trim());
   } catch (error) {
-    throw new Error(`[FAIL] Parser/Cleaning bridge: invalid JSON output.\n${stdout.trim()}`);
+    throw new Error(`[FAIL] ${label}: invalid JSON output.\n${stdout.trim()}`);
   }
 }
 
@@ -156,6 +235,24 @@ function ensureCleaningResult(cleaningResult) {
   }
 }
 
+function ensureDisplayTitleResult(displayTitleResult) {
+  if (!displayTitleResult || typeof displayTitleResult !== "object") {
+    throw new Error("[FAIL] Display title derivation: result is missing.");
+  }
+
+  if (displayTitleResult.title !== "Late smoke line") {
+    throw new Error(
+      `[FAIL] Display title derivation: expected "Late smoke line", received ${JSON.stringify(displayTitleResult.title)}.`
+    );
+  }
+
+  if (displayTitleResult.displayTitle !== "Late smoke line - Smoke Artist") {
+    throw new Error(
+      `[FAIL] Display title derivation: expected display title "Late smoke line - Smoke Artist", received ${JSON.stringify(displayTitleResult.displayTitle)}.`
+    );
+  }
+}
+
 function ensurePreviewResult(backendResult) {
   if (!backendResult || typeof backendResult !== "object") {
     throw new Error("[FAIL] Preview: backend result is missing.");
@@ -172,6 +269,16 @@ function ensureCacheResult(backendResult) {
   }
 }
 
+function ensureRenderStyleVariantResult(backendResult) {
+  if (!backendResult.variantPreviewPath || !backendResult.variantPreviewSize) {
+    throw new Error("[FAIL] Render style cache variant: alternate preview did not return a valid PDF.");
+  }
+
+  if (backendResult.variantPreviewPath === backendResult.secondPreviewPath) {
+    throw new Error("[FAIL] Render style cache variant: alternate render style reused the same cache path.");
+  }
+}
+
 function ensureExportResult(backendResult) {
   if (!backendResult.exportPdfPath || !backendResult.exportPdfSize) {
     throw new Error("[FAIL] Export: PDF export failed.");
@@ -180,6 +287,15 @@ function ensureExportResult(backendResult) {
   if (!backendResult.exportChoPath || !backendResult.exportChoSize) {
     throw new Error("[FAIL] Export: CHO export failed.");
   }
+}
+
+async function runStep(label, steps, action) {
+  console.log(`Running ${label}...`);
+  const result = await action();
+  const statusLine = `[OK] ${label}`;
+  steps.push(statusLine);
+  console.log(statusLine);
+  return result;
 }
 
 function runCommand(command, args, options = {}) {
