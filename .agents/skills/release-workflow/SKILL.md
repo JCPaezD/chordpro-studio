@@ -42,6 +42,7 @@ Recommend one of the two based on context, then stop for confirmation before con
 
 Before giving the user a manual checklist, run the normal automated checks when applicable:
 
+- `npm run regression`
 - `npm run smoke`
 - `cargo check` in `src-tauri/`
 - `npm run build` in `app/`
@@ -69,6 +70,12 @@ Rules:
 Store the draft in:
 
 - `.tmp/vX.Y.Z-release-notes.md`
+
+For local builds, keep the notes lightweight but still draft them. They are useful for:
+
+- tracing what the local validation build actually contains
+- copying into `releases/vX.Y.Z/release-notes.md`
+- seeding later public release notes if the same version line is promoted
 
 Then stop for human review and approval of the notes.
 
