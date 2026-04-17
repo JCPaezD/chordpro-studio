@@ -1,0 +1,23 @@
+[mcp_servers.stitch]
+command = "cmd.exe"
+args = [
+  "/d",
+  "/s",
+  "/c",
+  "F:\\ARCHIVOS\\PROGRAMACION\\chordpro-studio\\tools\\stitch-mcp\\scripts\\start-server.cmd",
+]
+cwd = "F:\\ARCHIVOS\\PROGRAMACION\\chordpro-studio"
+env_vars = [
+  "STITCH_API_KEY",
+  "PATH",
+  "SystemRoot",
+  "ComSpec",
+  "LOCALAPPDATA",
+  "ProgramFiles",
+  "ProgramFiles(x86)",
+  "NVM_HOME",
+  "NVM_SYMLINK",
+]
+startup_timeout_sec = 20
+tool_timeout_sec = 300
+required = false

@@ -3,7 +3,8 @@
   "version": "1.6.0",
   "private": true,
   "workspaces": [
-    "app"
+    "app",
+    "tools/stitch-mcp"
   ],
   "scripts": {
     "dev": "npm run dev --workspace app",
@@ -11,6 +12,7 @@
     "regression": "node scripts/regression.js",
     "smoke": "node scripts/smoke.js",
     "preview": "npm run preview --workspace app",
-    "tauri": "npm run tauri --workspace app --"
+    "tauri": "npm run tauri --workspace app --",
+    "mcp:stitch": "node tools/stitch-mcp/src/server.mjs"
   }
 }

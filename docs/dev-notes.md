@@ -315,6 +315,13 @@ Special characters such as accented vowels must be preserved correctly.
 
 If encoding issues appear (for example broken accented characters), the file must be rewritten using UTF-8 encoding.
 
+## Stitch MCP notes
+
+- the repo now includes a first local Stitch MCP package under `tools/stitch-mcp`, built on top of the official `@google/stitch-sdk`
+- on the current Windows Codex host, the repo-local MCP config proved unreliable when using relative `cwd` and relative script arguments; the stable project-scoped setup currently uses an absolute `cwd` and an absolute path to the repo-local launcher in `.codex/config.toml`
+- this was a host/runtime startup issue around MCP process launch and path resolution, not a Stitch API or server-implementation handshake bug
+- after write operations such as variant generation, Stitch can expose fresher state through direct read endpoints (`get_project`, `get_screen`) before `list_screens` catches up; treat that as an operational API lag rather than a local state bug
+
 ## Commit Policy
 
 Before creating any commit, Codex must review the entire working tree.
