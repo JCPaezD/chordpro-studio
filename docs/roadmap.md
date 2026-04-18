@@ -200,6 +200,8 @@ Pending, planned or possible work.
 - clarify target user and core value proposition
 - validate whether the current workflow is useful beyond the original personal use case
 - refine product language, visual direction and first-use experience
+- clarify whether the app should present primarily as a songbook/workspace manager with conversion as an intake feature rather than as a conversion-first tool
+- decide what default entry surface best fits both habitual and first-time users if that product direction is reinforced
 - use findings to guide future prioritization across UX, export and feature expansion
 
 ### UX review pass
@@ -221,6 +223,15 @@ Pending, planned or possible work.
   - keep keyboard controls simple and allow optional explicit controls for mouse users
   - optimize preview refresh behavior during rapid navigation without tying navigation responsiveness to render completion
   - improve intuitiveness without breaking the current interaction model
+- include a focused Convert flow refinement review:
+  - review whether original input and `ChordPro` editing should remain simultaneously visible or whether a simpler two-panel flow with a local toggle would better match the natural `input -> convert -> refine` sequence
+  - clarify the primary conversion CTA in wording, placement and visual hierarchy instead of mixing it with secondary actions
+  - regroup necessary actions into clearer local toolbars for `Original text` and `ChordPro editor` rather than removing those actions
+- include an app-shell structure review:
+  - simplify the header so it carries only useful global context/actions
+  - keep navigation weight in the sidebar and evaluate the current compact rail direction (`icon + label` in a narrow width) as the baseline before considering wider or collapsible variants
+- include a preview-surface review:
+  - move toward an app-owned preview surface with less native PDF chrome and better paper-to-UI integration while keeping the current ChordPro CLI/PDF render path as the source of truth
 - keep these as dedicated UX review topics rather than patch-fix candidates
 
 ### Songbook PDF improvements (incremental)
@@ -274,6 +285,7 @@ Pending, planned or possible work.
   - improve colors, typography, spacing and visual hierarchy
   - introduce icons where appropriate
   - maintain current layout structure
+- strengthen iconography and action grouping across the app so the growing number of available actions remains scannable without hiding important real workflow controls
 - improve visual distinction between `active` and `selected` song in the list with a non-intrusive indicator
 - evaluate inline rename in the Songbook editor header as a future UX refinement once the current modal-based file workflow settles
 - extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
@@ -340,6 +352,7 @@ Pending, planned or possible work.
 ### Advanced search
 
 - content-based search across lyrics and full `.cho` content
+- explore whether songbook search should introduce a dedicated exploration surface or an alternate search-mode presentation (for example grid/cards) rather than forcing every search result back into the standard list layout
 
 ### Potential preview system evolution
 

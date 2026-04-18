@@ -95,6 +95,8 @@ Only record assumptions here when they materially affect behavior, UX, architect
 ### Product direction clarification
 
 - current focus is the `User` view, Songbook workflow, and the shared Preview + Export flow
+- real daily usage increasingly treats the app as a `.cho` songbook/workspace manager with conversion as an intake feature rather than as a conversion-only tool
+- an open product question remains what the most natural default entry surface should be for both habitual and first-time users if that direction is reinforced in future UX work
 - deprioritized areas for now are Playground expansion, internal tooling growth, and complex optimizations without a proven real need
 
 ### Visual baseline criteria (v1.4.x)
