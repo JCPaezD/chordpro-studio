@@ -79,6 +79,32 @@ Use this MCP when you want Stitch to help with:
 
 Do not treat Stitch output as final implementation. The intended workflow is to explore visually in Stitch, extract the parts that improve the product, and then integrate them deliberately in the app UI.
 
+## Recommended generation workflow
+
+For screenshot-based UI redesign work, the most reliable flow in this package is:
+
+- use `edit_screens` first to turn a screenshot or rough base screen into a stable editable Stitch screen
+- use `generate_variants` after that, on the editable screen, for broader exploration of layout, color, typography, or other bounded changes
+- inspect generated HTML or screenshots from Codex, but validate important visual decisions in the Stitch web UI before treating them as strong references
+
+This recommendation comes from real testing in this repo:
+
+- `edit_screens` produced more stable screenshot-to-editable refinements
+- `generate_variants` behaved much better when the source was already an editable Stitch screen
+- `generate_variants` could still return HTML/screenshots with degraded icon rendering when used directly from screenshot-like starting points, even after defaulting this MCP to a stronger model
+- the Stitch web UI remained the best place for final visual judgment when a generated screen mattered
+
+To improve the baseline, this MCP now defaults all mutation tools that accept `modelId` to `GEMINI_3_1_PRO` when the caller does not pass a model explicitly. This helps but does not fully eliminate variant-generation instability.
+
+Current practical guidance:
+
+- use the web UI for the most visually sensitive generation and final comparison
+- use this MCP for project/screen discovery, design-system inspection, targeted edits, HTML export, screenshots, and controlled iteration from Codex
+- prefer `edit_screens` over `generate_variants` when the starting point is a screenshot or other rough captured UI
+- prefer `generate_variants` when the starting point is already a good editable Stitch screen and you want bounded alternatives
+- treat `generate_variants` from Codex as exploratory, not as the strongest source for final visual evaluation
+- if a generated screen looks visually suspect, compare it against the same prompt in the Stitch web UI before assuming the design itself is bad
+
 ## Example prompts
 
 - "List my Stitch projects and show me the design system for the music landing project."
@@ -104,3 +130,9 @@ The current implementation pass covers:
 ## Operational note
 
 After write operations such as `generate_variants` or `edit_screens`, Stitch can briefly expose fresher state through `get_project` or `get_screen` before `list_screens` catches up. When you need the newest generated screen immediately, prefer the returned `screenId` from the mutation result or refresh via `get_project`.
+
+Also note:
+
+- screens generated through the API may appear displaced in the Stitch canvas even when the content itself is valid
+- this MCP does not currently control canvas positioning after generation
+- if visual organization of the canvas matters, reposition those screens manually in the Stitch web UI

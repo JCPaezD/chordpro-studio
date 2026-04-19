@@ -22,6 +22,8 @@ const MODEL_IDS = [
   "GEMINI_3_1_PRO",
 ];
 
+const PREFERRED_MUTATION_MODEL_ID = "GEMINI_3_1_PRO";
+
 const VARIANT_ASPECTS = [
   "VARIANT_ASPECT_UNSPECIFIED",
   "LAYOUT",
@@ -53,6 +55,10 @@ const designSystemSchema = z.object({
 
 function optionalEnum(values, description) {
   return z.enum(values).optional().describe(description);
+}
+
+function preferredModelDescription() {
+  return `Optional Stitch model id. If omitted, this MCP defaults to ${PREFERRED_MUTATION_MODEL_ID} for more stable, higher-fidelity mutation results.`;
 }
 
 export function registerMutationTools(server) {
@@ -205,7 +211,7 @@ export function registerMutationTools(server) {
     {
       title: "Generate Stitch Screen From Text",
       description:
-        "Generate a new Stitch screen from a prompt. Long-running: do not retry automatically if the connection drops.",
+        `Generate a new Stitch screen from a prompt. Long-running: do not retry automatically if the connection drops. When modelId is omitted, this MCP defaults to ${PREFERRED_MUTATION_MODEL_ID}.`,
       inputSchema: {
         projectId: z.string().describe("Bare Stitch project id, without the projects/ prefix."),
         prompt: z.string().trim().min(1).describe("Prompt used to generate the screen."),
@@ -215,7 +221,7 @@ export function registerMutationTools(server) {
         ),
         modelId: optionalEnum(
           MODEL_IDS,
-          "Optional Stitch model id. Leave empty to let Stitch choose its default.",
+          preferredModelDescription(),
         ),
       },
     },
@@ -224,7 +230,7 @@ export function registerMutationTools(server) {
         projectId,
         prompt,
         deviceType,
-        modelId,
+        modelId: resolvePreferredModelId(modelId),
       }));
 
       return normalizeMutationResult(result);
@@ -236,7 +242,7 @@ export function registerMutationTools(server) {
     {
       title: "Edit Stitch Screens",
       description:
-        "Edit one or more existing Stitch screens from a prompt. Long-running: do not retry automatically if the connection drops.",
+        `Edit one or more existing Stitch screens from a prompt. Long-running: do not retry automatically if the connection drops. This is the preferred refinement route for screenshot-based UI iteration. When modelId is omitted, this MCP defaults to ${PREFERRED_MUTATION_MODEL_ID}.`,
       inputSchema: {
         projectId: z.string().describe("Bare Stitch project id, without the projects/ prefix."),
         selectedScreenIds: z
@@ -249,7 +255,7 @@ export function registerMutationTools(server) {
         ),
         modelId: optionalEnum(
           MODEL_IDS,
-          "Optional Stitch model id. Leave empty to let Stitch choose its default.",
+          preferredModelDescription(),
         ),
       },
     },
@@ -261,7 +267,7 @@ export function registerMutationTools(server) {
         selectedScreenIds,
         prompt,
         deviceType,
-        modelId,
+        modelId: resolvePreferredModelId(modelId),
       }));
 
       return normalizeMutationResult(result);
@@ -273,7 +279,7 @@ export function registerMutationTools(server) {
     {
       title: "Generate Stitch Variants",
       description:
-        "Generate variants for one or more existing Stitch screens. Long-running: do not retry automatically if the connection drops.",
+        `Generate variants for one or more existing Stitch screens. Long-running: do not retry automatically if the connection drops. When modelId is omitted, this MCP defaults to ${PREFERRED_MUTATION_MODEL_ID} to improve reliability of generated HTML and icon rendering.`,
       inputSchema: {
         projectId: z.string().describe("Bare Stitch project id, without the projects/ prefix."),
         selectedScreenIds: z
@@ -300,7 +306,7 @@ export function registerMutationTools(server) {
         ),
         modelId: optionalEnum(
           MODEL_IDS,
-          "Optional Stitch model id. Leave empty to let Stitch choose its default.",
+          preferredModelDescription(),
         ),
       },
     },
@@ -313,7 +319,7 @@ export function registerMutationTools(server) {
         prompt,
         variantOptions,
         deviceType,
-        modelId,
+        modelId: resolvePreferredModelId(modelId),
       }));
 
       return normalizeMutationResult(result);
@@ -323,6 +329,14 @@ export function registerMutationTools(server) {
 
 function compactArgs(args) {
   return Object.fromEntries(Object.entries(args).filter(([, value]) => value !== undefined));
+}
+
+function resolvePreferredModelId(modelId) {
+  if (!modelId || modelId === "MODEL_ID_UNSPECIFIED") {
+    return PREFERRED_MUTATION_MODEL_ID;
+  }
+
+  return modelId;
 }
 
 function parseDesignSystem(designSystem) {
