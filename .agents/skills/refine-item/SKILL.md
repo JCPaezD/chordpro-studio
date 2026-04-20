@@ -62,34 +62,39 @@ Prefer inputs such as:
 
 Use this structure:
 
-```md
-refined_item:
-  type: feature | bug | improvement | idea | question
-  title: <clear title>
+Return the main workflow result in normal markdown that reflows naturally in the UI.
+Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
 
-clarified_scope:
+---
+
+**Refined Item**
+- Type: feature | bug | improvement | idea | question
+- Title: <clear title>
+
+**Clarified Scope**
 - what is included
 - what is not included
 
-resolved_ambiguities:
+**Resolved Ambiguities**
 - ambiguity -> clarification
 
-edge_cases:
+**Edge Cases**
 - important edge case
 - important edge case
 
-simplifications:
+**Simplifications**
 - proposed simplification if useful
 
-assumptions:
+**Assumptions**
 - only meaningful assumptions that affect the item definition
 
-open_points:
+**Open Points**
 - only if something still blocks certainty
 
-next_step:
+**Next Step**
 - close | plan-version | design-spec | backlog
-```
+
+---
 
 ## Refinement Standards
 

@@ -78,7 +78,11 @@ Prefer inputs such as:
 
 Use this structure:
 
-```md
+Return the main workflow result in normal markdown that reflows naturally in the UI.
+Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
+
+---
+
 # Feature: <name>
 
 ## Context
@@ -115,7 +119,8 @@ Use this structure:
 - dev-notes
 - architecture
 - none
-```
+
+---
 
 ## Design Standards
 

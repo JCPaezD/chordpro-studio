@@ -60,36 +60,52 @@ Prefer inputs such as:
 
 Use this structure:
 
-```md
-feature: <name>
+Return the main workflow result in normal markdown that reflows naturally in the UI.
+Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
 
-breakdown_goal:
+---
+
+**Feature**
+- <name>
+
+**Breakdown Goal**
 - why this breakdown exists
 
-tasks:
-1. title: <task>
-   goal:
-   completion_criteria:
-   dependencies:
-   notes:
+**Tasks**
+1. **Title**
+   - <task>
+   **Goal**
+   - what this task must achieve
+   **Completion Criteria**
+   - what must be true for this task to count as done
+   **Dependencies**
+   - only when they matter
+   **Notes**
+   - optional implementation-facing context
 
-2. title: <task>
-   goal:
-   completion_criteria:
-   dependencies:
-   notes:
+2. **Title**
+   - <task>
+   **Goal**
+   - what this task must achieve
+   **Completion Criteria**
+   - what must be true for this task to count as done
+   **Dependencies**
+   - only when they matter
+   **Notes**
+   - optional implementation-facing context
 
-execution_order:
+**Execution Order**
 1. <task>
 2. <task>
 3. <task>
 
-risks:
+**Risks**
 - only if they affect task splitting
 
-next_step:
+**Next Step**
 - implement-feature
-```
+
+---
 
 ## Task Size Rule
 

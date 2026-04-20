@@ -74,51 +74,57 @@ This skill may work from partial context, but it should say so when the plan dep
 
 Use this structure when proposing a block or roadmap adjustment:
 
-```md
-version: <name or working label>
+Return the main workflow result in normal markdown that reflows naturally in the UI.
+Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
 
-goal:
+---
+
+**Version**
+- <name or working label>
+
+**Goal**
 - what this block or roadmap adjustment is trying to achieve
 
-includes:
+**Includes**
 1. <item>
 2. <item>
 3. <item>
 
-moves:
+**Moves**
 - <item> -> from <block> to <block>
 - <item> -> reorder within <block>
 
-excludes:
+**Excludes**
 - <item> -> why not now
 - <item> -> why not now
 
-order:
+**Order**
 1. <item or block>
 2. <item or block>
 3. <item or block>
 
-justification:
+**Justification**
 - why each included or moved item belongs there now
 - why this combination makes sense now
 
-risks:
+**Risks**
 - conflicting scope
 - unresolved ambiguity
 - technical uncertainty
 - validation cost
 - roadmap sprawl
 
-dependencies:
+**Dependencies**
 - explicit dependencies if they matter
 - otherwise state none
 
-open_questions:
+**Open Questions**
 - only if they affect the plan materially
 
-next_step:
+**Next Step**
 - refine-item | design-spec | breakdown-feature | document-now
-```
+
+---
 
 ## Selection Criteria
 

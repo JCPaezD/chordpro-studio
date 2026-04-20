@@ -66,24 +66,31 @@ Return one of these:
 
 Use this format for structured items:
 
-```md
-type: feature | bug | improvement | idea | question
+Return the main workflow result in normal markdown that reflows naturally in the UI.
+Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
 
-title: short and clear
+---
 
-description:
+**Type**
+- feature | bug | improvement | idea | question
+
+**Title**
+- short and clear
+
+**Description**
 - context
 - observed problem or idea
 
-impact:
+**Impact**
 - user | technical | workflow | mixed
 
-notes:
+**Notes**
 - additional observations
 
-next_step:
+**Next Step**
 - close | refine-item | plan-version | design-spec | backlog | document-now
-```
+
+---
 
 ## Classification Guidance
 
