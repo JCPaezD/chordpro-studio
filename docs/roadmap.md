@@ -180,59 +180,81 @@ Current status:
 
 Pending, planned or possible work.
 
-## v1.x backlog
+## v1.7 - Product and UX foundation
 
-### Desktop polish
+Goal:
 
-- persist window size and position between desktop sessions
-- restore the last active main view on startup when it does not conflict with restored songbook context
-
-### Editor improvements
-
-- add lightweight undo / redo UI controls for the main text editors
-- add basic syntax highlighting for the `.cho` editor:
-  - lightweight regex-based approach
-  - no heavy editor refactor yet
-  - avoid breaking current input behavior
+- consolidate the product as a songbook/workspace manager with conversion as an intake flow
+- close the next round of product and UX direction before opening larger implementation blocks such as the new viewer work
+- deliver visible day-to-day improvements without inflating the version into a large preview or editor rewrite
 
 ### Product clarification
 
 - clarify target user and core value proposition
 - validate whether the current workflow is useful beyond the original personal use case
+- confirm and refine the product framing as a songbook/workspace manager with conversion as an intake flow
 - refine product language, visual direction and first-use experience
-- clarify whether the app should present primarily as a songbook/workspace manager with conversion as an intake feature rather than as a conversion-first tool
-- decide what default entry surface best fits both habitual and first-time users if that product direction is reinforced
+- review and refine startup entry behavior, including default entry and restoration rules
 - use findings to guide future prioritization across UX, export and feature expansion
 
-### UX review pass
+### UX/UI review and selected redesign scope
 
-- run a structured UX/UI review by area:
-  - Convert
-  - Songbook
-  - Preview
-  - Performance mode
-  - app shell (header, layout, global consistency)
-- treat this as a dedicated pass rather than a sequence of scattered incremental tweaks
-- include a focused Performance mode UX refinement review:
-  - address keyboard focus loss after interacting with the PDF viewer
-  - simplify the navigation model around direct song navigation instead of maintaining a long-term `selected` / `active` split
-  - evaluate a dual layout strategy (`full preview` / `list + preview split`) for different reading and navigation contexts
-  - evaluate close button placement
-  - evaluate the song-list toggle affordance (e.g. handle / trigger)
-  - evaluate prev / next navigation controls and overall control clarity
-  - keep keyboard controls simple and allow optional explicit controls for mouse users
-  - optimize preview refresh behavior during rapid navigation without tying navigation responsiveness to render completion
-  - improve intuitiveness without breaking the current interaction model
-- include a focused Convert flow refinement review:
-  - review whether original input and `ChordPro` editing should remain simultaneously visible or whether a simpler two-panel flow with a local toggle would better match the natural `input -> convert -> refine` sequence
-  - clarify the primary conversion CTA in wording, placement and visual hierarchy instead of mixing it with secondary actions
-  - regroup necessary actions into clearer local toolbars for `Original text` and `ChordPro editor` rather than removing those actions
-- include an app-shell structure review:
-  - simplify the header so it carries only useful global context/actions
-  - keep navigation weight in the sidebar and evaluate the current compact rail direction (`icon + label` in a narrow width) as the baseline before considering wider or collapsible variants
-- include a preview-surface review:
-  - move toward an app-owned preview surface with less native PDF chrome and better paper-to-UI integration while keeping the current ChordPro CLI/PDF render path as the source of truth
-- keep these as dedicated UX review topics rather than patch-fix candidates
+- run a focused UX/UI review of Convert, Songbook, Preview, Performance mode and the app shell
+- prioritize workflow friction, clarity and visual direction over broad low-signal polish
+- use the review to select a realistic redesign/refinement scope for `v1.7`
+- route larger derived items to later backlog blocks instead of overloading this version
+
+### PDF preview viewer for Convert / Songbook
+
+- define and begin implementing a more app-controlled PDF preview viewer shared by Convert and Songbook
+- keep ChordPro CLI PDF rendering as the only preview/export source of truth
+- improve preview integration, controls and paper-to-app presentation while reducing dependence on native WebView PDF chrome
+
+### Performance mode reading surface
+
+- define and begin implementing a dedicated app-owned reading surface for Performance mode
+- decide the rendering base and initial implementation slice for a progressive in-app reader
+- move Performance mode away from the PDF/folio viewing model toward a more comfortable and customizable reading experience
+
+### Desktop polish
+
+- persist window size and position between desktop sessions
+- stretch goal: restore the last active main view on startup when it does not conflict with restored songbook context
+
+### Editor improvements
+
+- add basic syntax highlighting for the `.cho` editor:
+  - lightweight regex-based approach
+  - no heavy editor refactor yet
+  - avoid breaking current input behavior
+- stretch goal: add lightweight undo / redo UI controls for the main text editors
+- keep this block compatible with future richer editor evolution rather than treating it as a full editor redesign
+
+### Conversion / LLM improvements
+
+- improve Gemini error feedback in User View with contextual and actionable provider-aware messaging while preserving technical detail in Playground
+- classify provider failures more explicitly in the shared workspace path (for example invalid key, rate limit or network failure) without inventing unsupported details
+- keep `Quality` / `Fast` as the primary user-facing model modes while evolving model selection underneath into a hierarchical mode -> model strategy
+- clarify and document that the default pipeline should behave as a transformer, not a generator
+- stretch goal: allow automatic fallback only within the current mode and surface explicit user feedback when that fallback is used
+
+### UI / UX improvements
+
+- deliver selected visual refinement (non-layout):
+  - improve colors, typography, spacing and visual hierarchy
+  - introduce icons where appropriate
+  - maintain current layout structure
+- strengthen iconography and action grouping across the app so the growing number of available actions remains scannable without hiding important real workflow controls
+- keep room for a stronger `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions
+- stretch goal: extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
+
+### Validation and diagnostics
+
+- review and extend existing `regression` / `smoke` coverage where `v1.7` changes introduce meaningful regression risk
+- define a lightweight validation workflow for major UX/UI changes in this version
+- allow small supporting tooling or diagnostics improvements only when they directly help implement or validate selected `v1.7` features
+
+## v1.x backlog
 
 ### Songbook PDF improvements (incremental)
 
@@ -243,12 +265,7 @@ Pending, planned or possible work.
 ### Conversion / LLM improvements
 
 - improve the conversion prompt so custom chord definitions are included deterministically using `{define}`
-- clarify and document that the default pipeline should behave as a transformer, not a generator
 - current minimal-input generation behavior should not be treated as intended default behavior
-- improve Gemini error feedback in User View with contextual and actionable provider-aware messaging while preserving technical detail in Playground
-- classify provider failures more explicitly in the shared workspace path (for example invalid key, rate limit or network failure) without inventing unsupported details
-- keep `Quality` / `Fast` as the primary user-facing model modes while evolving model selection underneath into a hierarchical mode -> model strategy
-- allow automatic fallback only within the current mode and surface explicit user feedback when that fallback is used
 - explore optional generative modes separately:
   - generate from title / artist
   - generate from example song
@@ -281,14 +298,7 @@ Pending, planned or possible work.
 ### UI / UX improvements
 
 - prevent accidental text selection in non-interactive UI elements (buttons, labels, icons) using scoped user-select rules
-- UI visual refinement (non-layout):
-  - improve colors, typography, spacing and visual hierarchy
-  - introduce icons where appropriate
-  - maintain current layout structure
-- strengthen iconography and action grouping across the app so the growing number of available actions remains scannable without hiding important real workflow controls
-- improve visual distinction between `active` and `selected` song in the list with a non-intrusive indicator
 - evaluate inline rename in the Songbook editor header as a future UX refinement once the current modal-based file workflow settles
-- extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
 - extend the lightweight shared modal shell to additional app modals where it improves consistency without over-generalizing modal-specific behavior:
   - backdrop
   - transition
@@ -356,8 +366,9 @@ Pending, planned or possible work.
 
 ### Potential preview system evolution
 
-- evaluate a non-native PDF viewer such as PDF.js if advanced preview features require it
-- evaluate an adaptive HTML performance viewer rendered from the internal `Song` model instead of the CLI/PDF path
+- keep future viewer evolution split into two lines rather than treating it as a single viewer replacement
+- evaluate a non-native PDF viewer such as PDF.js for Convert / Songbook if advanced preview features require it while keeping fidelity to exported PDF
+- evaluate an adaptive HTML performance viewer rendered from the internal `Song` model instead of the CLI/PDF path for Performance mode
 - prioritize readability, continuous scrolling and dynamic controls such as zoom or font size over strict PDF fidelity in that alternative viewer
 - keep PDF as the reference/export renderer and evaluate an optional HTML / PDF toggle for future performance-oriented reading flows
 
