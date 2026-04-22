@@ -29,6 +29,8 @@ When using this skill:
 - explain why excluded or moved items do not belong where they were
 - make the next workflow step explicit
 - when a version or work block is already sufficiently decided, prefer recording it in `docs/roadmap.md` before moving into feature-level design work
+- keep the richer planning narrative in conversation output
+- when updating `docs/roadmap.md`, prefer operational roadmap edits over explanatory planning prose
 
 Do not turn planning into technical design.
 
@@ -43,6 +45,7 @@ This skill may:
 - reorder items inside a block when that improves execution order
 - clarify a diffuse or outdated roadmap section
 - update `docs/roadmap.md` when the planning decision is approved
+- turn an approved version plan into a surgical roadmap update that is ready for execution
 
 Do not:
 
@@ -76,6 +79,7 @@ Use this structure when proposing a block or roadmap adjustment:
 
 Return the main workflow result in normal markdown that reflows naturally in the UI.
 Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
+This structure is for conversation output, not for direct roadmap transcription.
 
 ---
 
@@ -177,6 +181,18 @@ Typical updates include:
 - moving items between blocks
 - reordering priorities
 - clarifying block boundaries
+
+Keep the richer planning summary in conversation.
+
+When updating `docs/roadmap.md`, prefer an operational representation of the approved plan:
+
+- create or adjust the target roadmap block
+- move selected items into that block
+- reorder items when needed
+- preserve existing item wording unless planning decisions changed scope, meaning, order, or clarity enough to justify rewriting
+- rewrite item text only when the planning conversation materially changed the intended work
+- avoid copying `Goal`, `Justification`, `Risks`, or other explanatory planning narrative into roadmap entries unless the roadmap truly needs that information
+- aim for a result that reads like a prepared work block, not like a planning report
 
 When the conversation has already converged on a clear version or work block, prefer `document-now` as the next step before `design-spec`.
 Use `design-spec` after that for the main selected features or technical blocks inside the approved version, not as a substitute for recording the version decision itself.
