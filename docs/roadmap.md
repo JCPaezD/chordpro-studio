@@ -182,39 +182,26 @@ Pending, planned or possible work.
 
 ## v1.7 - Product and UX foundation
 
-Goal:
-
-- consolidate the product as a songbook/workspace manager with conversion as an intake flow
-- close the next round of product and UX direction before opening larger implementation blocks such as the new viewer work
-- deliver visible day-to-day improvements without inflating the version into a large preview or editor rewrite
-
-### Product clarification
-
-- clarify target user and core value proposition
-- validate whether the current workflow is useful beyond the original personal use case
-- confirm and refine the product framing as a songbook/workspace manager with conversion as an intake flow
-- refine product language, visual direction and first-use experience
-- review and refine startup entry behavior, including default entry and restoration rules
-- use findings to guide future prioritization across UX, export and feature expansion
-
 ### UX/UI review and selected redesign scope
 
-- run a focused UX/UI review of Convert, Songbook, Preview, Performance mode and the app shell
-- prioritize workflow friction, clarity and visual direction over broad low-signal polish
-- use the review to select a realistic redesign/refinement scope for `v1.7`
-- route larger derived items to later backlog blocks instead of overloading this version
+- review `Convert`
+- review `Songbook`
+- review `Preview`
+- review `Performance mode`
+- review the app shell
+- define the selected redesign and refinement scope for `v1.7`
 
 ### PDF preview viewer for Convert / Songbook
 
-- define and begin implementing a more app-controlled PDF preview viewer shared by Convert and Songbook
-- keep ChordPro CLI PDF rendering as the only preview/export source of truth
-- improve preview integration, controls and paper-to-app presentation while reducing dependence on native WebView PDF chrome
+- select and begin integrating a more app-controlled PDF preview viewer shared by Convert and Songbook
+- reduce dependence on native WebView PDF chrome in standard preview flows
+- improve preview integration, controls and paper-to-app presentation
 
 ### Performance mode reading surface
 
-- define and begin implementing a dedicated app-owned reading surface for Performance mode
+- define a dedicated app-owned reading surface for Performance mode
 - decide the rendering base and initial implementation slice for a progressive in-app reader
-- move Performance mode away from the PDF/folio viewing model toward a more comfortable and customizable reading experience
+- begin implementing a first progressive in-app reading slice for Performance mode
 
 ### Desktop polish
 
@@ -228,7 +215,6 @@ Goal:
   - no heavy editor refactor yet
   - avoid breaking current input behavior
 - stretch goal: add lightweight undo / redo UI controls for the main text editors
-- keep this block compatible with future richer editor evolution rather than treating it as a full editor redesign
 
 ### Conversion / LLM improvements
 
@@ -245,14 +231,14 @@ Goal:
   - introduce icons where appropriate
   - maintain current layout structure
 - strengthen iconography and action grouping across the app so the growing number of available actions remains scannable without hiding important real workflow controls
-- keep room for a stronger `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions
+- refine the `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions
 - stretch goal: extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
 
 ### Validation and diagnostics
 
 - review and extend existing `regression` / `smoke` coverage where `v1.7` changes introduce meaningful regression risk
 - define a lightweight validation workflow for major UX/UI changes in this version
-- allow small supporting tooling or diagnostics improvements only when they directly help implement or validate selected `v1.7` features
+- add small supporting tooling or diagnostics improvements where they directly help implement or validate selected `v1.7` features
 
 ## v1.x backlog
 
