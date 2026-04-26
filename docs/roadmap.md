@@ -179,6 +179,7 @@ Current status:
 ### v1.7 in progress
 
 - v1.7 UX/UI review has validated the first selected refinement slice for `Convert` and `Songbook`: compact integrated headers/toolbars, Lucide-based action iconography, softer status badges, reduced workspace chrome, denser editor/list surfaces and aligned Convert/Songbook editor metrics while preserving the current layout structure.
+- v1.7 Preview has received the same first-pass visual refinement: compact integrated export toolbar, reduced chrome around the PDF surface, softer empty/loading states and layout metrics coverage, while preserving the current ChordPro CLI -> Blob URL -> WebView PDF viewer path.
 - v1.7 UI validation tooling now includes `npm run ui:metrics`, a Playwright-based layout metrics check that reuses an installed Chrome/Edge browser and verifies key Convert/Songbook header, toolbar and editor alignment constraints without downloading Playwright-managed browsers.
 
 ## Current roadmap

@@ -15,7 +15,8 @@ async function main() {
     await page.goto(APP_URL, { waitUntil: "networkidle", timeout: 10000 });
     const metrics = {
       songbook: await measureSongbookLayoutFixture(page),
-      convert: await measureConvertLayoutFixture(page)
+      convert: await measureConvertLayoutFixture(page),
+      preview: await measurePreviewLayoutFixture(page)
     };
     const failures = validateMetrics(metrics);
 
@@ -350,10 +351,99 @@ async function measureConvertLayoutFixture(page) {
   });
 }
 
+async function measurePreviewLayoutFixture(page) {
+  return page.evaluate(() => {
+    const userScope = findScopeFromElement(".user-view");
+
+    if (!userScope) {
+      throw new Error(`Missing scoped Vue attribute: ${JSON.stringify({ userScope })}`);
+    }
+
+    document.querySelector("#ui-metrics-preview-fixture")?.remove();
+
+    const root = document.createElement("section");
+    root.id = "ui-metrics-preview-fixture";
+    root.className = "panel card preview-panel";
+    root.setAttribute(userScope, "");
+    Object.assign(root.style, {
+      position: "absolute",
+      left: "-10000px",
+      top: "0",
+      display: "flex",
+      flexDirection: "column",
+      width: "520px",
+      height: "260px"
+    });
+
+    root.innerHTML = `
+      <div class="panel-header secondary-header preview-header" ${userScope}>
+        <div class="preview-panel-title" ${userScope}>
+          <p class="eyebrow" ${userScope}>Preview</p>
+          <h2 ${userScope}>PDF preview</h2>
+        </div>
+        <div class="panel-actions-stack align-end preview-header-actions" ${userScope}>
+          <div class="action-toolbar preview-toolbar" ${userScope}>
+            <button class="mini-button toolbar-button preview-export-button" ${userScope}>PDF</button>
+            <button class="mini-button toolbar-button preview-export-button" ${userScope}>.cho</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-content preview-content" ${userScope}>
+        <div class="preview-state preview-empty-state" ${userScope}></div>
+      </div>
+    `;
+
+    document.body.appendChild(root);
+
+    const metrics = {
+      header: rect(root, ".preview-header"),
+      content: rect(root, ".preview-content"),
+      firstExportButton: rect(root, ".preview-export-button:first-child"),
+      secondExportButton: rect(root, ".preview-export-button:last-child")
+    };
+
+    metrics.deltas = {
+      exportButtonHeight: round(metrics.firstExportButton.height - metrics.secondExportButton.height),
+      exportButtonWidth: round(metrics.firstExportButton.width - metrics.secondExportButton.width),
+      headerToContentGap: round(metrics.content.top - metrics.header.bottom)
+    };
+
+    root.remove();
+    return metrics;
+
+    function findScopeFromElement(selector) {
+      const element = document.querySelector(selector);
+      return Array.from(element?.attributes ?? [])
+        .map((attribute) => attribute.name)
+        .find((name) => /^data-v-/.test(name));
+    }
+
+    function rect(scope, selector) {
+      const element = scope.querySelector(selector);
+      if (!element) {
+        throw new Error(`Missing fixture element: ${selector}`);
+      }
+      const rootRect = scope.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      return {
+        top: round(elementRect.top - rootRect.top),
+        bottom: round(elementRect.bottom - rootRect.top),
+        height: round(elementRect.height),
+        width: round(elementRect.width)
+      };
+    }
+
+    function round(value) {
+      return Math.round(value * 100) / 100;
+    }
+  });
+}
+
 function validateMetrics(metrics) {
   const failures = [];
   const songbook = metrics.songbook;
   const convert = metrics.convert;
+  const preview = metrics.preview;
 
   checkDelta(failures, "Songbook filters and file actions top alignment", songbook.deltas.sortVsFileTop, MAX_ALIGNMENT_DELTA_PX);
   checkDelta(failures, "Songbook list and editor textarea top alignment", songbook.deltas.listVsTextareaTop, MAX_ALIGNMENT_DELTA_PX);
@@ -374,6 +464,17 @@ function validateMetrics(metrics) {
 
   if (convert.sourceDirtyBadge.height < 24 || convert.sourceDirtyBadge.height > 26) {
     failures.push(`Convert dirty badge should match compact status controls, got ${convert.sourceDirtyBadge.height}px`);
+  }
+
+  checkDelta(failures, "Preview export button height", preview.deltas.exportButtonHeight, MAX_HEIGHT_DELTA_PX);
+  checkDelta(failures, "Preview export button width", preview.deltas.exportButtonWidth, MAX_HEIGHT_DELTA_PX);
+
+  if (preview.firstExportButton.height < 38 || preview.firstExportButton.height > 41) {
+    failures.push(`Preview export buttons should keep compact toolbar height, got ${preview.firstExportButton.height}px`);
+  }
+
+  if (preview.deltas.headerToContentGap > 6) {
+    failures.push(`Preview header should stay close to content, got ${preview.deltas.headerToContentGap}px gap`);
   }
 
   return failures;

@@ -1757,17 +1757,31 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
       <section class="panel card preview-panel">
         <div class="panel-header secondary-header preview-header">
-          <div>
+          <div class="preview-panel-title">
             <p class="eyebrow">Preview</p>
             <h2>PDF preview</h2>
           </div>
-          <div class="panel-actions-stack align-end">
-            <div class="header-actions export-split-actions">
-              <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('pdf')">
-                Export PDF
+          <div class="panel-actions-stack align-end preview-header-actions">
+            <div class="action-toolbar preview-toolbar" aria-label="Preview export actions">
+              <button
+                class="mini-button toolbar-button preview-export-button"
+                aria-label="Export PDF"
+                title="Export PDF"
+                :disabled="!isTauri() || !chordProText"
+                @click="exportCurrent('pdf')"
+              >
+                <FileDown aria-hidden="true" class="button-icon" />
+                PDF
               </button>
-              <button class="mini-button export-action-button" :disabled="!isTauri() || !chordProText" @click="exportCurrent('cho')">
-                Export CHO
+              <button
+                class="mini-button toolbar-button preview-export-button"
+                aria-label="Export ChordPro file"
+                title="Export CHO"
+                :disabled="!isTauri() || !chordProText"
+                @click="exportCurrent('cho')"
+              >
+                <Save aria-hidden="true" class="button-icon" />
+                .cho
               </button>
             </div>
             <p v-if="previewError && previewSrc" class="action-feedback error-message">{{ previewError }}</p>
@@ -1998,6 +2012,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .workspace-panel.card {
+  padding: 0.28rem 0.36rem 0.42rem;
+}
+
+.preview-panel.card {
   padding: 0.28rem 0.36rem 0.42rem;
 }
 
@@ -2386,7 +2404,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-panel-header,
-.songbook-panel-header {
+.songbook-panel-header,
+.preview-header {
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -2398,13 +2417,15 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-panel-header h2,
-.songbook-panel-header h2 {
+.songbook-panel-header h2,
+.preview-header h2 {
   font-size: 1.28rem;
   line-height: 1;
 }
 
 .convert-panel-title,
-.songbook-panel-title {
+.songbook-panel-title,
+.preview-panel-title {
   display: grid;
   flex: 0 0 auto;
   align-content: start;
@@ -2413,14 +2434,16 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-panel-title .eyebrow,
-.songbook-panel-title .eyebrow {
+.songbook-panel-title .eyebrow,
+.preview-panel-title .eyebrow {
   margin-bottom: 0.06rem;
   font-size: 0.68rem;
   line-height: 1;
 }
 
 .convert-header-actions,
-.songbook-header-actions {
+.songbook-header-actions,
+.preview-header-actions {
   display: grid;
   flex: 0 1 auto;
   align-content: center;
@@ -2432,7 +2455,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-header-actions .action-feedback,
-.songbook-header-actions .action-feedback {
+.songbook-header-actions .action-feedback,
+.preview-header-actions .action-feedback {
   margin: 0;
 }
 
@@ -2443,7 +2467,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-header-actions .action-toolbar,
-.songbook-header-actions .action-toolbar {
+.songbook-header-actions .action-toolbar,
+.preview-header-actions .action-toolbar {
   width: fit-content;
   max-width: 100%;
   min-width: 0;
@@ -2603,7 +2628,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-toolbar,
-.songbook-toolbar {
+.songbook-toolbar,
+.preview-toolbar {
   flex-wrap: wrap;
   justify-content: flex-end;
   justify-self: end;
@@ -2709,6 +2735,15 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .songbook-performance-button {
   min-width: 8.6rem;
+}
+
+.preview-toolbar {
+  background: rgba(247, 239, 224, 0.48);
+}
+
+.preview-export-button {
+  width: 5.9rem;
+  min-width: 5.9rem;
 }
 
 .editor-toolbar {
@@ -2943,17 +2978,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .primary-button:disabled {
   opacity: 0.7;
   cursor: default;
-}
-
-.export-split-actions {
-  justify-content: flex-end;
-}
-
-.export-action-button {
-  min-width: 7.9rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .songbook-export-button {
@@ -3255,7 +3279,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .preview-empty-copy {
-  gap: 0.45rem;
+  gap: 0.36rem;
   max-width: 28rem;
 }
 
@@ -3277,8 +3301,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .preview-context-footer {
   display: grid;
   justify-items: center;
-  margin-top: 1.25rem;
-  gap: 0.45rem;
+  margin-top: 0.95rem;
+  gap: 0.36rem;
 }
 
 .preview-context-separator {
@@ -3308,8 +3332,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .preview-state {
   flex: 1;
-  border: 1px dashed rgba(47, 59, 49, 0.18);
-  background: rgba(255, 255, 255, 0.4);
+  border: 0;
+  background: rgba(255, 254, 249, 0.36);
   padding: 1rem;
   box-sizing: border-box;
 }
@@ -3318,6 +3342,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   position: relative;
   flex: 1;
   overflow: hidden;
+  background: rgba(255, 254, 249, 0.34);
 }
 
 .preview-frame {
@@ -3325,7 +3350,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   inset: 0;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(47, 59, 49, 0.12);
+  border: 0;
   background: #fff;
   transition: opacity 180ms ease-in-out;
 }
