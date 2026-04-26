@@ -206,6 +206,10 @@ Pending, planned or possible work.
 ### Performance mode reading surface
 
 - define a dedicated app-owned reading surface for Performance mode
+- review the current Performance interaction model before implementation:
+  - decide whether `v1.7` should keep the current full-preview plus overlay song list model, introduce a split list + preview mode, or support both as a progressive layout strategy
+  - simplify the relationship between song list navigation, dock controls and keyboard shortcuts so navigation gives immediate UI feedback and does not feel like competing control paths
+  - decide how the `active` / `selected` song distinction should appear in Performance once the layout direction is chosen
 - decide the rendering base and initial implementation slice for a progressive in-app reader
 - begin implementing a first progressive in-app reading slice for Performance mode
 
@@ -237,7 +241,7 @@ Pending, planned or possible work.
   - introduce icons where appropriate
   - maintain current layout structure
 - strengthen iconography and action grouping across the app so the growing number of available actions remains scannable without hiding important real workflow controls
-- refine the `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions
+- refine the `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions, especially where Performance keeps list browsing separate from the currently previewed song
 - stretch goal: extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
 
 ### Validation and diagnostics

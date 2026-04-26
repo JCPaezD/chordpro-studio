@@ -1,14 +1,16 @@
 <template>
   <section class="performance-mode">
     <section class="performance-stage">
-      <div class="performance-main">
+      <div :class="['performance-main', { 'with-song-list': isSongListOpen }]">
         <aside :class="['performance-sidebar-overlay', { open: isSongListOpen }]" :aria-hidden="!isSongListOpen">
           <div class="performance-sidebar-shell">
             <div class="performance-sidebar-top">
               <div class="performance-sidebar-copy">
-                <p class="eyebrow">Songbook</p>
-                <h1>Performance mode</h1>
-                <p v-if="props.songbook">{{ props.songbook.songs.length }} files</p>
+                <p class="eyebrow">Performance</p>
+                <div class="performance-sidebar-title-row">
+                  <h1>Songbook</h1>
+                  <span v-if="props.songbook" class="performance-song-count">{{ props.songbook.songs.length }}</span>
+                </div>
               </div>
               <button
                 class="performance-icon-button performance-sidebar-close-button"
@@ -134,7 +136,8 @@
                     @keydown="handleDockButtonKeydown($event, 0)"
                     @click="toggleSongList"
                   >
-                    <PanelLeftOpen aria-hidden="true" />
+                    <PanelLeftClose v-if="isSongListOpen" aria-hidden="true" />
+                    <PanelLeftOpen v-else aria-hidden="true" />
                   </button>
                   <button
                     class="performance-icon-button"
@@ -196,7 +199,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
-import { ChevronDown, ChevronUp, PanelLeftOpen, X } from "lucide-vue-next";
+import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, X } from "lucide-vue-next";
 import type { Songbook } from "../../domain/songbook";
 import SongList from "./SongList.vue";
 import { usePdfFit } from "../composables/usePdfFit";
@@ -1060,28 +1063,39 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   flex: 1;
+  gap: 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
 
+.performance-main.with-song-list {
+  gap: 0.34rem;
+}
+
 .performance-sidebar-overlay {
-  position: absolute;
-  top: var(--performance-float-edge);
-  left: var(--performance-float-edge);
-  bottom: var(--performance-float-edge);
+  position: relative;
   z-index: 5;
-  width: min(19rem, calc(100vw - (var(--performance-float-edge) * 2) - 1rem));
-  max-width: calc(100% - (var(--performance-float-edge) * 2));
+  flex: 0 0 0;
+  width: 0;
+  max-width: 0;
+  min-width: 0;
+  overflow: hidden;
   pointer-events: none;
-  transform: translateX(-1rem);
+  transform: translateX(-0.35rem);
   opacity: 0;
   transition:
+    flex-basis 180ms ease,
+    width 180ms ease,
+    max-width 180ms ease,
     transform 160ms ease,
     opacity 160ms ease;
 }
 
 .performance-sidebar-overlay.open {
+  flex-basis: clamp(14rem, 26vw, 18.5rem);
+  width: clamp(14rem, 26vw, 18.5rem);
+  max-width: clamp(14rem, 26vw, 18.5rem);
   pointer-events: auto;
   transform: translateX(0);
   opacity: 1;
@@ -1093,41 +1107,60 @@ onBeforeUnmount(() => {
   gap: 0.55rem;
   height: 100%;
   box-sizing: border-box;
-  padding: 0.58rem;
-  border: 1px solid rgba(24, 32, 25, 0.24);
-  background: #fffefb;
-  box-shadow: 0 26px 52px rgba(24, 32, 25, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(6px);
+  padding: 0.42rem;
+  border: 0;
+  border-right: 1px solid rgba(47, 59, 49, 0.08);
+  background: rgba(255, 250, 241, 0.82);
+  box-shadow: none;
 }
 
 .performance-sidebar-shell:focus-within {
-  border-color: rgba(55, 81, 59, 0.42);
-  background: #fffdf7;
-  box-shadow:
-    0 26px 52px rgba(24, 32, 25, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
-    0 0 0 4px rgba(55, 81, 59, 0.24);
+  background: rgba(255, 253, 247, 0.92);
+  box-shadow: inset -3px 0 0 rgba(55, 81, 59, 0.12);
 }
 
 .performance-sidebar-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .performance-sidebar-copy {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.performance-sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .performance-sidebar-copy h1 {
   margin: 0;
-  font-size: 0.98rem;
+  color: #0d1811;
+  font-size: 1.08rem;
+  line-height: 1;
 }
 
-.performance-sidebar-copy p {
-  margin: 0.16rem 0 0;
-  color: #4a564a;
+.performance-song-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 1.9rem;
+  min-height: 1.55rem;
+  padding: 0.06rem 0.4rem;
+  background: rgba(233, 240, 230, 0.92);
+  color: #526152;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .eyebrow {
@@ -1169,8 +1202,8 @@ onBeforeUnmount(() => {
 
 .preview-state {
   flex: 1;
-  border: 1px dashed rgba(47, 59, 49, 0.18);
-  background: rgba(255, 255, 255, 0.4);
+  border: 0;
+  background: rgba(255, 254, 249, 0.36);
   padding: 0.75rem;
   box-sizing: border-box;
 }
@@ -1216,8 +1249,8 @@ onBeforeUnmount(() => {
 .preview-context-footer {
   display: grid;
   justify-items: center;
-  margin-top: 1.25rem;
-  gap: 0.45rem;
+  margin-top: 0.95rem;
+  gap: 0.36rem;
 }
 
 .preview-context-separator {
@@ -1237,7 +1270,7 @@ onBeforeUnmount(() => {
   position: relative;
   flex: 1;
   overflow: hidden;
-  background: #fff;
+  background: rgba(255, 254, 249, 0.34);
 }
 
 .preview-frame {
@@ -1289,21 +1322,20 @@ onBeforeUnmount(() => {
 .performance-dock {
   display: grid;
   gap: 0;
-  padding: 0.34rem;
-  border: 1px solid rgba(24, 32, 25, 0.24);
-  background: #fffefb;
-  box-shadow: 0 22px 42px rgba(24, 32, 25, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(6px);
+  padding: 0.28rem;
+  border: 1px solid rgba(24, 32, 25, 0.16);
+  background: rgba(255, 250, 241, 0.9);
+  box-shadow: 0 16px 32px rgba(24, 32, 25, 0.16);
+  backdrop-filter: blur(4px);
   pointer-events: auto;
 }
 
 .performance-dock:focus-within {
-  border-color: rgba(55, 81, 59, 0.42);
-  background: #fffdf7;
+  border-color: rgba(55, 81, 59, 0.36);
+  background: rgba(255, 253, 247, 0.94);
   box-shadow:
-    0 22px 42px rgba(24, 32, 25, 0.22),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
-    0 0 0 4px rgba(55, 81, 59, 0.24);
+    0 16px 32px rgba(24, 32, 25, 0.16),
+    0 0 0 3px rgba(55, 81, 59, 0.18);
 }
 
 .performance-dock-group {
@@ -1428,15 +1460,15 @@ onBeforeUnmount(() => {
 }
 
 .performance-sidebar-close-button {
-  width: 2.45rem;
-  height: 2.45rem;
+  width: 2.05rem;
+  height: 2.05rem;
   flex: 0 0 auto;
   box-shadow: none;
 }
 
 .performance-sidebar-close-button svg {
-  width: 1.22rem;
-  height: 1.22rem;
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 @keyframes spin {
@@ -1454,8 +1486,32 @@ onBeforeUnmount(() => {
     --performance-dock-edge: calc(var(--performance-control-size) * 0.36);
   }
 
+  .performance-main.with-song-list {
+    gap: 0;
+  }
+
   .performance-sidebar-overlay {
+    position: absolute;
+    top: var(--performance-float-edge);
+    left: var(--performance-float-edge);
+    bottom: var(--performance-float-edge);
+    flex: 0 0 auto;
     width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
+    max-width: calc(100% - (var(--performance-float-edge) * 2));
+    transform: translateX(-1rem);
+  }
+
+  .performance-sidebar-overlay.open {
+    flex-basis: auto;
+    width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
+    max-width: calc(100% - (var(--performance-float-edge) * 2));
+  }
+
+  .performance-sidebar-shell {
+    padding: 0.58rem;
+    border: 1px solid rgba(24, 32, 25, 0.2);
+    background: #fffefb;
+    box-shadow: 0 22px 42px rgba(24, 32, 25, 0.22);
   }
 }
 </style>
