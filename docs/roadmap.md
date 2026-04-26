@@ -176,6 +176,11 @@ Current status:
 - v1.6 local regression validation is now available through `npm run regression`, combining a small frontend Node test suite for deterministic core behaviors with backend `cargo test` coverage for render preprocessing and preview-cache rules
 - v1.6 preview-cache validation now explicitly checks that effective render-style changes such as instrument or chord-diagram visibility produce distinct cache inputs instead of reusing incompatible preview artifacts
 
+### v1.7 in progress
+
+- v1.7 UX/UI review has validated the first selected refinement slice for `Convert` and `Songbook`: compact integrated headers/toolbars, Lucide-based action iconography, softer status badges, reduced workspace chrome, denser editor/list surfaces and aligned Convert/Songbook editor metrics while preserving the current layout structure.
+- v1.7 UI validation tooling now includes `npm run ui:metrics`, a Playwright-based layout metrics check that reuses an installed Chrome/Edge browser and verifies key Convert/Songbook header, toolbar and editor alignment constraints without downloading Playwright-managed browsers.
+
 ## Current roadmap
 
 Pending, planned or possible work.
@@ -284,6 +289,10 @@ Pending, planned or possible work.
 ### UI / UX improvements
 
 - prevent accidental text selection in non-interactive UI elements (buttons, labels, icons) using scoped user-select rules
+- define supported desktop window sizing and responsive fallback behavior:
+  - decide practical minimum Tauri window dimensions for the main workspace
+  - define compact toolbar behavior for dense action groups, such as icon-only states or overflow `More` menus
+  - prefer local vertical scrolling and layout stacking over global or horizontal scrolling except for explicitly dense surfaces
 - evaluate inline rename in the Songbook editor header as a future UX refinement once the current modal-based file workflow settles
 - extend the lightweight shared modal shell to additional app modals where it improves consistency without over-generalizing modal-specific behavior:
   - backdrop
