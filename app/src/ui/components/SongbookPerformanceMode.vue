@@ -16,10 +16,7 @@
                 title="Close song list"
                 @click="closeSongList({ focusDock: true })"
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8 8l8 8" />
-                  <path d="M16 8l-8 8" />
-                </svg>
+                <X aria-hidden="true" />
               </button>
             </div>
 
@@ -137,12 +134,7 @@
                     @keydown="handleDockButtonKeydown($event, 0)"
                     @click="toggleSongList"
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M4 6.5h7" />
-                      <path d="M4 12h7" />
-                      <path d="M4 17.5h7" />
-                      <path d="M14.5 5.5h5v13h-5z" />
-                    </svg>
+                    <PanelLeftOpen aria-hidden="true" />
                   </button>
                   <button
                     class="performance-icon-button"
@@ -153,10 +145,7 @@
                     @keydown="handleDockButtonKeydown($event, 1)"
                     @click="props.exitPerformanceMode"
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M8 8l8 8" />
-                      <path d="M16 8l-8 8" />
-                    </svg>
+                    <X aria-hidden="true" />
                   </button>
                 </div>
 
@@ -173,9 +162,7 @@
                     @keydown="handleDockButtonKeydown($event, 2)"
                     @click="void selectRelativeSong(-1)"
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 7l-5 6h10z" />
-                    </svg>
+                    <ChevronUp aria-hidden="true" />
                   </button>
                   <button
                     class="performance-icon-button"
@@ -187,9 +174,7 @@
                     @keydown="handleDockButtonKeydown($event, 3)"
                     @click="void selectRelativeSong(1)"
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 17l5-6H7z" />
-                    </svg>
+                    <ChevronDown aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -211,6 +196,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
+import { ChevronDown, ChevronUp, PanelLeftOpen, X } from "lucide-vue-next";
 import type { Songbook } from "../../domain/songbook";
 import SongList from "./SongList.vue";
 import { usePdfFit } from "../composables/usePdfFit";

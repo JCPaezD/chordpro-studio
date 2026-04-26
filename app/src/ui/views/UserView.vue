@@ -3,6 +3,31 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import {
+  BookOpen,
+  ClipboardPaste,
+  Copy,
+  CopyPlus,
+  Eye,
+  EyeOff,
+  FileDown,
+  FilePlus2,
+  FolderOpen,
+  Gauge,
+  KeyRound,
+  ListEnd,
+  PanelRightClose,
+  PanelRightOpen,
+  Pencil,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Settings,
+  Trash2,
+  WandSparkles,
+  X
+} from "lucide-vue-next";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import ChordProEditorHeader from "../components/ChordProEditorHeader.vue";
@@ -143,13 +168,12 @@ const canManageCurrentSongbookFile = computed(() =>
   songbookListItems.value.some((songEntry) => songEntry.filePath === workspaceDocument.value.filePath)
 );
 const canRevertCurrentSongbookFile = computed(() => canManageCurrentSongbookFile.value && workspaceDocument.value.dirty);
-const showSongbookUnsavedBadge = computed(() => hasUnsavedChanges.value && !canRevertCurrentSongbookFile.value);
 const songbookUnsavedLabel = computed(() => {
   if (isSongbookDraftDocument.value) {
-    return "Unsaved draft";
+    return "Draft";
   }
 
-  return "Unsaved changes";
+  return "Unsaved";
 });
 
 const selectedModel = computed(() =>
@@ -160,7 +184,6 @@ const conversionModeLabel = computed(() =>
   conversionMode.value === "fast" ? "Fast" : "Quality"
 );
 
-const apiKeyButtonLabel = computed(() => "Gemini API key");
 const isManagingApiKey = computed(() => openedApiKeyWithExistingValue.value);
 const apiKeyModalTitle = computed(() =>
   isManagingApiKey.value ? "Manage Gemini API key" : "Set Gemini API key"
@@ -220,20 +243,25 @@ const songbookEditorSubtitle = computed(() => {
   }
 
   if (isSongbookDraftDocument.value) {
-    return "Not saved yet.";
+    return "Unsaved draft";
+  }
+
+  return "No song selected";
+});
+
+const songbookEditorSubtitleLabel = computed(() => {
+  if (workspaceDocument.value.fileName) {
+    return workspaceDocument.value.fileName;
+  }
+
+  if (isSongbookDraftDocument.value) {
+    return "Draft - use Save or Save as to create its `.cho` file.";
   }
 
   return "Open a song from the list to edit its `.cho` content.";
 });
 const songbookEditorPlaceholder = computed(() => {
   return "Open a song from the list to edit it here.";
-});
-const songbookDraftHint = computed(() => {
-  if (!isSongbookDraftDocument.value) {
-    return "";
-  }
-
-  return "Fill in the template, then use Save or Save As to create its `.cho` file in this songbook.";
 });
 const convertEditorSubtitle = computed(() => {
   if (!chordProText.value.trim()) {
@@ -1280,10 +1308,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
             title="Convert"
             @click="setActivePanel('convert')"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 6h14M5 12h9M5 18h14" />
-              <path d="M16 9l3 3-3 3" />
-            </svg>
+            <ListEnd aria-hidden="true" />
             <span>Convert</span>
           </button>
           <button
@@ -1291,12 +1316,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
             title="Songbook"
             @click="setActivePanel('songbook')"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 4h10a2 2 0 0 1 2 2v12H8a2 2 0 0 0-2 2V4Z" />
-              <path d="M8 18h10v2H8a2 2 0 0 1 0-4h10" />
-            </svg>
+            <BookOpen aria-hidden="true" />
             <span>Songbook</span>
-          </button>        </div>
+          </button>
+        </div>
 
         <div class="nav-rail-footer">
           <button
@@ -1307,10 +1330,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
             :aria-expanded="showPreferencesMenu ? 'true' : 'false'"
             @click="togglePreferencesMenu"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 8.25A3.75 3.75 0 1 0 12 15.75A3.75 3.75 0 1 0 12 8.25Z" />
-              <path d="M19.14 12a7.53 7.53 0 0 0-.08-1l2.02-1.57-1.92-3.32-2.45.76a7.9 7.9 0 0 0-1.73-1l-.44-2.53h-3.84l-.44 2.53a7.9 7.9 0 0 0-1.73 1l-2.45-.76-1.92 3.32L4.94 11a7.53 7.53 0 0 0 0 2l-2.02 1.57 1.92 3.32 2.45-.76a7.9 7.9 0 0 0 1.73 1l.44 2.53h3.84l.44-2.53a7.9 7.9 0 0 0 1.73-1l2.45.76 1.92-3.32L19.06 13c.05-.33.08-.67.08-1Z" />
-            </svg>
+            <Settings aria-hidden="true" />
             <span>Prefs</span>
           </button>
           <Transition name="preferences-popover">
@@ -1382,33 +1402,49 @@ async function openGeminiApiKeyPage(): Promise<void> {
       </aside>
 
       <section class="panel card workspace-panel">
-        <div v-if="activePanel === 'convert'" class="panel-shell">
-          <div class="panel-header secondary-header">
-            <div>
+        <div v-if="activePanel === 'convert'" class="panel-shell convert-panel-shell">
+          <div class="panel-header secondary-header convert-panel-header">
+            <div class="convert-panel-title">
               <p class="eyebrow">Convert</p>
               <h2>New sheet</h2>
             </div>
-            <div class="panel-actions-stack align-end">
-              <div class="header-actions convert-actions">
-                <button class="mini-button" :disabled="loading || configLoading" @click="toggleConversionMode">
-                  {{ conversionModeLabel }}
-                </button>
-                <button class="mini-button" @click="openApiKeyModal">
-                  {{ apiKeyButtonLabel }}
-                </button>
-                <button class="mini-button" @click="showChordProEditor = !showChordProEditor">
-                  {{ showChordProEditor ? "Hide ChordPro editor" : "Show ChordPro editor" }}
-                </button>
-                <button v-if="loading" class="primary-button" @click="abortConversion">
-                  <span class="button-content">
-                    <span class="button-label">Abort</span>
-                  </span>
-                </button>
-                <button v-else class="primary-button" :disabled="!canGenerate" @click="convertSong">
-                  <span class="button-content">
-                    <span class="button-label">Generate</span>
-                  </span>
-                </button>
+
+            <div class="panel-actions-stack align-end convert-header-actions">
+              <div class="action-toolbar convert-toolbar" aria-label="Convert actions">
+                <div class="toolbar-group convert-settings-group">
+                  <button class="mini-button toolbar-button toolbar-api-button" @click="openApiKeyModal">
+                    <KeyRound aria-hidden="true" class="button-icon" />
+                    API key
+                  </button>
+                </div>
+                <div class="toolbar-group convert-run-group">
+                  <button class="mini-button toolbar-button toolbar-mode-button" :disabled="loading || configLoading" @click="toggleConversionMode">
+                    <Gauge aria-hidden="true" class="button-icon" />
+                    {{ conversionModeLabel }}
+                  </button>
+                  <button
+                    class="mini-button toolbar-button toolbar-source-button"
+                    :aria-pressed="showChordProEditor"
+                    :title="showChordProEditor ? 'Hide ChordPro editor' : 'Show ChordPro editor'"
+                    @click="showChordProEditor = !showChordProEditor"
+                  >
+                    <PanelRightClose v-if="showChordProEditor" aria-hidden="true" class="button-icon" />
+                    <PanelRightOpen v-else aria-hidden="true" class="button-icon" />
+                    Source
+                  </button>
+                  <button v-if="loading" class="primary-button toolbar-primary" @click="abortConversion">
+                    <span class="button-content">
+                      <X aria-hidden="true" class="button-icon" />
+                      <span class="button-label">Abort</span>
+                    </span>
+                  </button>
+                  <button v-else class="primary-button toolbar-primary" :disabled="!canGenerate" @click="convertSong">
+                    <span class="button-content">
+                      <WandSparkles aria-hidden="true" class="button-icon" />
+                      <span class="button-label">Generate</span>
+                    </span>
+                  </button>
+                </div>
               </div>
               <p v-if="!hasApiKey && !configLoading" class="action-feedback warning-message">
                 Gemini API key required to generate
@@ -1424,9 +1460,24 @@ async function openGeminiApiKeyPage(): Promise<void> {
                   <div>
                     <h3>Original text</h3>
                   </div>
-                  <div class="header-actions">
-                    <button class="mini-button" @click="pasteFromClipboard">Paste</button>
-                    <button class="secondary-button" :disabled="loading" @click="requestClearAllState">New Sheet</button>
+                  <div class="action-toolbar compact editor-toolbar" aria-label="Original text actions">
+                    <button
+                      class="mini-button toolbar-button toolbar-icon-button"
+                      aria-label="Paste original text"
+                      title="Paste"
+                      @click="pasteFromClipboard"
+                    >
+                      <ClipboardPaste aria-hidden="true" class="button-icon" />
+                    </button>
+                    <button
+                      class="secondary-button toolbar-button toolbar-icon-button"
+                      aria-label="New sheet"
+                      title="New sheet"
+                      :disabled="loading"
+                      @click="requestClearAllState"
+                    >
+                      <FilePlus2 aria-hidden="true" class="button-icon" />
+                    </button>
                   </div>
                 </div>
 
@@ -1448,17 +1499,34 @@ async function openGeminiApiKeyPage(): Promise<void> {
                 >
                   <template #header>
                     <ChordProEditorHeader
+                      class="convert-editor-header"
                       title="ChordPro source"
                       :subtitle="convertEditorSubtitle"
-                      :show-unsaved-changes="hasUnsavedChanges"
                     >
-                      <template #actions>
-                        <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText" @click="previewFromChordPro">
-                          Refresh
-                        </button>
-                        <button class="mini-button" :disabled="!chordProText" @click="saveDocument">
-                          Save
-                        </button>
+                      <template #primaryActions>
+                        <div class="convert-editor-action-row">
+                          <span v-if="hasUnsavedChanges" class="convert-inline-dirty-badge">Unsaved</span>
+                          <div class="action-toolbar compact editor-toolbar" aria-label="ChordPro source actions">
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Refresh preview"
+                              title="Refresh"
+                              :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !chordProText"
+                              @click="previewFromChordPro"
+                            >
+                              <RefreshCw aria-hidden="true" class="button-icon" />
+                            </button>
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Save ChordPro file"
+                              title="Save .cho"
+                              :disabled="!chordProText"
+                              @click="saveDocument"
+                            >
+                              <Save aria-hidden="true" class="button-icon" />
+                            </button>
+                          </div>
+                        </div>
                       </template>
                     </ChordProEditorHeader>
                   </template>
@@ -1468,27 +1536,54 @@ async function openGeminiApiKeyPage(): Promise<void> {
           </div>
         </div>
 
-        <div v-else class="panel-shell">
-          <div class="panel-header secondary-header">
-            <div>
+        <div v-else class="panel-shell songbook-panel-shell">
+          <div class="panel-header secondary-header songbook-panel-header">
+            <div class="songbook-panel-title" :title="songbook?.path || 'No folder selected'">
               <p class="eyebrow">Songbook</p>
               <h2>Folder library</h2>
             </div>
-            <div class="panel-actions-stack align-end">
-              <div class="header-actions">
-                <button class="mini-button" @click="openSongbookFolder">Open folder</button>
-                <button class="mini-button" :disabled="!songbook" @click="handleRefreshSongbook">Refresh</button>
-                <button class="secondary-button" :disabled="!songbook" @click="requestClearSongbook">Clear</button>
-                <button class="mini-button songbook-export-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
-                  {{ isExportingSongbook ? "Creating PDF..." : "Songbook PDF" }}
-                </button>
-                <button class="mini-button" :disabled="!songbook" @click="enterPerformanceMode">
-                  Performance mode
-                </button>
+
+            <div class="panel-actions-stack align-end songbook-header-actions">
+              <div class="action-toolbar songbook-toolbar" aria-label="Songbook actions">
+                <div class="toolbar-group">
+                  <button
+                    class="mini-button toolbar-button toolbar-icon-button"
+                    aria-label="Open songbook folder"
+                    title="Open folder"
+                    @click="openSongbookFolder"
+                  >
+                    <FolderOpen aria-hidden="true" class="button-icon" />
+                  </button>
+                  <button
+                    class="mini-button toolbar-button toolbar-icon-button"
+                    aria-label="Refresh songbook"
+                    title="Refresh"
+                    :disabled="!songbook"
+                    @click="handleRefreshSongbook"
+                  >
+                    <RefreshCw aria-hidden="true" class="button-icon" />
+                  </button>
+                  <button
+                    class="secondary-button toolbar-button toolbar-icon-button"
+                    aria-label="Clear songbook"
+                    title="Clear"
+                    :disabled="!songbook"
+                    @click="requestClearSongbook"
+                  >
+                    <X aria-hidden="true" class="button-icon" />
+                  </button>
+                </div>
+                <div class="toolbar-group">
+                  <button class="mini-button toolbar-button songbook-export-button" :disabled="!songbook || isExportingSongbook" @click="exportSongbookPdf">
+                    <FileDown aria-hidden="true" class="button-icon" />
+                    {{ isExportingSongbook ? "Creating..." : "PDF" }}
+                  </button>
+                  <button class="mini-button toolbar-button songbook-performance-button" :disabled="!songbook" @click="enterPerformanceMode">
+                    <Play aria-hidden="true" class="button-icon" />
+                    Performance
+                  </button>
+                </div>
               </div>
-              <p class="action-feedback songbook-path" :title="songbook?.path || 'No folder selected'">
-                {{ songbook?.path || "No songbook folder selected." }}
-              </p>
             </div>
             </div>
 
@@ -1549,53 +1644,99 @@ async function openGeminiApiKeyPage(): Promise<void> {
               </aside>
 
               <section class="editor-panel card-subsection">
-                <ChordProEditorHeader
-                  :title="songbookEditorTitle"
-                  :subtitle="songbookEditorSubtitle"
-                  :show-unsaved-changes="showSongbookUnsavedBadge"
-                  :unsaved-changes-label="songbookUnsavedLabel"
-                >
-                  <template #primaryActions>
-                    <button class="mini-button" :disabled="!canSaveSongbookDocument" @click="saveDocument">
-                      Save
-                    </button>
-                    <button
-                      :class="['mini-button', { 'warning-button': canRevertCurrentSongbookFile }]"
-                      :disabled="!canRevertCurrentSongbookFile || isRevertingSong"
-                      @click="openRevertCurrentSongModal"
-                    >
-                      Revert changes
-                    </button>
-                  </template>
-                  <template #actions>
-                    <button class="mini-button" :disabled="!canCreateSongbookDraft" @click="createNewSongbookDraft">
-                      New
-                    </button>
-                    <button class="mini-button" :disabled="!canSaveSongbookDocument" @click="saveDocumentAs">
-                      Save As
-                    </button>
-                    <button class="mini-button" :disabled="!canManageCurrentSongbookFile || isRenamingSong" @click="openRenameCurrentSongModal">
-                      Rename
-                    </button>
-                    <button class="secondary-button" :disabled="!canManageCurrentSongbookFile || isDeletingSong" @click="openDeleteCurrentSongModal">
-                      Delete
-                    </button>
-                    <button class="mini-button" :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !canSaveSongbookDocument" @click="previewFromChordPro">
-                      Refresh
-                    </button>
-                  </template>
-                </ChordProEditorHeader>
-
-                <p v-if="songbookDraftHint" class="songbook-draft-hint">
-                  {{ songbookDraftHint }}
-                </p>
-
                 <ChordProEditorPane
                   ref="songbookEditorPaneRef"
+                  class="songbook-editor-pane"
                   :model-value="chordProText"
                   :placeholder="songbookEditorPlaceholder"
                   @update:model-value="updateChordPro"
-                />
+                >
+                  <template #header>
+                    <ChordProEditorHeader
+                      :title="songbookEditorTitle"
+                      :subtitle="songbookEditorSubtitle"
+                      :subtitle-label="songbookEditorSubtitleLabel"
+                      subtitle-surface
+                    >
+                      <template #subtitleActions>
+                        <div class="action-toolbar compact songbook-file-toolbar" aria-label="Song file actions">
+                          <button
+                            class="mini-button toolbar-button toolbar-icon-button"
+                            aria-label="Rename song"
+                            title="Rename"
+                            :disabled="!canManageCurrentSongbookFile || isRenamingSong"
+                            @click="openRenameCurrentSongModal"
+                          >
+                            <Pencil aria-hidden="true" class="button-icon" />
+                          </button>
+                          <button
+                            class="mini-button toolbar-button toolbar-icon-button"
+                            aria-label="New song"
+                            title="New"
+                            :disabled="!canCreateSongbookDraft"
+                            @click="createNewSongbookDraft"
+                          >
+                            <FilePlus2 aria-hidden="true" class="button-icon" />
+                          </button>
+                          <button
+                            :class="['mini-button toolbar-button toolbar-icon-button', { 'warning-button': hasUnsavedChanges }]"
+                            aria-label="Save song"
+                            title="Save"
+                            :disabled="!canSaveSongbookDocument"
+                            @click="saveDocument"
+                          >
+                            <Save aria-hidden="true" class="button-icon" />
+                          </button>
+                          <button
+                            class="mini-button toolbar-button toolbar-icon-button"
+                            aria-label="Save song as a new file"
+                            title="Save as"
+                            :disabled="!canSaveSongbookDocument"
+                            @click="saveDocumentAs"
+                          >
+                            <CopyPlus aria-hidden="true" class="button-icon" />
+                          </button>
+                          <button
+                            class="secondary-button toolbar-button toolbar-icon-button"
+                            aria-label="Delete song"
+                            title="Delete"
+                            :disabled="!canManageCurrentSongbookFile || isDeletingSong"
+                            @click="openDeleteCurrentSongModal"
+                          >
+                            <Trash2 aria-hidden="true" class="button-icon" />
+                          </button>
+                        </div>
+                      </template>
+                      <template #primaryActions>
+                        <div class="songbook-editor-action-row">
+                          <span v-if="hasUnsavedChanges" class="songbook-inline-dirty-badge">{{ songbookUnsavedLabel }}</span>
+                          <div class="action-toolbar compact songbook-editor-toolbar" aria-label="Song editor actions">
+                            <div class="toolbar-group">
+                              <button
+                                :class="['mini-button toolbar-button toolbar-icon-button', { 'warning-button': canRevertCurrentSongbookFile }]"
+                                aria-label="Revert song changes"
+                                title="Revert"
+                                :disabled="!canRevertCurrentSongbookFile || isRevertingSong"
+                                @click="openRevertCurrentSongModal"
+                              >
+                                <RotateCcw aria-hidden="true" class="button-icon" />
+                              </button>
+                              <button
+                                class="mini-button toolbar-button toolbar-icon-button"
+                                aria-label="Refresh preview"
+                                title="Refresh preview"
+                                :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !canSaveSongbookDocument"
+                                @click="previewFromChordPro"
+                              >
+                                <RefreshCw aria-hidden="true" class="button-icon" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </ChordProEditorHeader>
+                  </template>
+                </ChordProEditorPane>
               </section>
             </div>
 
@@ -1786,32 +1927,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
               :title="showApiKeyDraft ? 'Hide API key' : 'Show API key'"
               @click="toggleApiKeyVisibility"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="modal-icon">
-                <path
-                  d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="3"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                />
-                <path
-                  v-if="showApiKeyDraft"
-                  d="M4 4l16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-width="1.8"
-                />
-              </svg>
+              <EyeOff v-if="showApiKeyDraft" aria-hidden="true" class="modal-icon" />
+              <Eye v-else aria-hidden="true" class="modal-icon" />
             </button>
             <button
               class="modal-icon-button"
@@ -1821,15 +1938,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
               :disabled="!apiKeyDraft.trim()"
               @click="clearApiKeyDraft"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="modal-icon">
-                <path
-                  d="M6 6l12 12M18 6L6 18"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-width="1.8"
-                />
-              </svg>
+              <X aria-hidden="true" class="modal-icon" />
             </button>
             <button
               class="modal-icon-button"
@@ -1839,26 +1948,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
               :disabled="!apiKeyDraft.trim()"
               @click="copyApiKeyDraft"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="modal-icon">
-                <rect
-                  x="9"
-                  y="9"
-                  width="10"
-                  height="10"
-                  rx="1.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                />
-                <path
-                  d="M7 15H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                />
-              </svg>
+              <Copy aria-hidden="true" class="modal-icon" />
             </button>
           </div>
         </label>
@@ -1905,6 +1995,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+}
+
+.workspace-panel.card {
+  padding: 0.28rem 0.36rem 0.42rem;
 }
 
 .user-header {
@@ -2288,19 +2382,84 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .panel-header {
-  margin-bottom: 1.35rem;
+  margin-bottom: 1rem;
+}
+
+.convert-panel-header,
+.songbook-panel-header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.22rem;
+  padding: 0 0 0.28rem;
+  border: 0;
+  border-bottom: 1px solid rgba(47, 59, 49, 0.08);
+  background: transparent;
+}
+
+.convert-panel-header h2,
+.songbook-panel-header h2 {
+  font-size: 1.28rem;
+  line-height: 1;
+}
+
+.convert-panel-title,
+.songbook-panel-title {
+  display: grid;
+  flex: 0 0 auto;
+  align-content: start;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.convert-panel-title .eyebrow,
+.songbook-panel-title .eyebrow {
+  margin-bottom: 0.06rem;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.convert-header-actions,
+.songbook-header-actions {
+  display: grid;
+  flex: 0 1 auto;
+  align-content: center;
+  justify-items: end;
+  margin-left: auto;
+  max-width: 100%;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.convert-header-actions .action-feedback,
+.songbook-header-actions .action-feedback {
+  margin: 0;
 }
 
 .panel-content,
 .songbook-content {
-  gap: 1rem;
+  gap: 0.24rem;
   overflow: hidden;
 }
 
+.convert-header-actions .action-toolbar,
+.songbook-header-actions .action-toolbar {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(247, 239, 224, 0.42);
+}
+
 .convert-layout {
+  --convert-control-size: 1.55rem;
+  --convert-editor-action-size: 2.05rem;
+  --convert-status-bg: rgba(233, 240, 230, 0.92);
+  --convert-status-color: #526152;
+
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0.28rem;
   flex: 1;
 }
 
@@ -2310,6 +2469,76 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .editor-column {
   gap: 0.75rem;
+}
+
+.convert-layout .editor-column {
+  gap: 0;
+}
+
+.convert-heading {
+  align-items: start;
+  padding: 0.22rem 0.3rem;
+  border: 0;
+  border-bottom: 1px solid rgba(47, 59, 49, 0.07);
+  background: rgba(241, 231, 211, 0.54);
+}
+
+.convert-heading > div:first-child::after {
+  display: block;
+  height: calc(0.82rem * 1.1);
+  margin-top: 0.5rem;
+  content: "";
+}
+
+.convert-heading h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.08;
+}
+
+.convert-layout .input-textarea {
+  border: 0;
+  padding: 0.7rem 0.78rem;
+}
+
+.convert-layout :deep(.editor-pane) {
+  gap: 0;
+}
+
+.convert-layout :deep(.editor-pane > .editor-header) {
+  padding: 0.22rem 0.3rem;
+  border: 0;
+  border-bottom: 1px solid rgba(47, 59, 49, 0.07);
+  background: rgba(241, 231, 211, 0.54);
+}
+
+.convert-layout :deep(.editor-header-main) {
+  align-items: start;
+  gap: 0.36rem;
+}
+
+.convert-layout :deep(.editor-header-copy) {
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.convert-layout :deep(.editor-header-copy h3) {
+  font-size: 1.08rem;
+  line-height: 1.08;
+}
+
+.convert-layout :deep(.editor-header-copy p) {
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+.convert-layout :deep(.editor-header-toolbar) {
+  margin-top: 0.35rem;
+}
+
+.convert-layout :deep(.editor-textarea) {
+  border: 0;
+  padding: 0.7rem 0.78rem;
 }
 
 
@@ -2349,13 +2578,195 @@ async function openGeminiApiKeyPage(): Promise<void> {
   align-items: center;
 }
 
-.convert-actions {
+.action-toolbar {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(247, 239, 224, 0.5);
+}
+
+.action-toolbar.compact {
+  gap: 0;
+}
+
+.toolbar-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+}
+
+.toolbar-group + .toolbar-group {
+  border-left: 1px solid rgba(35, 49, 39, 0.13);
+}
+
+.convert-toolbar,
+.songbook-toolbar {
+  flex-wrap: wrap;
   justify-content: flex-end;
+  justify-self: end;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.convert-toolbar .toolbar-group {
+  display: contents;
+}
+
+.convert-toolbar .toolbar-button,
+.convert-toolbar .primary-button {
+  border-left: 1px solid rgba(35, 49, 39, 0.1);
+}
+
+.convert-toolbar .convert-settings-group .toolbar-button:first-child {
+  border-left: 0;
+}
+
+.convert-toolbar .convert-run-group .toolbar-button:first-child {
+  border-left: 1px solid rgba(35, 49, 39, 0.16);
+}
+
+.songbook-editor-toolbar {
+  width: max-content;
+  max-width: 100%;
+  background: rgba(247, 239, 224, 0.38);
+}
+
+.songbook-file-toolbar {
+  width: max-content;
+  max-width: 100%;
+  background: rgba(255, 254, 249, 0.72);
+}
+
+.songbook-file-toolbar .toolbar-button {
+  box-sizing: border-box;
+  min-height: var(--songbook-control-size);
+  padding: 0.16rem 0.4rem;
+  font-size: 0.78rem;
+}
+
+.songbook-editor-toolbar .toolbar-button {
+  box-sizing: border-box;
+  min-height: var(--songbook-editor-action-size);
+  padding: 0.16rem 0.4rem;
+  font-size: 0.78rem;
+}
+
+.songbook-file-toolbar .toolbar-icon-button {
+  width: var(--songbook-control-size);
+  padding: 0;
+}
+
+.songbook-editor-toolbar .toolbar-icon-button {
+  width: var(--songbook-editor-action-size);
+  padding: 0;
+}
+
+.songbook-file-toolbar .button-icon {
+  width: 0.78rem;
+  height: 0.78rem;
+  stroke-width: 2;
+}
+
+.songbook-editor-toolbar .button-icon {
+  width: 0.96rem;
+  height: 0.96rem;
+  stroke-width: 1.9;
+}
+
+.songbook-editor-action-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.songbook-inline-dirty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--songbook-control-size);
+  padding: 0.06rem 0.4rem;
+  border: 0;
+  background: var(--songbook-status-bg);
+  color: var(--songbook-status-color);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.songbook-export-button {
+  width: 7.3rem;
+  min-width: 7.3rem;
+}
+
+.songbook-performance-button {
+  min-width: 8.6rem;
+}
+
+.editor-toolbar {
+  width: max-content;
+  max-width: 100%;
+  background: rgba(247, 239, 224, 0.38);
+}
+
+.convert-layout .editor-toolbar .toolbar-button {
+  box-sizing: border-box;
+  min-height: var(--convert-editor-action-size);
+  padding: 0.16rem 0.4rem;
+  font-size: 0.78rem;
+}
+
+.convert-layout .editor-toolbar .toolbar-icon-button {
+  width: var(--convert-editor-action-size);
+  padding: 0;
+}
+
+.convert-layout .editor-toolbar .button-icon {
+  width: 0.96rem;
+  height: 0.96rem;
+  stroke-width: 1.9;
+}
+
+.convert-editor-action-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.convert-inline-dirty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--convert-control-size);
+  padding: 0.06rem 0.4rem;
+  border: 0;
+  background: var(--convert-status-bg);
+  color: var(--convert-status-color);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .mini-button,
 .secondary-button,
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   min-height: 2.75rem;
   padding: 0.7rem 0.95rem;
   border: 1px solid rgba(35, 49, 39, 0.18);
@@ -2363,6 +2774,145 @@ async function openGeminiApiKeyPage(): Promise<void> {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.action-toolbar .mini-button,
+.action-toolbar .secondary-button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.action-toolbar .primary-button {
+  border: 0;
+  background: linear-gradient(135deg, #1f3124, #37513b);
+  color: #f8f3e8;
+  box-shadow: none;
+}
+
+.action-toolbar .mini-button + .mini-button,
+.action-toolbar .mini-button + .secondary-button,
+.action-toolbar .mini-button + .primary-button,
+.action-toolbar .secondary-button + .mini-button {
+  border-left: 1px solid rgba(35, 49, 39, 0.1);
+}
+
+.action-toolbar .mini-button:hover:not(:disabled),
+.action-toolbar .secondary-button:hover:not(:disabled) {
+  background: rgba(255, 250, 241, 0.72);
+}
+
+.button-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  stroke-width: 1.9;
+}
+
+.toolbar-button {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.76rem;
+}
+
+.toolbar-icon-button {
+  width: 2.45rem;
+  padding: 0;
+}
+
+.toolbar-mode-button {
+  width: 6.4rem;
+}
+
+.toolbar-api-button {
+  width: 7.2rem;
+}
+
+.toolbar-source-button {
+  width: 7.2rem;
+}
+
+.toolbar-primary {
+  min-height: 2.45rem;
+  min-width: 9.6rem;
+  padding: 0.55rem 1rem;
+}
+
+@media (max-width: 860px) {
+  .convert-panel-header {
+    align-items: flex-start;
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .convert-header-actions {
+    justify-items: end;
+    width: 100%;
+  }
+
+  .convert-header-actions .action-toolbar,
+  .convert-toolbar {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .convert-toolbar {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .convert-toolbar .toolbar-group {
+    display: contents;
+  }
+
+  .convert-toolbar .toolbar-button,
+  .convert-toolbar .primary-button {
+    border-left: 1px solid rgba(35, 49, 39, 0.1);
+  }
+
+  .convert-toolbar .convert-settings-group .toolbar-button:first-child {
+    border-left: 0;
+  }
+
+  .toolbar-api-button,
+  .toolbar-mode-button,
+  .toolbar-source-button {
+    width: auto;
+    min-width: 6.25rem;
+    flex: 0 1 7rem;
+  }
+
+  .convert-toolbar .toolbar-primary {
+    min-width: 8.6rem;
+    flex: 0 1 9.6rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .convert-header-actions {
+    justify-items: stretch;
+  }
+
+  .convert-header-actions .action-toolbar,
+  .convert-toolbar {
+    width: 100%;
+  }
+
+  .convert-toolbar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .toolbar-api-button,
+  .toolbar-mode-button,
+  .toolbar-source-button,
+  .convert-toolbar .toolbar-primary {
+    width: 100%;
+    min-width: 0;
+    padding-right: 0.45rem;
+    padding-left: 0.45rem;
+    font-size: 0.9rem;
+  }
 }
 
 .mini-button,
@@ -2407,7 +2957,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .songbook-export-button {
-  width: 10rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2419,6 +2968,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   width: 100%;
 }
 
@@ -2452,14 +3002,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
   font-weight: 700;
 }
 
-.songbook-path {
-  max-width: 22rem;
-  margin-top: 0;
-  color: #29603f;
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-
 .success-message {
   color: #29603f;
 }
@@ -2473,17 +3015,79 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .songbook-layout {
+  --songbook-control-size: 1.55rem;
+  --songbook-editor-action-size: 2.05rem;
+  --songbook-status-bg: rgba(233, 240, 230, 0.92);
+  --songbook-status-color: #526152;
+
   display: grid;
   grid-template-columns: minmax(13rem, 14rem) minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0.34rem;
   flex: 1;
   overflow: hidden;
 }
 
 .song-list-panel,
 .editor-panel {
-  gap: 0.75rem;
+  gap: 0.24rem;
   overflow: hidden;
+}
+
+.song-list-panel {
+  gap: 0.33rem;
+}
+
+.editor-panel {
+  gap: 0;
+}
+
+.editor-panel :deep(.editor-pane) {
+  gap: 0;
+}
+
+.editor-panel :deep(.editor-pane > .editor-header) {
+  --editor-subtitle-surface-height: var(--songbook-control-size);
+
+  padding: 0.2rem 0.28rem;
+  border: 0;
+  border-bottom: 1px solid rgba(47, 59, 49, 0.07);
+  background: rgba(241, 231, 211, 0.54);
+}
+
+.convert-layout .input-textarea:focus,
+.convert-layout :deep(.editor-textarea:focus),
+.editor-panel :deep(.editor-textarea:focus) {
+  outline: 2px solid rgba(55, 81, 59, 0.24);
+  outline-offset: -2px;
+}
+
+.editor-panel :deep(.editor-header-main) {
+  align-items: start;
+  gap: 0.36rem;
+}
+
+.editor-panel :deep(.editor-header-copy) {
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.editor-panel :deep(.editor-header-copy h3) {
+  font-size: 1.08rem;
+  line-height: 1.08;
+}
+
+.editor-panel :deep(.editor-header-copy p) {
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+.editor-panel :deep(.editor-header-toolbar) {
+  margin-top: 0.16rem;
+}
+
+.editor-panel :deep(.editor-textarea) {
+  border: 0;
+  padding: 0.7rem 0.78rem;
 }
 
 .song-list-header > div {
@@ -2493,14 +3097,14 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .song-list-header {
   flex-direction: column;
   align-items: stretch;
-  gap: 0.45rem;
+  gap: 0.34rem;
 }
 
 .song-list-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
   width: 100%;
 }
 
@@ -2508,7 +3112,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.55rem;
+  gap: 0.42rem;
   min-width: 0;
 }
 
@@ -2523,7 +3127,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: 0.22rem;
-  min-height: 1.55rem;
+  box-sizing: border-box;
+  min-height: var(--songbook-control-size);
   padding: 0.16rem 0.48rem;
   border: 1px solid rgba(35, 49, 39, 0.12);
   background: rgba(255, 254, 249, 0.9);
@@ -2564,11 +3169,12 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   min-width: 1.9rem;
-  min-height: 1.28rem;
+  min-height: var(--songbook-control-size);
   padding: 0.06rem 0.4rem;
-  background: rgba(233, 240, 230, 0.92);
-  color: #526152;
+  background: var(--songbook-status-bg);
+  color: var(--songbook-status-color);
   font-size: 0.76rem;
   font-weight: 700;
   line-height: 1;
@@ -2590,12 +3196,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
   padding: 1rem;
   border: 1px dashed rgba(47, 59, 49, 0.18);
   color: #4a564a;
-}
-
-.songbook-draft-hint {
-  margin: -0.2rem 0 0;
-  color: #6a755f;
-  font-size: 0.9rem;
 }
 
 .song-list-hint,
@@ -2966,7 +3566,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
     justify-items: start;
   }
 
-  .convert-actions,
   .header-actions,
   .modal-actions {
     justify-content: flex-start;
@@ -2976,9 +3575,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .songbook-path {
-    text-align: left;
-  }
 }
 </style>
 

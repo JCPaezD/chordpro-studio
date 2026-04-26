@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import { FileText } from "lucide-vue-next";
+
 type SongListItem = {
   filePath: string;
   title: string;
@@ -86,12 +88,7 @@ defineExpose({
       @click="emit('open', songEntry.filePath)"
     >
       <span class="song-item-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M7 4.5h7l4 4v11h-11a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" />
-          <path d="M14 4.5v4h4" />
-          <path d="M9 14.25h6" />
-          <path d="M9 17.25h4.5" />
-        </svg>
+        <FileText />
       </span>
       <span class="song-item-copy">
         <span class="song-item-title" :title="songEntry.title">{{ songEntry.title }}</span>
@@ -108,7 +105,7 @@ defineExpose({
   display: grid;
   flex: 1;
   align-content: start;
-  gap: 0.62rem;
+  gap: 0.36rem;
   overflow: auto;
   padding-right: 0.25rem;
   outline: none;
@@ -125,8 +122,8 @@ defineExpose({
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 0.68rem;
-  padding: 0.62rem 0.78rem;
+  gap: 0.48rem;
+  padding: 0.42rem 0.56rem;
   border: 1px solid rgba(35, 49, 39, 0.12);
   background: #fffef9;
   color: #233127;
@@ -158,9 +155,9 @@ defineExpose({
 .song-item-icon {
   display: inline-grid;
   place-items: center;
-  width: 1.82rem;
-  height: 1.82rem;
-  margin-top: 0.08rem;
+  width: 1.42rem;
+  height: 1.42rem;
+  margin-top: 0.02rem;
   color: rgba(74, 86, 74, 0.56);
 }
 
@@ -176,7 +173,7 @@ defineExpose({
 
 .song-item-copy {
   display: grid;
-  gap: 0.14rem;
+  gap: 0.1rem;
   min-width: 0;
 }
 
@@ -190,14 +187,14 @@ defineExpose({
 
 .song-item-title {
   color: #233127;
-  font-size: 0.94rem;
+  font-size: 0.86rem;
   font-weight: 600;
   line-height: 1.2;
 }
 
 .song-item-artist {
   color: rgba(74, 86, 74, 0.82);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   line-height: 1.15;
 }
 
