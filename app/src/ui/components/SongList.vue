@@ -27,6 +27,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   hover: [filePath: string];
+  leave: [];
   mousemove: [filePath: string];
   open: [filePath: string];
   wheel: [];
@@ -69,6 +70,7 @@ defineExpose({
     :tabindex="tabindex"
     @focus="emit('focus')"
     @keydown="emit('keydown', $event)"
+    @mouseleave="emit('leave')"
     @wheel="emit('wheel')"
   >
     <div v-if="songs.length === 0" class="songbook-empty">
@@ -139,6 +141,11 @@ defineExpose({
 .song-item.active {
   border-color: rgba(55, 81, 59, 0.28);
   background: #f3f7f1;
+}
+
+.song-item:hover {
+  border-color: rgba(55, 81, 59, 0.28);
+  background: #f8fbf6;
 }
 
 .song-item.selected {

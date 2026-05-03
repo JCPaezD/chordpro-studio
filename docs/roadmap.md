@@ -180,6 +180,7 @@ Current status:
 
 - v1.7 UX/UI review has validated the first selected refinement slice for `Convert` and `Songbook`: compact integrated headers/toolbars, Lucide-based action iconography, softer status badges, reduced workspace chrome, denser editor/list surfaces and aligned Convert/Songbook editor metrics while preserving the current layout structure.
 - v1.7 Preview has received the same first-pass visual refinement: compact integrated export toolbar, reduced chrome around the PDF surface, softer empty/loading states and layout metrics coverage, while preserving the current ChordPro CLI -> Blob URL -> WebView PDF viewer path.
+- v1.7 Performance has received its first interaction refinement slice: split list + preview remains the preferred current layout, the song list now behaves as a visual index with direct song loading, keyboard and dock navigation move the active song directly, and the list handle / floating controls are separated from the native PDF toolbar while the existing WebView PDF viewer path remains unchanged.
 - v1.7 UI validation tooling now includes `npm run ui:metrics`, a Playwright-based layout metrics check that reuses an installed Chrome/Edge browser and verifies key Convert/Songbook header, toolbar and editor alignment constraints without downloading Playwright-managed browsers.
 
 ## Current roadmap
@@ -207,9 +208,9 @@ Pending, planned or possible work.
 
 - define a dedicated app-owned reading surface for Performance mode
 - review the current Performance interaction model before implementation:
-  - decide whether `v1.7` should keep the current full-preview plus overlay song list model, introduce a split list + preview mode, or support both as a progressive layout strategy
-  - simplify the relationship between song list navigation, dock controls and keyboard shortcuts so navigation gives immediate UI feedback and does not feel like competing control paths
-  - decide how the `active` / `selected` song distinction should appear in Performance once the layout direction is chosen
+  - first slice implemented: keep split list + preview as the preferred current layout while retaining full-preview mode when the list is collapsed
+  - first slice implemented: simplify song list navigation, dock controls and keyboard shortcuts around immediate active-song changes
+  - first slice implemented: use `active` as the persistent Performance song state and keep hover/focus feedback temporary instead of maintaining a separate list `selected` state
 - decide the rendering base and initial implementation slice for a progressive in-app reader
 - begin implementing a first progressive in-app reading slice for Performance mode
 
@@ -241,7 +242,7 @@ Pending, planned or possible work.
   - introduce icons where appropriate
   - maintain current layout structure
 - strengthen iconography and action grouping across the app so the growing number of available actions remains scannable without hiding important real workflow controls
-- refine the `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions, especially where Performance keeps list browsing separate from the currently previewed song
+- refine the `active` / `selected` distinction if the UX review still justifies it after the wider Songbook and Performance decisions, especially for normal Songbook browsing now that Performance has moved to an `active`-only navigation model
 - stretch goal: extract the Gemini API key modal into a dedicated component for consistency with the existing modal components
 
 ### Validation and diagnostics

@@ -12,14 +12,6 @@
                   <span v-if="props.songbook" class="performance-song-count">{{ props.songbook.songs.length }}</span>
                 </div>
               </div>
-              <button
-                class="performance-icon-button performance-sidebar-close-button"
-                aria-label="Close song list"
-                title="Close song list"
-                @click="closeSongList({ focusDock: true })"
-              >
-                <X aria-hidden="true" />
-              </button>
             </div>
 
             <p v-if="props.songbookError" class="message error-message">{{ props.songbookError }}</p>
@@ -33,9 +25,9 @@
               empty-message="No `.cho` files were found in this folder."
               @keydown="handleSongListKeydown"
               @hover="handleSongListHover"
+              @leave="handleSongListLeave"
               @mousemove="handleSongListMouseMove"
               @open="handleSongListOpen"
-              @wheel="handleSongListWheel"
             />
 
             <div v-else class="songbook-empty large">
@@ -43,6 +35,17 @@
             </div>
           </div>
         </aside>
+
+        <button
+          :class="['performance-icon-button', 'performance-list-handle', { open: isSongListOpen }]"
+          :aria-label="isSongListOpen ? 'Hide songs' : 'Show songs'"
+          :aria-pressed="isSongListOpen"
+          :title="isSongListOpen ? 'Hide songs' : 'Show songs'"
+          @click="toggleSongList"
+        >
+          <PanelLeftClose v-if="isSongListOpen" aria-hidden="true" />
+          <PanelLeftOpen v-else aria-hidden="true" />
+        </button>
 
         <div ref="previewViewportRef" class="preview-content" tabindex="-1">
           <div v-if="!isTauri()" class="preview-state">
@@ -123,58 +126,34 @@
               <span class="preview-refresh-spinner" />
             </div>
             <div class="performance-dock-shell" aria-label="Performance controls">
+              <button
+                class="performance-icon-button performance-exit-button"
+                aria-label="Exit performance mode"
+                title="Exit performance mode"
+                @keydown="handleDockButtonKeydown"
+                @click="props.exitPerformanceMode"
+              >
+                <X aria-hidden="true" />
+              </button>
+
               <div class="performance-dock">
                 <div class="performance-dock-group">
                   <button
                     class="performance-icon-button"
-                    :ref="setDockButtonRef(0)"
-                    tabindex="0"
-                    :class="{ active: isSongListOpen }"
-                    :aria-label="isSongListOpen ? 'Hide songs' : 'Show songs'"
-                    :aria-pressed="isSongListOpen"
-                    :title="isSongListOpen ? 'Hide songs' : 'Show songs'"
-                    @keydown="handleDockButtonKeydown($event, 0)"
-                    @click="toggleSongList"
-                  >
-                    <PanelLeftClose v-if="isSongListOpen" aria-hidden="true" />
-                    <PanelLeftOpen v-else aria-hidden="true" />
-                  </button>
-                  <button
-                    class="performance-icon-button"
-                    :ref="setDockButtonRef(1)"
-                    tabindex="-1"
-                    aria-label="Exit performance mode"
-                    title="Exit performance mode"
-                    @keydown="handleDockButtonKeydown($event, 1)"
-                    @click="props.exitPerformanceMode"
-                  >
-                    <X aria-hidden="true" />
-                  </button>
-                </div>
-
-                <div class="performance-dock-separator" aria-hidden="true" />
-
-                <div class="performance-dock-group">
-                  <button
-                    class="performance-icon-button"
-                    :ref="setDockButtonRef(2)"
-                    tabindex="-1"
                     :disabled="!canSelectPreviousSong"
                     aria-label="Previous song"
                     title="Previous song"
-                    @keydown="handleDockButtonKeydown($event, 2)"
+                    @keydown="handleDockButtonKeydown"
                     @click="void selectRelativeSong(-1)"
                   >
                     <ChevronUp aria-hidden="true" />
                   </button>
                   <button
                     class="performance-icon-button"
-                    :ref="setDockButtonRef(3)"
-                    tabindex="-1"
                     :disabled="!canSelectNextSong"
                     aria-label="Next song"
                     title="Next song"
-                    @keydown="handleDockButtonKeydown($event, 3)"
+                    @keydown="handleDockButtonKeydown"
                     @click="void selectRelativeSong(1)"
                   >
                     <ChevronDown aria-hidden="true" />
@@ -218,7 +197,6 @@ type PreviewPlaceholderInfo = {
   fileName: string;
   hasContext: boolean;
 };
-type InputSource = "keyboard" | "mouse";
 type SongListExpose = {
   focus: () => void;
   getItemElement: (index: number) => HTMLButtonElement | null;
@@ -251,9 +229,8 @@ const emit = defineEmits<{
 const songListRef = ref<SongListExpose | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
-const dockButtonRefs = ref<(HTMLButtonElement | null)[]>([]);
-const songListLastInputSource = ref<InputSource>("keyboard");
 const isSongListOpen = ref(true);
+const hoveredSongPath = ref<string | null>(null);
 const showPreviewLoadingIndicator = ref(false);
 const activePreviewFrame = ref<PreviewFrameId>("A");
 const pendingPreviewFrame = ref<PreviewFrameId | null>(null);
@@ -284,15 +261,7 @@ const canSelectNextSong = computed(() => {
   const songs = songEntries.value;
   return songs.length > 0 && currentSongIndex.value >= 0 && currentSongIndex.value < songs.length - 1;
 });
-const currentSelectionIndex = computed(() => {
-  const songs = songEntries.value;
-  if (!props.selectedListPath) {
-    return -1;
-  }
-
-  return songs.findIndex((songEntry) => songEntry.filePath === props.selectedListPath);
-});
-const selectedSongListPath = computed(() => props.selectedListPath);
+const selectedSongListPath = computed(() => hoveredSongPath.value);
 const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
 const activePreviewBaseUrl = computed(() => props.previewSrc);
 const nextRenderedPreviewUrl = computed(() => applyFit(activePreviewBaseUrl.value));
@@ -314,10 +283,6 @@ function syncPerformanceSelection(): void {
     return;
   }
 
-  if (currentSelectionIndex.value >= 0) {
-    return;
-  }
-
   if (currentSongIndex.value >= 0) {
     setSelectedListPath(songEntries.value[currentSongIndex.value]?.filePath ?? null);
     return;
@@ -332,23 +297,6 @@ function getSongListIndexByPath(filePath: string | null): number {
   }
 
   return songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
-}
-
-function isPerformancePathVisible(filePath: string | null): boolean {
-  const index = getSongListIndexByPath(filePath);
-  if (index < 0) {
-    return false;
-  }
-
-  const itemElement = songListRef.value?.getItemElement(index);
-  const rootElement = songListRef.value?.getRootElement();
-  if (!itemElement || !rootElement) {
-    return false;
-  }
-
-  const itemRect = itemElement.getBoundingClientRect();
-  const rootRect = rootElement.getBoundingClientRect();
-  return itemRect.top >= rootRect.top && itemRect.bottom <= rootRect.bottom;
 }
 
 function focusSongList(): void {
@@ -367,24 +315,6 @@ function focusPreviewViewport(): void {
   });
 }
 
-function focusDockButton(index = 0): void {
-  void nextTick(() => {
-    const buttons = dockButtonRefs.value.filter((button): button is HTMLButtonElement => button !== null);
-    if (buttons.length === 0) {
-      return;
-    }
-
-    const primaryIndex = Math.max(0, Math.min(index, 0));
-    buttons[primaryIndex]?.focus();
-  });
-}
-
-function setDockButtonRef(index: number) {
-  return (element: Element | null): void => {
-    dockButtonRefs.value[index] = element instanceof HTMLButtonElement ? element : null;
-  };
-}
-
 function scrollPerformanceIndexIntoView(index: number, behavior: ScrollBehavior = "smooth"): void {
   if (index < 0) {
     return;
@@ -398,10 +328,6 @@ function scrollPerformanceIndexIntoView(index: number, behavior: ScrollBehavior 
   });
 }
 
-function scrollPerformanceSelectionIntoView(behavior: ScrollBehavior = "smooth"): void {
-  scrollPerformanceIndexIntoView(currentSelectionIndex.value, behavior);
-}
-
 function alignPerformanceViewportToActiveSong(behavior: ScrollBehavior = "auto"): void {
   if (!isSongListOpen.value) {
     return;
@@ -410,7 +336,7 @@ function alignPerformanceViewportToActiveSong(behavior: ScrollBehavior = "auto")
   void nextTick(() => {
     const activeIndex = currentSongIndex.value;
     if (activeIndex < 0) {
-      scrollPerformanceSelectionIntoView(behavior);
+      scrollPerformanceIndexIntoView(0, behavior);
       return;
     }
 
@@ -418,35 +344,22 @@ function alignPerformanceViewportToActiveSong(behavior: ScrollBehavior = "auto")
       block: "nearest",
       behavior
     });
-
-    const activePath = props.selectedSongPath;
-    const selectionPath = props.selectedListPath;
-    if (selectionPath && selectionPath !== activePath && !isPerformancePathVisible(selectionPath)) {
-      setSelectedListPath(activePath);
-    }
   });
 }
 
 function handleSongListHover(filePath: string): void {
-  if (songListLastInputSource.value !== "mouse") {
-    return;
-  }
+  hoveredSongPath.value = filePath;
+}
 
-  setSelectedListPath(filePath);
+function handleSongListLeave(): void {
+  hoveredSongPath.value = null;
 }
 
 function handleSongListMouseMove(filePath: string): void {
-  songListLastInputSource.value = "mouse";
-  setSelectedListPath(filePath);
-}
-
-function handleSongListWheel(): void {
-  songListLastInputSource.value = "mouse";
+  hoveredSongPath.value = filePath;
 }
 
 function handleSongListOpen(filePath: string): void {
-  songListLastInputSource.value = "mouse";
-  setSelectedListPath(filePath);
   const nextIndex = songEntries.value.findIndex((songEntry) => songEntry.filePath === filePath);
   if (nextIndex >= 0) {
     void selectSong(nextIndex, { closeList: false, focusTarget: "list" });
@@ -456,15 +369,12 @@ function handleSongListOpen(filePath: string): void {
 function openSongList(): void {
   isSongListOpen.value = true;
   focusSongList();
+  alignPerformanceViewportToActiveSong("auto");
 }
 
-function closeSongList(options?: { focusDock?: boolean; dockButtonIndex?: number; focusPreview?: boolean }): void {
+function closeSongList(options?: { focusPreview?: boolean }): void {
   isSongListOpen.value = false;
-
-  if (options?.focusDock) {
-    focusDockButton(options.dockButtonIndex ?? 0);
-    return;
-  }
+  hoveredSongPath.value = null;
 
   if (options?.focusPreview) {
     focusPreviewViewport();
@@ -727,7 +637,7 @@ function handlePreviewFrameLoad(frame: PreviewFrameId): void {
 
 function toggleSongList(): void {
   if (isSongListOpen.value) {
-    closeSongList();
+    closeSongList({ focusPreview: true });
     return;
   }
 
@@ -738,9 +648,7 @@ async function selectSong(
   index: number,
   options?: {
     closeList?: boolean;
-    focusTarget?: "list" | "dock" | "preview" | "preserve";
-    dockButtonIndex?: number;
-    preserveListSelection?: boolean;
+    focusTarget?: "list" | "preview" | "preserve";
   }
 ): Promise<void> {
   const songEntry = songEntries.value[index];
@@ -748,19 +656,16 @@ async function selectSong(
     return;
   }
 
-  if (!options?.preserveListSelection) {
-    setSelectedListPath(songEntry.filePath);
-  }
-
   const opened = await props.openSong(songEntry.filePath);
   if (!opened) {
     return;
   }
 
+  hoveredSongPath.value = null;
+  setSelectedListPath(songEntry.filePath);
+
   if (options?.closeList) {
     closeSongList({
-      focusDock: options.focusTarget === "dock",
-      dockButtonIndex: options.dockButtonIndex,
       focusPreview: options.focusTarget === "preview"
     });
     return;
@@ -768,11 +673,6 @@ async function selectSong(
 
   if (options?.focusTarget === "list") {
     focusSongList();
-    return;
-  }
-
-  if (options?.focusTarget === "dock") {
-    focusDockButton(options.dockButtonIndex ?? 0);
     return;
   }
 
@@ -794,8 +694,7 @@ async function selectRelativeSong(delta: number): Promise<void> {
 
   await selectSong(nextIndex, {
     closeList: false,
-    focusTarget: "preserve",
-    preserveListSelection: true
+    focusTarget: "preserve"
   });
 
   alignPerformanceViewportToActiveSong("smooth");
@@ -803,18 +702,14 @@ async function selectRelativeSong(delta: number): Promise<void> {
 
 function handleSongListKeydown(event: KeyboardEvent): void {
   const songs = songEntries.value;
-  const selectedIndex = currentSelectionIndex.value >= 0 ? currentSelectionIndex.value : 0;
 
   if (event.key === "ArrowDown") {
     if (songs.length === 0) {
       return;
     }
 
-    const nextIndex = Math.min(selectedIndex + 1, songs.length - 1);
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    setSelectedListPath(songs[nextIndex]?.filePath ?? null);
-    scrollPerformanceIndexIntoView(nextIndex);
+    void selectRelativeSong(1);
     return;
   }
 
@@ -823,18 +718,14 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
-    const nextIndex = Math.max(selectedIndex - 1, 0);
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    setSelectedListPath(songs[nextIndex]?.filePath ?? null);
-    scrollPerformanceIndexIntoView(nextIndex);
+    void selectRelativeSong(-1);
     return;
   }
 
-  if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-    songListLastInputSource.value = "keyboard";
+  if (event.key === "ArrowRight") {
     event.preventDefault();
-    focusDockButton(0);
+    focusPreviewViewport();
     return;
   }
 
@@ -843,9 +734,9 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    void selectSong(selectedIndex, { closeList: true, focusTarget: "dock", dockButtonIndex: 0 });
+    const targetIndex = getSongListIndexByPath(hoveredSongPath.value || props.selectedSongPath);
+    void selectSong(targetIndex >= 0 ? targetIndex : 0, { closeList: false, focusTarget: "list" });
     return;
   }
 
@@ -854,69 +745,44 @@ function handleSongListKeydown(event: KeyboardEvent): void {
       return;
     }
 
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
-    void selectSong(selectedIndex, { closeList: false, focusTarget: "list" });
+    const targetIndex = getSongListIndexByPath(hoveredSongPath.value || props.selectedSongPath);
+    void selectSong(targetIndex >= 0 ? targetIndex : 0, { closeList: false, focusTarget: "list" });
     return;
   }
 
   if (event.key === "Escape") {
     event.preventDefault();
-    closeSongList({ focusDock: true, dockButtonIndex: 0 });
+    closeSongList({ focusPreview: true });
   }
 }
 
-function handleDockButtonKeydown(event: KeyboardEvent, _index: number): void {
+function handleDockButtonKeydown(event: KeyboardEvent): void {
   if (event.key === "ArrowDown") {
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     void selectRelativeSong(1);
     return;
   }
 
   if (event.key === "ArrowUp") {
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
     void selectRelativeSong(-1);
     return;
   }
 
-  if (event.key === "ArrowRight") {
-    songListLastInputSource.value = "keyboard";
+  if (event.key === "ArrowLeft" && !isSongListOpen.value) {
     event.preventDefault();
-
-    if (isSongListOpen.value) {
-      focusSongList();
-      return;
-    }
-
     openSongList();
-    return;
-  }
-
-  if (event.key === "ArrowLeft") {
-    songListLastInputSource.value = "keyboard";
-    event.preventDefault();
-
-    if (isSongListOpen.value) {
-      focusSongList();
-      return;
-    }
-
-    openSongList();
-    return;
-  }
-
-  if (event.key === "Enter") {
-    songListLastInputSource.value = "keyboard";
-    event.preventDefault();
-    toggleSongList();
     return;
   }
 
   if (event.key === "Escape") {
-    songListLastInputSource.value = "keyboard";
     event.preventDefault();
+    if (isSongListOpen.value) {
+      closeSongList({ focusPreview: true });
+      return;
+    }
+
     props.exitPerformanceMode();
   }
 }
@@ -930,7 +796,7 @@ function handleWindowKeydown(event: KeyboardEvent): void {
     event.preventDefault();
 
     if (isSongListOpen.value) {
-      closeSongList({ focusDock: true, dockButtonIndex: 0 });
+      closeSongList({ focusPreview: true });
       return;
     }
 
@@ -941,10 +807,6 @@ function handleWindowKeydown(event: KeyboardEvent): void {
   if (!isSongListOpen.value && event.key === "Enter") {
     event.preventDefault();
     openSongList();
-    return;
-  }
-
-  if (isSongListOpen.value) {
     return;
   }
 
@@ -992,7 +854,7 @@ watch(
 watch(isSongListOpen, (isOpen) => {
   if (isOpen) {
     focusSongList();
-    scrollPerformanceSelectionIntoView("auto");
+    alignPerformanceViewportToActiveSong("auto");
   }
 });
 
@@ -1044,10 +906,12 @@ onBeforeUnmount(() => {
 
 .performance-stage {
   --performance-inset: 0.04rem;
-  --performance-control-size: 3.2rem;
-  --performance-control-gap: 0.52rem;
+  --performance-sidebar-width: clamp(14rem, 26vw, 18.5rem);
+  --performance-control-size: 2.7rem;
+  --performance-control-gap: 0;
   --performance-float-edge: calc(var(--performance-control-size) * 0.18);
   --performance-dock-edge: calc(var(--performance-control-size) * 0.46);
+  --performance-toolbar-clearance: calc(var(--performance-dock-edge) * 2.5);
 
   position: relative;
   display: flex;
@@ -1070,7 +934,7 @@ onBeforeUnmount(() => {
 }
 
 .performance-main.with-song-list {
-  gap: 0.34rem;
+  gap: 0;
 }
 
 .performance-sidebar-overlay {
@@ -1093,9 +957,9 @@ onBeforeUnmount(() => {
 }
 
 .performance-sidebar-overlay.open {
-  flex-basis: clamp(14rem, 26vw, 18.5rem);
-  width: clamp(14rem, 26vw, 18.5rem);
-  max-width: clamp(14rem, 26vw, 18.5rem);
+  flex-basis: var(--performance-sidebar-width);
+  width: var(--performance-sidebar-width);
+  max-width: var(--performance-sidebar-width);
   pointer-events: auto;
   transform: translateX(0);
   opacity: 1;
@@ -1117,6 +981,18 @@ onBeforeUnmount(() => {
 .performance-sidebar-shell:focus-within {
   background: rgba(255, 253, 247, 0.92);
   box-shadow: inset -3px 0 0 rgba(55, 81, 59, 0.12);
+}
+
+.performance-sidebar-shell :deep(.song-item.selected:not(.active)) {
+  border-color: rgba(55, 81, 59, 0.24);
+  background: #f8fbf6;
+  box-shadow: none;
+}
+
+.performance-sidebar-shell :deep(.song-item.active) {
+  border-color: #37513b;
+  background: #eef4ed;
+  box-shadow: 0 0 0 1px rgba(55, 81, 59, 0.14);
 }
 
 .performance-sidebar-top {
@@ -1312,21 +1188,31 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   z-index: 6;
-  padding: var(--performance-dock-edge);
+  padding:
+    var(--performance-toolbar-clearance)
+    var(--performance-dock-edge)
+    var(--performance-dock-edge);
   display: flex;
   justify-content: flex-end;
-  align-items: flex-end;
+  align-items: center;
   pointer-events: none;
+}
+
+.performance-exit-button {
+  position: absolute;
+  top: var(--performance-toolbar-clearance);
+  right: var(--performance-dock-edge);
+  pointer-events: auto;
 }
 
 .performance-dock {
   display: grid;
   gap: 0;
-  padding: 0.28rem;
+  padding: 0;
   border: 1px solid rgba(24, 32, 25, 0.16);
-  background: rgba(255, 250, 241, 0.9);
-  box-shadow: 0 16px 32px rgba(24, 32, 25, 0.16);
-  backdrop-filter: blur(4px);
+  background: rgba(255, 250, 241, 0.92);
+  box-shadow: 0 14px 26px rgba(24, 32, 25, 0.15);
+  backdrop-filter: blur(6px);
   pointer-events: auto;
 }
 
@@ -1343,11 +1229,8 @@ onBeforeUnmount(() => {
   gap: var(--performance-control-gap);
 }
 
-.performance-dock-separator {
-  width: 100%;
-  height: 1px;
-  margin: 0.38rem 0;
-  background: rgba(35, 49, 39, 0.14);
+.performance-dock-group:last-child .performance-icon-button:last-child {
+  border-bottom: 0;
 }
 
 .performance-icon-button {
@@ -1356,16 +1239,17 @@ onBeforeUnmount(() => {
   width: var(--performance-control-size);
   height: var(--performance-control-size);
   padding: 0;
-  border: 1px solid rgba(35, 49, 39, 0.18);
-  background: rgba(247, 239, 224, 0.96);
+  border: 0;
+  border-bottom: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(255, 250, 241, 0.92);
   color: #233127;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(24, 32, 25, 0.12);
+  box-shadow: none;
 }
 
 .performance-icon-button svg {
-  width: 1.56rem;
-  height: 1.56rem;
+  width: 1.28rem;
+  height: 1.28rem;
   fill: none;
   stroke: currentColor;
   stroke-width: 2.15;
@@ -1376,6 +1260,39 @@ onBeforeUnmount(() => {
 .performance-icon-button.active {
   border-color: #37513b;
   background: #eef4ed;
+}
+
+.performance-icon-button:hover:not(:disabled) {
+  background: rgba(238, 244, 237, 0.96);
+}
+
+.performance-list-handle {
+  position: absolute;
+  top: var(--performance-toolbar-clearance);
+  left: 0;
+  z-index: 8;
+  width: var(--performance-control-size);
+  height: 4.9rem;
+  border: 1px solid rgba(35, 49, 39, 0.16);
+  border-left: 0;
+  border-radius: 0 0.72rem 0.72rem 0;
+  background: rgba(238, 244, 237, 0.96);
+  box-shadow: 0 10px 20px rgba(24, 32, 25, 0.12);
+  transition:
+    left 180ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.performance-list-handle.open {
+  left: calc(var(--performance-sidebar-width) - 1px);
+  background: rgba(255, 250, 241, 0.96);
+}
+
+.performance-list-handle svg {
+  width: 1.28rem;
+  height: 1.28rem;
 }
 
 .performance-icon-button:focus-visible {
@@ -1433,8 +1350,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-.mini-button,
-.performance-icon-button {
+.mini-button {
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: rgba(247, 239, 224, 0.96);
   color: #233127;
@@ -1459,18 +1375,6 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(6px);
 }
 
-.performance-sidebar-close-button {
-  width: 2.05rem;
-  height: 2.05rem;
-  flex: 0 0 auto;
-  box-shadow: none;
-}
-
-.performance-sidebar-close-button svg {
-  width: 1.05rem;
-  height: 1.05rem;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1484,6 +1388,8 @@ onBeforeUnmount(() => {
     --performance-control-gap: 0.4rem;
     --performance-float-edge: calc(var(--performance-control-size) * 0.16);
     --performance-dock-edge: calc(var(--performance-control-size) * 0.36);
+    --performance-toolbar-clearance: calc(var(--performance-dock-edge) * 2.4);
+    --performance-sidebar-mobile-width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
   }
 
   .performance-main.with-song-list {
@@ -1496,15 +1402,24 @@ onBeforeUnmount(() => {
     left: var(--performance-float-edge);
     bottom: var(--performance-float-edge);
     flex: 0 0 auto;
-    width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
+    width: var(--performance-sidebar-mobile-width);
     max-width: calc(100% - (var(--performance-float-edge) * 2));
     transform: translateX(-1rem);
   }
 
   .performance-sidebar-overlay.open {
     flex-basis: auto;
-    width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
+    width: var(--performance-sidebar-mobile-width);
     max-width: calc(100% - (var(--performance-float-edge) * 2));
+  }
+
+  .performance-list-handle {
+    top: calc(var(--performance-float-edge) + var(--performance-toolbar-clearance));
+    left: var(--performance-float-edge);
+  }
+
+  .performance-list-handle.open {
+    left: calc(var(--performance-float-edge) + var(--performance-sidebar-mobile-width) - 1px);
   }
 
   .performance-sidebar-shell {
