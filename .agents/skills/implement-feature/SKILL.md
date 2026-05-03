@@ -253,6 +253,16 @@ When implementing UI features:
 
 Avoid introducing new global state unless absolutely necessary.
 
+## Visual Validation Tooling
+
+Choose the validation surface by what must be observed:
+
+- use the Codex integrated browser for shared visual review with the user, especially when the user needs to see the same Vite screen, interact, or point to a specific UI detail
+- use Playwright for Codex-owned screenshots, controlled desktop/mobile viewport checks, repeatable layout verification, responsive review, and redesign reference captures that do not require user interaction
+- ask the user for screenshots from the real Tauri app when the behavior depends on Tauri runtime, native dialogs, desktop window behavior, WebView/PDF viewer differences, filesystem integration, or APIs unavailable in Vite
+
+Start Vite when using either the integrated browser or Playwright for frontend UI review. Playwright screenshots do not replace the required human validation checkpoint for UI, UX, layout, dialog or interaction-flow changes.
+
 
 # Model Usage
 

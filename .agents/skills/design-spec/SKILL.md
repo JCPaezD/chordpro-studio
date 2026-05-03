@@ -173,6 +173,16 @@ Typical destinations may include:
 - `docs/architecture.md` when the design changes architectural understanding
 - `docs/roadmap.md` only if the item description or scope must be adjusted to match the approved design
 
+## Visual Design Inputs
+
+When a design spec needs visual evidence or reference captures:
+
+- use the Codex integrated browser for shared visual review with the user
+- use Playwright for Codex-owned screenshots, responsive checks, controlled viewport comparisons, or redesign reference captures
+- ask the user for real Tauri app screenshots when the behavior depends on desktop runtime, native dialogs, WebView/PDF viewer behavior, filesystem integration, or Tauri-only APIs
+
+See `.agents/workflow.md` for the full visual validation rule.
+
 ## Valid Outcomes
 
 Return one of these:

@@ -96,6 +96,16 @@ Propose or apply documentation updates when work changes:
 
 For UI, UX, layout, dialogs, interaction flow or visual behavior, stop for human validation before treating roadmap closure or final documentation closure as complete.
 
+## Visual And UI Validation
+
+Choose the visual validation surface by intent:
+
+- use the Codex integrated browser when Codex and the user need to inspect the same running Vite UI, discuss the screen, or let the user point to a concrete UI detail
+- use Playwright when Codex needs automated screenshots, repeatable layout checks, controlled viewport sizes, responsive comparisons, or visual material for redesign work without user interaction
+- ask the user for screenshots from the real Tauri app when the behavior depends on desktop runtime, native dialogs, WebView/PDF viewer behavior, filesystem integration, window chrome, or Tauri APIs
+
+The integrated browser is for shared visual review, not the default tool for automated screenshots. Playwright is for controlled automation, but it does not replace required human validation for UI/UX changes.
+
 ## Output Discipline
 
 Each skill should stop as soon as its output is sufficient for the next safe step.

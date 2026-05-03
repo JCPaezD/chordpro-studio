@@ -181,6 +181,14 @@ Limits:
   - ChordPro output validation rules
 - the current backend regression layer continues to protect render preprocessing and preview-cache invalidation rules, including cache-key changes when diagram visibility or instrument changes
 
+### Visual and UI validation workflow
+
+- Codex should use the integrated browser for shared visual review when both Codex and the user need to inspect the same running Vite UI, discuss a screen, or let the user point to a concrete UI detail
+- Codex should use Playwright for automated screenshots, repeatable layout checks, controlled viewport sizes, responsive comparisons, and redesign reference captures that do not require user interaction
+- when the behavior depends on the real Tauri desktop runtime, native dialogs, WebView/PDF viewer behavior, filesystem integration, window chrome, or Tauri-only APIs, the current preferred path is to ask the user for screenshots from the real app
+- Playwright is the preferred Codex-owned capture path because it can control viewport dimensions directly; the integrated browser remains a review surface, not the default screenshot automation surface
+- automated screenshots and layout checks do not replace the required human validation checkpoint for UI, UX, layout, dialog, interaction-flow or visual-behavior changes
+
 ### Playground pipeline entry points
 
 - the Playground can now execute the shared pipeline from `raw`, `cleaned`, or editable `ChordPro` input without introducing a second pipeline implementation
