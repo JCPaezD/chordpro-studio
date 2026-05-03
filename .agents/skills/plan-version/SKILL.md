@@ -1,6 +1,6 @@
 ---
 name: plan-version
-description: Build, adjust, or reorganize roadmap blocks and working versions from captured or refined items in this repository workflow. Use when Codex needs to decide what belongs in the next block, choose the right roadmap destination for an item, move items between backlog sections, reorder priorities, clarify existing roadmap structure, or document an approved planning decision in docs/roadmap.md.
+description: Build, adjust, or reorganize roadmap blocks and working versions from captured or refined items in this repository workflow. Use when Codex needs to decide what belongs in a version or work block, choose roadmap placement, move backlog items, reorder priorities, create macro-slices for an approved version, clarify roadmap structure, or document an approved planning decision in docs/roadmap.md. Skip this skill for already placed small changes that can safely move to design or implementation.
 ---
 
 # Plan Version
@@ -17,6 +17,8 @@ Use this skill to turn a loose set of candidate items into a coherent work block
 
 Keep the output planning-oriented. Decide what belongs together, what should move, and what should wait.
 
+See `.agents/workflow.md` for the shared workflow map.
+
 ## Core Rules
 
 When using this skill:
@@ -29,10 +31,19 @@ When using this skill:
 - explain why excluded or moved items do not belong where they were
 - make the next workflow step explicit
 - when a version or work block is already sufficiently decided, prefer recording it in `docs/roadmap.md` before moving into feature-level design work
+- when planning a real version or work block, leave enough macro-slicing to guide execution before treating the planning pass as complete
 - keep the richer planning narrative in conversation output
 - when updating `docs/roadmap.md`, prefer operational roadmap edits over explanatory planning prose
 
 Do not turn planning into technical design.
+
+## Boundary Rule
+
+Use this skill for placement, scope, grouping, and macro-slicing.
+
+For real versions or work blocks, macro-slicing means selected areas or slices, includes/excludes, general order, strong dependencies, and the next step per slice. It does not mean executable implementation tasks.
+
+Use `design-spec` after this skill for selected slices that need behavior or technical design. Use `breakdown-feature` after design when a slice is too large, mixed, or risky for one clean implementation pass.
 
 ## What This Skill May Do
 
@@ -43,6 +54,7 @@ This skill may:
 - choose the right roadmap destination for an item
 - move items between blocks or backlog sections
 - reorder items inside a block when that improves execution order
+- create or refresh macro-slices for an already planned version before implementation resumes
 - clarify a diffuse or outdated roadmap section
 - update `docs/roadmap.md` when the planning decision is approved
 - turn an approved version plan into a surgical roadmap update that is ready for execution
@@ -52,7 +64,7 @@ Do not:
 - capture raw notes from scratch
 - deeply refine ambiguous items
 - design technical implementation
-- break a feature into small execution tasks
+- break a feature into executable implementation tasks
 - perform generic documentation cleanup with no planning decision behind it
 
 If planning is blocked by item ambiguity, stop and route the item to `refine-item` instead of forcing a roadmap decision.
@@ -106,6 +118,10 @@ This structure is for conversation output, not for direct roadmap transcription.
 1. <item or block>
 2. <item or block>
 3. <item or block>
+
+**Macro-Slices**
+- <slice> -> next step: design-spec | breakdown-feature | implement-feature | backlog
+- <slice> -> next step: design-spec | breakdown-feature | implement-feature | backlog
 
 **Justification**
 - why each included or moved item belongs there now
@@ -197,6 +213,8 @@ When updating `docs/roadmap.md`, prefer an operational representation of the app
 When the conversation has already converged on a clear version or work block, prefer `document-now` as the next step before `design-spec`.
 Use `design-spec` after that for the main selected features or technical blocks inside the approved version, not as a substitute for recording the version decision itself.
 
+When a version is already documented and implementation is resuming, use this skill only if the roadmap block lacks enough macro-slicing or execution order. If the existing block is already clear enough, start with the selected slice's `design-spec`, `breakdown-feature`, or `implement-feature`.
+
 Do not update `docs/dev-notes.md` unless the planning discussion itself establishes a stable process or decision rule worth recording.
 
 ## Valid Outcomes
@@ -216,6 +234,7 @@ Escalate instead of over-solving:
 - use `refine-item` when an item is not clear enough to place confidently
 - use `design-spec` when a selected feature or technical block inside an approved version needs implementation design
 - use `breakdown-feature` when a selected item is too large and must be split before implementation
+- use `implement-feature` when a selected item is already clear, placed, and small enough for direct execution
 
 ## Style Rules
 

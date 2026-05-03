@@ -1,6 +1,6 @@
 ---
 name: design-spec
-description: Turn a refined item into a concise implementation-ready design spec for this repository workflow. Use when Codex needs to clarify the exact goal, confirm scope, define the technical approach, surface key rules and edge cases, and prepare a feature, fix, or improvement for implement-feature without jumping into code too early.
+description: Turn a clear, selected item or roadmap slice into a concise implementation-ready design spec for this repository workflow. Use when Codex needs to decide exact behavior, scope, technical approach, affected areas, contracts, rules, risks, and validation before implementation. Skip this skill for obvious small changes that can safely go directly to implement-feature, and do not use it for version-wide planning or executable task breakdown.
 ---
 
 # Design Spec
@@ -8,6 +8,8 @@ description: Turn a refined item into a concise implementation-ready design spec
 Use this skill to turn a clear item into a concise design spec that is ready to feed `implement-feature`.
 
 The goal is not to create heavy documentation. The goal is to reduce ambiguity before implementation, confirm the intended behavior, and define a practical design that fits the real repository.
+
+See `.agents/workflow.md` for the shared workflow map.
 
 ## Core Rules
 
@@ -24,6 +26,14 @@ When using this skill:
 - prefer the simplest design that is sufficient and coherent with the repository
 
 Do not confuse design with implementation. Stop before code changes.
+
+## Boundary Rule
+
+Use this skill to define the solution shape for one selected item or slice.
+
+Do not create a giant version-wide spec. For a planned version, use `plan-version` for macro-slicing, then use `design-spec` only on slices that need behavior or technical design before implementation.
+
+The implementation plan in this skill should stay high-level. Use `breakdown-feature` only when the approved design is too large, mixed, risky, or dependency-heavy for one clean implementation pass.
 
 ## What This Skill May Do
 
@@ -42,7 +52,7 @@ Do not:
 - capture raw notes
 - perform early-stage refinement that belongs to `refine-item`
 - decide roadmap placement
-- break the work into session-sized implementation tasks
+- break the work into executable implementation tasks
 - write code
 - diagnose runtime bugs
 
@@ -170,13 +180,15 @@ Return one of these:
 1. a clear design spec ready for `implement-feature`
 2. a design spec with one or two explicit open decisions that must be resolved first
 3. a decision that the item still needs `refine-item`
-4. an approved documentation update that records a stable design decision
+4. a decision that the item belongs in `plan-version` because placement, scope, or macro-slicing is still unsettled
+5. an approved documentation update that records a stable design decision
 
 ## Escalation Rule
 
 Escalate instead of over-solving:
 
 - use `refine-item` when the item is not yet clear enough for design
+- use `plan-version` when roadmap placement, version scope, or macro-slicing is still unsettled
 - use `breakdown-feature` when the approved design is too large and should be split before implementation
 - hand off to `implement-feature` when the spec is clear enough to execute
 

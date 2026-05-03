@@ -1,6 +1,6 @@
 ---
 name: breakdown-feature
-description: Break a designed feature, fix, or improvement into small, clear, execution-ready tasks for this repository workflow. Use when Codex already has enough design clarity but the work is still too large, mixed, or risky to implement as a single block, and needs a practical task breakdown with dependencies, completion criteria, and execution order.
+description: Break a sufficiently designed feature, fix, improvement, or roadmap slice into small, clear, execution-ready tasks for this repository workflow. Use when there is enough design clarity but the work is too large, mixed, risky, or dependency-heavy for one clean implementation pass. Skip this skill when the design can be implemented directly, and do not use it to decide what belongs in a version or roadmap block.
 ---
 
 # Breakdown Feature
@@ -8,6 +8,8 @@ description: Break a designed feature, fix, or improvement into small, clear, ex
 Use this skill to turn a designed change into a small set of clear implementation tasks.
 
 The goal is not to redesign the feature. The goal is to make execution easier, safer, and more incremental by splitting the work into sensible pieces.
+
+See `.agents/workflow.md` for the shared workflow map.
 
 ## Core Rules
 
@@ -22,6 +24,14 @@ When using this skill:
 - prefer task boundaries that reduce ambiguity and implementation risk
 
 Do not break work down just to make it look organized. Break it down only when it improves execution.
+
+## Boundary Rule
+
+Use this skill for executable task slicing after enough design clarity exists.
+
+Do not use it to decide version scope, roadmap placement, or macro-slices for an unplanned version. That belongs to `plan-version`.
+
+Do not use it to design behavior, architecture, components, or contracts. That belongs to `design-spec`.
 
 ## What This Skill May Do
 
@@ -161,12 +171,14 @@ Return one of these:
 2. a breakdown plus a recommendation to simplify scope
 3. a decision that the work is already small enough and does not need breakdown
 4. a decision that the work still needs `design-spec`
+5. a decision that the work still needs `plan-version` because version scope or macro-slicing is not settled
 
 ## Escalation Rule
 
 Escalate instead of over-solving:
 
 - use `design-spec` when the solution is not yet clear enough to split confidently
+- use `plan-version` when the question is still what belongs in the version, what waits, or how roadmap slices should be grouped
 - hand off to `implement-feature` when the breakdown is clear enough to execute
 
 ## Style Rules

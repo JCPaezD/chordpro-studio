@@ -1,6 +1,6 @@
 ---
 name: refine-item
-description: Clarify already captured items in this repository workflow by removing meaningful ambiguity, tightening scope, surfacing edge cases, exposing important assumptions, and proposing simplifications before planning or technical design. Use when Codex receives a structured item that is still too fuzzy for roadmap placement, implementation design, or confident follow-up.
+description: Clarify already captured or documented items in this repository workflow only when meaningful ambiguity still blocks the next safe step. Use to tighten scope, intent, included/excluded behavior, important edge cases, assumptions, and simplifications before roadmap placement or design. Skip this skill when capture already made the item clear enough for planning, design, debugging, implementation, backlog, or closure.
 ---
 
 # Refine Item
@@ -8,6 +8,8 @@ description: Clarify already captured items in this repository workflow by remov
 Use this skill to turn a captured item into something clearer, more actionable, and easier to route through the workflow.
 
 The goal is not to design the implementation. The goal is to make the item precise enough that the next step becomes obvious or at least much safer.
+
+See `.agents/workflow.md` for the shared workflow map.
 
 ## Core Rules
 
@@ -20,8 +22,17 @@ When using this skill:
 - expose meaningful assumptions
 - propose simplifications when they reduce unnecessary complexity
 - end with a clear `next_step`
+- stop as soon as the item is clear enough to route
 
 Do not refine for the sake of sounding more complete. Refine only what matters.
+
+## Boundary Rule
+
+Use this skill to define the item, not the solution.
+
+Exploratory design is allowed only when it helps validate the item's meaning, feasibility, or likely scope. Switch to `design-spec` once the work starts deciding behavior, architecture, components, contracts, implementation rules, or durable edge cases.
+
+Do not use this skill as a mandatory step after `capture-item`. If capture already made the item clear, route directly to the latest safe next step.
 
 ## What This Skill May Do
 
@@ -92,7 +103,7 @@ Do not wrap the main human-readable output in fenced code blocks unless literal 
 - only if something still blocks certainty
 
 **Next Step**
-- close | plan-version | design-spec | backlog
+- close | plan-version | design-spec | debug-root-cause | implement-feature | backlog
 
 ---
 
@@ -168,6 +179,8 @@ Escalate instead of over-solving:
 - use `capture-item` when the input is still chaotic or mixed
 - use `plan-version` when the item is already clear enough for roadmap placement
 - use `design-spec` when the item is clear enough for implementation design
+- use `debug-root-cause` when the refined item is an unclear or persistent bug needing diagnosis
+- use `implement-feature` when the refined item is already clear and small enough for direct execution
 
 ## Style Rules
 

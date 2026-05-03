@@ -1,11 +1,13 @@
 ---
 name: implement-feature
-description: Use this skill when implementing or modifying features in this repository. It enforces the project's architecture rules, development workflow, and Git practices. Do not use for trivial edits such as simple text changes unless they affect architecture or behavior.
+description: Use this skill when implementing or modifying clear features, fixes, behavior, UI, documentation, or workflow changes in this repository. It enforces architecture rules, documentation-first discipline, validation, human UI/UX checkpoints, and Git safety. Use the smallest safe implementation path for clear small changes; route to refine-item, plan-version, design-spec, breakdown-feature, or debug-root-cause first when ambiguity, planning, design, task slicing, or diagnosis is still needed.
 ---
 
 # Implement Feature Skill
 
 This skill defines the standard workflow for implementing features in this repository.
+
+See `.agents/workflow.md` for the shared workflow map.
 
 Use it whenever a task involves:
 
@@ -19,6 +21,15 @@ Do not use it for:
 - trivial formatting changes
 - small documentation edits
 - very small bug fixes that clearly affect a single line
+
+Route away from this skill first when:
+
+- the input is still chaotic or mixed enough for `capture-item`
+- the item exists but its meaning or scope is ambiguous enough for `refine-item`
+- roadmap placement, version scope or macro-slicing belongs in `plan-version`
+- behavior or technical approach needs `design-spec`
+- a designed change needs executable splitting through `breakdown-feature`
+- the root cause is unclear enough for `debug-root-cause`
 
 
 # Project Context
@@ -84,13 +95,54 @@ Export must reuse the current export logic:
 
 # Implementation Workflow
 
-Follow this process:
+Use the smallest safe implementation path.
+
+For a clear small change:
+
+1. Inspect only the relevant files and docs.
+2. Make the minimal coherent change.
+3. Run the most relevant validation.
+4. Report whether documentation was needed.
+
+For normal feature work:
 
 1. Inspect the repository and relevant files.
 2. Understand how the existing architecture implements the required functionality.
 3. Reuse existing services, adapters, and UI patterns whenever possible.
 4. Implement the minimal change required to complete the feature.
 5. Ensure the implementation remains consistent with existing code structure.
+
+For formal closure work:
+
+1. Complete implementation and relevant automatic validation.
+2. Stop for human validation when UI, UX, layout, dialogs, interaction flow or visual behavior changed.
+3. Update documentation needed to keep repo state truthful.
+4. Prepare commits only when explicitly requested.
+
+# Documentation First
+
+Keep documentation aligned with real decisions and changes.
+
+Do not require a manual user request before surfacing documentation impact. Skip documentation only when the change is trivial, mechanical, purely local, or does not leave durable project knowledge.
+
+Update or propose updates when implementation changes:
+
+- architecture
+- domain model
+- pipeline behavior
+- persistence or filesystem behavior
+- UX rules or stable interaction behavior
+- workflow rules
+- roadmap scope or status
+- validation or release process
+
+Use:
+
+- `docs/dev-notes.md` for stable technical, UX, workflow or operational rules
+- `docs/roadmap.md` for planned, pending, completed or moved product work
+- architecture/domain docs when the underlying model or system structure changes
+
+During active UI/UX work, do not move roadmap items to completed or finalize closure docs before human validation.
 
 
 # Assumptions Tracking (Filtered)

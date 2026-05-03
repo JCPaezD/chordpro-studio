@@ -1,6 +1,6 @@
 ---
 name: capture-item
-description: Convert raw development notes, mixed feedback, informal bug reports, small doubts, feature ideas, and loosely written change requests into clear structured items for this repository workflow. Use when Codex needs to capture chaotic input, separate mixed points, classify them, suggest the next workflow step, close trivial points, or register approved items in project documentation so they are not lost.
+description: Convert raw or mixed development notes, informal feedback, unclear bug reports, small doubts, feature ideas, and loosely written change requests into clear structured items for this repository workflow. Use when Codex needs to capture chaotic input, separate mixed points, classify them, preserve useful context, suggest the next workflow step, close trivial points, or register approved items so they are not lost. Skip this skill when the item is already clear enough for planning, design, debugging, implementation, or release workflow.
 ---
 
 # Capture Item
@@ -17,6 +17,8 @@ The goal is to avoid losing notes, reduce ambiguity early, and give each point a
 
 Keep outputs short, structured, and practical.
 
+See `.agents/workflow.md` for the shared workflow map.
+
 ## Core Rules
 
 When using this skill:
@@ -28,8 +30,17 @@ When using this skill:
 - preserve important context without copying unnecessary noise
 - assign an explicit `next_step`
 - avoid premature design or implementation planning
+- use the latest safe next step instead of forcing the full workflow chain
 
 Do not over-structure weak notes into fake precision.
+
+## Boundary Rule
+
+Use this skill for intake, not for final clarification.
+
+This skill may include light clarification or exploratory design when it helps decide whether a note is real, worth preserving, or ready to route. Stop before deciding technical behavior, architecture, components, implementation contracts, or executable tasks.
+
+Do not use `refine-item` automatically after capture. Route to `refine-item` only when a recognizable item still has meaningful scope, intent, included/excluded behavior, or edge-case ambiguity that blocks safe planning or design.
 
 ## Allowed Outcomes
 
@@ -88,7 +99,7 @@ Do not wrap the main human-readable output in fenced code blocks unless literal 
 - additional observations
 
 **Next Step**
-- close | refine-item | plan-version | design-spec | backlog | document-now
+- close | refine-item | plan-version | design-spec | debug-root-cause | implement-feature | backlog | document-now
 
 ---
 
@@ -139,6 +150,8 @@ Escalate instead of over-solving:
 - use `refine-item` when the item is captured but still ambiguous
 - use `plan-version` when the item must be grouped or prioritized within a work block
 - use `design-spec` when the item is already decided and needs implementation design
+- use `debug-root-cause` when the item is an unclear or persistent bug needing diagnosis
+- use `implement-feature` when the item is clear, small enough, and ready for direct change
 - route to `backlog` when the item should be documented and preserved for later without immediate follow-up
 
 ## Style Rules
