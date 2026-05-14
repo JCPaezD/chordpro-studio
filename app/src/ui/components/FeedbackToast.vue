@@ -43,8 +43,8 @@ const icon = computed(() => {
 <style scoped>
 .feedback-toast-shell {
   position: fixed;
-  right: 1.2rem;
-  bottom: 1.2rem;
+  right: 0.72rem;
+  bottom: 0.72rem;
   z-index: 1200;
   pointer-events: none;
 }
@@ -52,58 +52,63 @@ const icon = computed(() => {
 .feedback-toast {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  max-width: min(26rem, calc(100vw - 2rem));
-  padding: 0.85rem 0.95rem;
-  border-radius: 14px;
-  color: #fffaf1;
-  background: rgba(30, 24, 16, 0.94);
-  box-shadow: 0 16px 34px rgba(24, 17, 9, 0.22);
-  border: 1px solid rgba(255, 250, 241, 0.08);
+  gap: 0;
+  max-width: min(24rem, calc(100vw - 1.44rem));
+  padding: 0;
+  border-radius: 6px;
+  color: #233127;
+  background: rgba(255, 250, 241, 0.97);
+  box-shadow: 0 14px 28px rgba(24, 32, 25, 0.14);
+  border: 1px solid rgba(24, 32, 25, 0.14);
   pointer-events: auto;
+  overflow: hidden;
 }
 
 .feedback-toast-success {
-  border-left: 4px solid #98c56d;
+  border-left: 4px solid #557d4d;
 }
 
 .feedback-toast-error {
-  border-left: 4px solid #d66f5c;
+  border-left: 4px solid #9a4a3f;
 }
 
 .feedback-toast-info {
-  border-left: 4px solid #c5a15a;
+  border-left: 4px solid #b58b3a;
 }
 
 .feedback-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 2.18rem;
+  height: 2.18rem;
   flex: 0 0 auto;
-  border-radius: 999px;
-  background: rgba(255, 250, 241, 0.14);
+  border-right: 1px solid rgba(35, 49, 39, 0.1);
+  background: rgba(247, 240, 225, 0.72);
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
 .feedback-message {
   margin: 0;
   flex: 1;
-  font-size: 0.95rem;
+  padding: 0.46rem 0.72rem;
+  font-size: 0.88rem;
   line-height: 1.35;
 }
 
 .feedback-close {
   flex: 0 0 auto;
   border: 0;
-  background: transparent;
+  border-left: 1px solid rgba(35, 49, 39, 0.1);
+  align-self: stretch;
+  min-width: 2.18rem;
+  background: rgba(247, 240, 225, 0.5);
   color: inherit;
-  font-size: 1.15rem;
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.82;
+  opacity: 0.76;
 }
 
 .feedback-close:hover {
@@ -125,9 +130,9 @@ const icon = computed(() => {
 
 @media (max-width: 800px) {
   .feedback-toast-shell {
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.8rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
   }
 
   .feedback-toast {

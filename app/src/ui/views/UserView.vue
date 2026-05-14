@@ -1278,8 +1278,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
           <img :src="appLogo" alt="" class="brand-mark" />
           <span class="brand-title">ChordPro Studio</span>
         </div>
-        <p v-if="isDev" class="eyebrow">User</p>
-        <h1>Convert songs and manage your ChordPro songbook</h1>
       </div>
 
       <div class="header-controls">
@@ -1992,15 +1990,16 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 <style scoped>
 .user-view {
-  --nav-rail-padding: 0.65rem;
-  --nav-button-size: 5.45rem;
+  --nav-rail-padding: 6px;
+  --nav-button-size: 70px;
+  --nav-rail-border-width: 1px;
 
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  gap: 1rem;
+  gap: 0.34rem;
   overflow: hidden;
 }
 
@@ -2008,7 +2007,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   padding: 1.25rem 1.5rem;
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
-  box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+  box-shadow: 0 10px 26px rgba(74, 58, 32, 0.06);
 }
 
 .workspace-panel.card {
@@ -2022,9 +2021,11 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .user-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
   min-width: 0;
+  padding: 0.34rem 0.52rem;
+  background: rgba(255, 250, 241, 0.82);
 }
 
 .header-copy,
@@ -2034,21 +2035,23 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .header-controls {
   display: grid;
-  gap: 1rem;
+  gap: 0.4rem;
   justify-items: end;
 }
 
 .view-toggle {
   display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border: 1px solid rgba(35, 49, 39, 0.18);
-  background: #f7f0e1;
+  gap: 0;
+  padding: 0;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(247, 240, 225, 0.72);
 }
 
 .view-button {
-  padding: 0.6rem 1rem;
+  min-height: 2rem;
+  padding: 0.38rem 0.74rem;
   border: 0;
+  border-right: 1px solid rgba(35, 49, 39, 0.1);
   background: transparent;
   color: #233127;
   font: inherit;
@@ -2059,28 +2062,35 @@ async function openGeminiApiKeyPage(): Promise<void> {
   cursor: pointer;
 }
 
+.view-button:last-child {
+  border-right: 0;
+}
+
 .view-button.active {
-  background: linear-gradient(135deg, #1f3124, #37513b);
+  background: #233b29;
   color: #f8f3e8;
 }
 
 .brand-lockup {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 0.52rem;
+  margin: 0;
+  min-height: 2rem;
+  transform: translateY(1px);
 }
 
 .brand-mark {
-  width: 2.5rem;
-  height: 2.5rem;
+  display: block;
+  width: 1.82rem;
+  height: 1.82rem;
   flex: 0 0 auto;
 }
 
 .brand-title {
   color: #182019;
   font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 1.55rem;
+  font-size: 1.14rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -2129,8 +2139,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .user-main {
   display: grid;
-  grid-template-columns: calc(var(--nav-button-size) + (var(--nav-rail-padding) * 2)) minmax(0, 1.1fr) minmax(24rem, 1fr);
-  gap: 1rem;
+  grid-template-columns: calc(var(--nav-button-size) + (var(--nav-rail-padding) * 2) + (var(--nav-rail-border-width) * 2)) minmax(0, 1.1fr) minmax(24rem, 1fr);
+  gap: 0.34rem;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -2141,29 +2151,30 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  align-items: center;
+  align-items: stretch;
+  box-sizing: border-box;
   padding: var(--nav-rail-padding);
-  border: 1px solid rgba(24, 32, 25, 0.12);
-  background: rgba(255, 250, 241, 0.92);
-  box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+  border: var(--nav-rail-border-width) solid rgba(24, 32, 25, 0.12);
+  background: rgba(255, 250, 241, 0.58);
+  box-shadow: 0 10px 24px rgba(74, 58, 32, 0.05);
   overflow: visible;
 }
 
 .nav-rail-main {
   display: grid;
-  gap: 0.65rem;
-  align-self: center;
-  justify-items: stretch;
-  width: var(--nav-button-size);
+  gap: 0.32rem;
+  align-self: stretch;
+  justify-items: center;
+  width: 100%;
 }
 
 .nav-rail-footer {
   position: relative;
   margin-top: auto;
   display: grid;
-  align-self: center;
-  justify-items: stretch;
-  width: var(--nav-button-size);
+  align-self: stretch;
+  justify-items: center;
+  width: 100%;
 }
 
 .nav-button {
@@ -2171,17 +2182,18 @@ async function openGeminiApiKeyPage(): Promise<void> {
   grid-template-rows: auto auto;
   align-content: center;
   justify-items: center;
-  width: 100%;
+  width: var(--nav-button-size);
+  min-width: 0;
   min-height: var(--nav-button-size);
   aspect-ratio: 1 / 1;
-  gap: 0.38rem;
+  gap: 0.22rem;
   box-sizing: border-box;
-  padding: 0.7rem 0.45rem;
-  border: 1px solid rgba(35, 49, 39, 0.12);
-  background: rgba(255, 250, 241, 0.42);
+  padding: 0.45rem 0.34rem;
+  border: 1px solid transparent;
+  background: transparent;
   color: #233127;
   font: inherit;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.1;
@@ -2190,14 +2202,22 @@ async function openGeminiApiKeyPage(): Promise<void> {
   cursor: pointer;
 }
 
+.nav-button span {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 
 .nav-rail-main > .nav-button {
   justify-self: center;
 }
 
 .nav-button svg {
-  width: 2.65rem;
-  height: 2.65rem;
+  width: 2.08rem;
+  height: 2.08rem;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.1;
@@ -2207,27 +2227,27 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .nav-button:hover:not(.active) {
   border-color: rgba(35, 49, 39, 0.18);
-  background: rgba(255, 250, 241, 0.62);
+  background: rgba(255, 250, 241, 0.58);
 }
 
 .nav-button.active {
-  background: linear-gradient(135deg, #1f3124, #37513b);
+  background: #233b29;
   border-color: rgba(31, 49, 36, 0.18);
   color: #f8f3e8;
 }
 
 .preferences-popover {
   position: absolute;
-  left: calc(100% + 0.75rem);
+  left: calc(100% + 0.4rem);
   bottom: 0;
   z-index: 20;
   display: grid;
-  gap: 0.85rem;
-  width: min(22rem, calc(100vw - 11rem));
-  padding: 0.9rem 1rem;
-  border: 1px solid rgba(24, 32, 25, 0.24);
-  background: #fffefb;
-  box-shadow: 0 26px 52px rgba(24, 32, 25, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+  gap: 0.72rem;
+  width: min(19rem, calc(100vw - 8rem));
+  padding: 0.72rem 0.78rem;
+  border: 1px solid rgba(24, 32, 25, 0.14);
+  background: rgba(255, 250, 241, 0.96);
+  box-shadow: 0 18px 36px rgba(24, 32, 25, 0.16);
 }
 
 .preferences-heading {
@@ -2242,7 +2262,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .preferences-item-copy {
@@ -2279,8 +2299,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .preferences-switch-track {
   display: inline-flex;
   align-items: center;
-  width: 2.8rem;
-  padding: 0.22rem;
+  width: 2.45rem;
+  padding: 0.18rem;
   border-radius: 999px;
   background: #d6d1c6;
   transition: background 160ms ease, justify-content 160ms ease;
@@ -2292,8 +2312,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .preferences-switch-thumb {
-  width: 1rem;
-  height: 1rem;
+  width: 0.92rem;
+  height: 0.92rem;
   border-radius: 999px;
   background: #fffaf1;
   box-shadow: 0 4px 10px rgba(24, 32, 25, 0.18);
@@ -2303,15 +2323,16 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: inline-grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-left: auto;
-  padding: 0.25rem;
+  padding: 0;
   border: 1px solid rgba(35, 49, 39, 0.14);
-  background: #f4ecdd;
+  background: rgba(247, 240, 225, 0.72);
 }
 
 .preferences-segmented-option {
-  min-height: 2.25rem;
-  padding: 0.55rem 0.8rem;
+  min-height: 2rem;
+  padding: 0.42rem 0.58rem;
   border: 0;
+  border-right: 1px solid rgba(35, 49, 39, 0.1);
   background: transparent;
   color: #233127;
   font: inherit;
@@ -2323,8 +2344,12 @@ async function openGeminiApiKeyPage(): Promise<void> {
   transition: background 160ms ease, color 160ms ease;
 }
 
+.preferences-segmented-option:last-child {
+  border-right: 0;
+}
+
 .preferences-segmented-option.active {
-  background: linear-gradient(135deg, #1f3124, #37513b);
+  background: #233b29;
   color: #f8f3e8;
 }
 
@@ -3406,17 +3431,19 @@ async function openGeminiApiKeyPage(): Promise<void> {
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgba(24, 32, 25, 0.28);
+  background: rgba(28, 32, 26, 0.24);
 }
 
 .modal-card {
   display: grid;
-  gap: 1rem;
-  width: min(100%, 36rem);
-  padding: 1.25rem;
+  gap: 0.68rem;
+  width: min(100%, 31rem);
+  padding: 0.86rem 0.92rem 0.92rem;
+  border-radius: 6px;
   border: 1px solid rgba(24, 32, 25, 0.12);
-  background: #fffaf1;
-  box-shadow: 0 22px 44px rgba(24, 32, 25, 0.2);
+  background: rgba(255, 250, 241, 0.97);
+  box-shadow: 0 16px 30px rgba(24, 32, 25, 0.14);
+  font-size: 0.92rem;
 }
 
 .modal-copy h2,
@@ -3424,14 +3451,37 @@ async function openGeminiApiKeyPage(): Promise<void> {
   margin: 0;
 }
 
+.modal-copy h2 {
+  color: #182019;
+  font-size: 1.1rem;
+  line-height: 1.12;
+}
+
+.modal-copy p {
+  color: #4a564a;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.modal-copy .eyebrow {
+  margin: 0;
+  color: #7a6541;
+  font-size: 0.64rem;
+  letter-spacing: 0.15em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .modal-copy {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.28rem;
+  padding-bottom: 0.58rem;
+  border-bottom: 1px solid rgba(35, 49, 39, 0.1);
 }
 
 .modal-field {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.34rem;
   font-weight: 700;
   color: #233127;
 }
@@ -3449,13 +3499,15 @@ async function openGeminiApiKeyPage(): Promise<void> {
 .modal-input-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 0.5rem;
+  gap: 0.45rem;
   align-items: center;
 }
 
 .modal-field input {
-  min-height: 2.45rem;
-  padding: 0.48rem 0.75rem;
+  box-sizing: border-box;
+  height: 2.28rem;
+  min-height: 2.28rem;
+  padding: 0.42rem 0.66rem;
   border: 1px solid rgba(47, 59, 49, 0.16);
   background: #fffef9;
   color: #1f251f;
@@ -3463,8 +3515,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .modal-icon-button {
-  min-height: 2.45rem;
-  min-width: 2.45rem;
+  box-sizing: border-box;
+  height: 2.28rem;
+  min-height: 2.28rem;
+  min-width: 2.28rem;
   padding: 0.35rem;
   display: inline-grid;
   place-items: center;
@@ -3486,20 +3540,32 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .modal-icon {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .modal-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.65rem;
+  gap: 0.52rem;
+  margin-top: 0.1rem;
+  padding-top: 0.64rem;
+  border-top: 1px solid rgba(35, 49, 39, 0.1);
+}
+
+.modal-actions .secondary-button,
+.modal-actions .primary-button,
+.modal-actions .mini-button {
+  min-height: 2.18rem;
+  min-width: 0;
+  padding: 0.42rem 0.78rem;
+  font-size: 0.86rem;
 }
 
 @media (max-width: 1180px) {
   .user-main {
-    grid-template-columns: calc(var(--nav-button-size) + (var(--nav-rail-padding) * 2)) minmax(0, 1fr);
+    grid-template-columns: calc(var(--nav-button-size) + (var(--nav-rail-padding) * 2) + (var(--nav-rail-border-width) * 2)) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 
@@ -3514,8 +3580,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 @media (max-width: 900px) {
   .user-view {
-    --nav-rail-padding: 0.55rem;
-    --nav-button-size: 4.35rem;
+    --nav-rail-padding: 6px;
+    --nav-button-size: 64px;
   }
 
   .user-main {
@@ -3525,15 +3591,14 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
   .nav-rail {
     grid-row: auto;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.32rem;
     align-items: stretch;
   }
 
   .nav-rail-main {
-    display: grid;
-    flex: 1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
+    display: contents;
   }
 
   
@@ -3542,13 +3607,25 @@ async function openGeminiApiKeyPage(): Promise<void> {
     justify-self: stretch;
   }
 
+  .nav-button {
+    aspect-ratio: auto;
+    min-height: var(--nav-button-size);
+  }
+
   .nav-button svg {
-    width: 2.3rem;
-    height: 2.3rem;
+    width: 2.08rem;
+    height: 2.08rem;
   }
 
   .nav-rail-footer .nav-button {
-    width: var(--nav-button-size);
+    width: 100%;
+  }
+
+  .nav-rail-footer {
+    margin-top: 0;
+    width: auto;
+    align-self: stretch;
+    justify-self: stretch;
   }
 
 
@@ -3558,7 +3635,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
     right: 0;
     bottom: auto;
     left: auto;
-    width: min(22rem, calc(100vw - 2rem));
+    width: min(19rem, calc(100vw - 2rem));
   }
 
   .workspace-panel,

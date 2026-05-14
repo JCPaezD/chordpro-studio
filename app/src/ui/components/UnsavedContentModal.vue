@@ -126,10 +126,10 @@ onBeforeUnmount(() => {
   width: fit-content;
   max-width: calc(100% - 1.1rem);
   justify-self: start;
-  gap: 0.1rem;
-  margin: 0.85rem 0.55rem 0;
-  padding: 0.42rem 1.15rem 0.42rem 0.95rem;
-  border-radius: 16px;
+  gap: 0;
+  margin: 0.08rem 0 0;
+  padding: 0.2rem 0.5rem !important;
+  border-radius: 0;
   background: rgba(247, 239, 224, 0.72);
   border: 1px solid rgba(35, 49, 39, 0.08);
 }
@@ -142,10 +142,11 @@ onBeforeUnmount(() => {
 }
 
 .modal-meta {
+  margin: 0;
   color: #6a755f;
-  font-size: 0.92rem;
-  line-height: 1.35;
-  padding-left: 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  padding-left: 0;
 }
 
 .modal-question {

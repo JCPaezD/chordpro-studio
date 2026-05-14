@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
   display: flex;
   min-height: 0;
   height: 100dvh;
-  padding: 1.5rem;
+  padding: 0.72rem;
   box-sizing: border-box;
   overflow: hidden;
   background:
@@ -123,7 +123,7 @@ onBeforeUnmount(() => {
 }
 
 .app-shell.immersive {
-  padding: 0.3rem;
+  padding: 0.22rem;
 }
 
 :global(html),
@@ -215,11 +215,11 @@ onBeforeUnmount(() => {
 
 @media (max-width: 800px) {
   .app-shell {
-    padding: 1rem;
+    padding: 0.52rem;
   }
 
   .app-shell.immersive {
-    padding: 0.2rem;
+    padding: 0.16rem;
   }
 }
 </style>

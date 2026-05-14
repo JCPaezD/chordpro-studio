@@ -345,8 +345,6 @@ onMounted(async () => {
           <img :src="appLogo" alt="" class="brand-mark" />
           <span class="brand-title">ChordPro Studio</span>
         </div>
-        <p class="eyebrow">Playground</p>
-        <h1>Inspect and rerun the pipeline</h1>
       </div>
 
       <div class="header-controls">
@@ -364,38 +362,38 @@ onMounted(async () => {
             Playground
           </button>
         </div>
-
-        <div class="header-tools">
-          <label v-if="selectedGeminiModel" class="model-select playground-model-select">
-            <span>Model</span>
-            <select
-              v-model="selectedGeminiModel"
-              :disabled="loading || !!geminiModelOverride"
-              @change="persistPlaygroundModel"
-            >
-              <option v-for="model in availableGeminiModels" :key="model" :value="model">
-                {{ model }}
-              </option>
-            </select>
-          </label>
-
-          <div class="panel-toggle-cluster" aria-label="Panel visibility">
-            <button
-              v-for="stage in STAGE_ORDER"
-              :key="stage"
-              type="button"
-              class="panel-toggle-button"
-              :class="{ 'panel-toggle-button-active': isStageVisible(stage) }"
-              :aria-pressed="isStageVisible(stage)"
-              @click="toggleStageVisibility(stage)"
-            >
-              <span class="panel-toggle-index">{{ STAGE_NUMBERS[stage] }}</span>
-              <span class="panel-toggle-label">{{ STAGE_TOGGLE_LABELS[stage] }}</span>
-            </button>
-          </div>
-        </div>
       </div>
     </header>
+
+    <section class="card playground-control-bar" aria-label="Playground controls">
+      <label v-if="selectedGeminiModel" class="model-select playground-model-select">
+        <span>Model</span>
+        <select
+          v-model="selectedGeminiModel"
+          :disabled="loading || !!geminiModelOverride"
+          @change="persistPlaygroundModel"
+        >
+          <option v-for="model in availableGeminiModels" :key="model" :value="model">
+            {{ model }}
+          </option>
+        </select>
+      </label>
+
+      <div class="panel-toggle-cluster" aria-label="Panel visibility">
+        <button
+          v-for="stage in STAGE_ORDER"
+          :key="stage"
+          type="button"
+          class="panel-toggle-button"
+          :class="{ 'panel-toggle-button-active': isStageVisible(stage) }"
+          :aria-pressed="isStageVisible(stage)"
+          @click="toggleStageVisibility(stage)"
+        >
+          <span class="panel-toggle-index">{{ STAGE_NUMBERS[stage] }}</span>
+          <span class="panel-toggle-label">{{ STAGE_TOGGLE_LABELS[stage] }}</span>
+        </button>
+      </div>
+    </section>
 
     <p v-if="geminiModelOverride" class="model-override-note">
       Gemini model override active via environment: {{ geminiModelOverride }}
@@ -649,7 +647,7 @@ onMounted(async () => {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  gap: 1rem;
+  gap: 0.34rem;
   overflow: hidden;
   color: #182019;
 }
@@ -658,7 +656,7 @@ onMounted(async () => {
 .card-shell {
   border: 1px solid rgba(24, 32, 25, 0.12);
   background: rgba(255, 250, 241, 0.92);
-  box-shadow: 0 18px 40px rgba(74, 58, 32, 0.08);
+  box-shadow: 0 10px 26px rgba(74, 58, 32, 0.06);
 }
 
 .card {
@@ -668,9 +666,22 @@ onMounted(async () => {
 .playground-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
   flex: 0 0 auto;
+  padding: 0.34rem 0.52rem;
+  background: rgba(255, 250, 241, 0.82);
+}
+
+.playground-control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.46rem 1.35rem;
+  flex: 0 0 auto;
+  padding: 0.32rem 0.38rem;
+  background: rgba(255, 250, 241, 0.82);
 }
 
 .header-copy,
@@ -699,23 +710,25 @@ onMounted(async () => {
 .header-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.42rem;
   align-items: flex-end;
   align-self: stretch;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .view-toggle {
   display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border: 1px solid rgba(35, 49, 39, 0.18);
-  background: #f7f0e1;
+  gap: 0;
+  padding: 0;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(247, 240, 225, 0.72);
 }
 
 .view-button {
-  padding: 0.6rem 1rem;
+  min-height: 2rem;
+  padding: 0.38rem 0.74rem;
   border: 0;
+  border-right: 1px solid rgba(35, 49, 39, 0.1);
   background: transparent;
   color: #233127;
   font: inherit;
@@ -726,28 +739,35 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+.view-button:last-child {
+  border-right: 0;
+}
+
 .view-button.active {
-  background: linear-gradient(135deg, #1f3124, #37513b);
+  background: #233b29;
   color: #f8f3e8;
 }
 
 .brand-lockup {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 0.52rem;
+  margin: 0;
+  min-height: 2rem;
+  transform: translateY(1px);
 }
 
 .brand-mark {
-  width: 2.5rem;
-  height: 2.5rem;
+  display: block;
+  width: 1.82rem;
+  height: 1.82rem;
   flex: 0 0 auto;
 }
 
 .brand-title {
   color: #182019;
   font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 1.55rem;
+  font-size: 1.14rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -785,7 +805,7 @@ onMounted(async () => {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 0.42rem;
 }
 
 .panel-toggle-cluster {
@@ -794,6 +814,7 @@ onMounted(async () => {
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
+  margin-left: auto;
   max-width: 42rem;
 }
 
@@ -908,7 +929,7 @@ onMounted(async () => {
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0.34rem;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -1020,10 +1041,11 @@ onMounted(async () => {
 }
 
 .model-select {
-  display: grid;
-  gap: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
   color: #233127;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1035,8 +1057,8 @@ onMounted(async () => {
 
 .model-select select {
   min-width: 11.5rem;
-  min-height: 2.5rem;
-  padding: 0.45rem 0.6rem;
+  min-height: 2.7rem;
+  padding: 0.45rem 0.65rem;
   border: 1px solid rgba(35, 49, 39, 0.18);
   background: #f7f0e1;
   color: #233127;
@@ -1346,6 +1368,10 @@ pre {
   }
 
   .header-tools {
+    justify-content: flex-start;
+  }
+
+  .playground-control-bar {
     justify-content: flex-start;
   }
 

@@ -121,6 +121,14 @@ Limits:
 - do not separate performance mode visually from the rest of the product
 - do not sacrifice visible content for abstract cleanliness
 
+### App shell visual direction (v1.7)
+
+- the app shell should keep chrome compact and let editing, song lists and preview/reading surfaces carry the visual weight
+- `User` and `Playground` should share the same lightweight top header pattern; developer-only controls belong in a separate compact control bar instead of making the main header taller
+- the main navigation rail should use stable measured sizing rather than per-button exceptions, with desktop and responsive states treating all rail buttons consistently
+- Preferences, shared app modals and global toasts should follow the same compact, squared, lightly bordered visual language as the refined editor/tool headers while keeping modal-specific content and action semantics local
+- shell spacing should prioritize block-to-block density before reducing useful internal spacing inside functional surfaces
+
 ### Songbook PDF exploration note
 
 - `style.json` capabilities should be explored and documented before implementing advanced Songbook PDF features
