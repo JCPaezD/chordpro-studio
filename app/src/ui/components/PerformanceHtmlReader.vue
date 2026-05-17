@@ -208,7 +208,11 @@ defineExpose({
   min-height: 0;
   height: 100%;
   overflow: auto;
-  padding: clamp(4.9rem, 9vh, 6.4rem) clamp(1.2rem, 4vw, 4.4rem) clamp(2.6rem, 5vh, 4.2rem);
+  padding:
+    clamp(4.9rem, 9vh, 6.4rem)
+    clamp(1.2rem, 4vw, 4.4rem)
+    clamp(2.6rem, 5vh, 4.2rem)
+    max(clamp(1.2rem, 4vw, 4.4rem), var(--performance-reader-left-safe-area, 0rem));
   box-sizing: border-box;
 }
 
@@ -420,7 +424,6 @@ defineExpose({
 }
 
 :deep(table.songline tr.chords td) {
-  padding-right: 0.2em;
   color: #e2b381;
   font-size: calc(0.9em * var(--performance-reader-scale, 1));
   font-weight: 850;
@@ -428,7 +431,6 @@ defineExpose({
 }
 
 :deep(table.songline tr.lyrics td) {
-  padding-right: 0.2em;
   color: #fffaf1;
   font-size: calc(1.08em * var(--performance-reader-scale, 1));
   font-weight: 520;
@@ -491,7 +493,7 @@ defineExpose({
   .performance-html-scroll {
     padding-top: 4.5rem;
     padding-right: 1rem;
-    padding-left: 1rem;
+    padding-left: max(1rem, var(--performance-reader-left-safe-area, 0rem));
   }
 
   .performance-reader-header {

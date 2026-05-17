@@ -1259,6 +1259,7 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow: hidden;
   background: rgba(255, 254, 249, 0.34);
+  --performance-reader-left-safe-area: 0rem;
 }
 
 .preview-frame {
@@ -1662,6 +1663,12 @@ onBeforeUnmount(() => {
 
   .performance-control-button.text-scale-button {
     min-width: 4.8rem;
+  }
+}
+
+@media (orientation: portrait), (max-width: 1180px) {
+  .preview-viewer {
+    --performance-reader-left-safe-area: calc(var(--performance-dock-edge) + var(--performance-control-size) + 1rem);
   }
 }
 </style>
