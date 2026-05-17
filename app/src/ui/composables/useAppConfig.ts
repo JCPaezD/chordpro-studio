@@ -5,8 +5,10 @@ import {
   DEFAULT_APP_CONFIG,
   type AppConfig,
   type ChordDiagramInstrument,
+  type LastActiveMainView,
   type ConversionMode,
-  type PlaygroundPanelVisibility
+  type PlaygroundPanelVisibility,
+  type WindowState
 } from "../../adapters/filesystem/ConfigRepository";
 
 export type AppConfigStore = {
@@ -15,8 +17,10 @@ export type AppConfigStore = {
   conversionMode: ComputedRef<ConversionMode | undefined>;
   playgroundModel: ComputedRef<string | undefined>;
   playgroundPanelVisibility: ComputedRef<PlaygroundPanelVisibility>;
+  lastActiveMainView: ComputedRef<LastActiveMainView | undefined>;
   showChordDiagrams: ComputedRef<boolean>;
   instrument: ComputedRef<ChordDiagramInstrument>;
+  windowState: ComputedRef<WindowState | null>;
   lastSongbookPath: ComputedRef<string | undefined>;
   lastOpenedSongPath: ComputedRef<string | null>;
   loadConfig(): Promise<void>;
@@ -25,8 +29,10 @@ export type AppConfigStore = {
   setConversionMode(mode: ConversionMode): Promise<void>;
   setPlaygroundModel(model: string): Promise<void>;
   setPlaygroundPanelVisibility(value: PlaygroundPanelVisibility): Promise<void>;
+  setLastActiveMainView(value: LastActiveMainView): Promise<void>;
   setShowChordDiagrams(value: boolean): Promise<void>;
   setInstrument(value: ChordDiagramInstrument): Promise<void>;
+  setWindowState(value: WindowState): Promise<void>;
   setLastSongbookPath(path: string): Promise<void>;
   clearLastSongbookPath(): Promise<void>;
   setLastOpenedSongPath(path: string): Promise<void>;
@@ -95,12 +101,20 @@ async function setPlaygroundPanelVisibility(value: PlaygroundPanelVisibility): P
   await updateConfig({ playgroundPanelVisibility: { ...value } });
 }
 
+async function setLastActiveMainView(value: LastActiveMainView): Promise<void> {
+  await updateConfig({ lastActiveMainView: value });
+}
+
 async function setShowChordDiagrams(value: boolean): Promise<void> {
   await updateConfig({ showChordDiagrams: value });
 }
 
 async function setInstrument(value: ChordDiagramInstrument): Promise<void> {
   await updateConfig({ instrument: value });
+}
+
+async function setWindowState(value: WindowState): Promise<void> {
+  await updateConfig({ windowState: { ...value } });
 }
 
 async function setLastSongbookPath(path: string): Promise<void> {
@@ -129,8 +143,10 @@ export function useAppConfig(): AppConfigStore {
     conversionMode: computed(() => config.value.conversionMode),
     playgroundModel: computed(() => config.value.playgroundModel),
     playgroundPanelVisibility: computed(() => config.value.playgroundPanelVisibility ?? { ...DEFAULT_APP_CONFIG.playgroundPanelVisibility! }),
+    lastActiveMainView: computed(() => config.value.lastActiveMainView),
     showChordDiagrams: computed(() => config.value.showChordDiagrams ?? true),
     instrument: computed(() => config.value.instrument ?? "piano"),
+    windowState: computed(() => config.value.windowState ?? null),
     lastSongbookPath: computed(() => config.value.lastSongbookPath),
     lastOpenedSongPath: computed(() => config.value.lastOpenedSongPath),
     loadConfig,
@@ -139,8 +155,10 @@ export function useAppConfig(): AppConfigStore {
     setConversionMode,
     setPlaygroundModel,
     setPlaygroundPanelVisibility,
+    setLastActiveMainView,
     setShowChordDiagrams,
     setInstrument,
+    setWindowState,
     setLastSongbookPath,
     clearLastSongbookPath,
     setLastOpenedSongPath,

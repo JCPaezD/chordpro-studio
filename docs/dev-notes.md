@@ -129,6 +129,13 @@ Limits:
 - Preferences, shared app modals and global toasts should follow the same compact, squared, lightly bordered visual language as the refined editor/tool headers while keeping modal-specific content and action semantics local
 - shell spacing should prioritize block-to-block density before reducing useful internal spacing inside functional surfaces
 
+### Desktop window state (v1.7)
+
+- the desktop window geometry is persisted in AppConfig as `windowState` using physical outer window coordinates and size plus maximized state
+- startup restores saved window geometry before showing the hidden Tauri window, and skips the restore when the saved rectangle no longer intersects an available monitor work area
+- window state persistence is debounced from native resize/move events; maximized windows keep their current monitor position fresh while preserving the previous normal size when available
+- the last active main view is persisted as `lastActiveMainView`; `performance` is restored only when the saved songbook context can be restored, otherwise startup falls back to the normal Songbook/Convert rules
+
 ### Songbook PDF exploration note
 
 - `style.json` capabilities should be explored and documented before implementing advanced Songbook PDF features
@@ -438,7 +445,7 @@ Songbook behavior:
 - the main Songbook view now applies local in-memory sorting controls for `artist` / `title` with asc/desc toggling; ordering stays deterministic through primary field, secondary field and filename fallback without mutating the underlying songbook data
 - the last selected songbook path is stored in the Tauri `AppConfig` directory as `config.json` and reloaded on startup
 - when that persisted songbook is available, startup now also restores the last explicitly opened song if the file still exists; otherwise Songbook opens with no active selection and no startup error
-- AppConfig now also stores `lastOpenedSongPath`, `conversionMode`, `playgroundModel`, `geminiApiKey`, `showChordDiagrams` and `instrument`
+- AppConfig now also stores `lastOpenedSongPath`, `lastActiveMainView`, `conversionMode`, `playgroundModel`, `geminiApiKey`, `showChordDiagrams` and `instrument`
 - frontend config is loaded once through `useAppConfig()`, kept in memory as the single source of truth, and persisted through Tauri backend commands
 - missing `config.json` now resolves to a default config with `geminiApiKey: null`, and the backend creates the file on first read when needed
 - clearing the active songbook removes `lastSongbookPath` from config without changing the currently open document

@@ -41,7 +41,8 @@ import SongList from "../components/SongList.vue";
 import SongbookPerformanceMode from "../components/SongbookPerformanceMode.vue";
 import {
   type ChordDiagramInstrument,
-  type ConversionMode
+  type ConversionMode,
+  type LastActiveMainView
 } from "../../adapters/filesystem/ConfigRepository";
 import { buildSongDisplayTitle } from "../../domain/song/deriveDisplayTitle";
 import { useAppConfig } from "../composables/useAppConfig";
@@ -278,6 +279,7 @@ const hasBufferedPreview = computed(() => !!previewSrc.value);
 const songbookSongs = computed(() => songbook.value?.songs ?? []);
 const songbookSortField = ref<SongbookSortField>("artist");
 const songbookSortDirection = ref<SongbookSortDirection>("asc");
+const hasAppliedInitialPerformanceView = ref(false);
 
 function getSongbookListFallbackName(filePath: string): string {
   const normalizedPath = filePath.replace(/\\/g, "/");
@@ -413,12 +415,30 @@ async function convertSong(): Promise<void> {
     return;
   }
 
-  setActivePanel("convert");
+  showConvertPanel();
   await runPipeline({ model: selectedModel.value });
 }
 
 function updateChordPro(value: string): void {
   setChordProText(value);
+}
+
+function persistLastActiveMainView(view: LastActiveMainView): void {
+  void appConfig.setLastActiveMainView(view).catch((err) => {
+    console.error("Could not persist last active main view.", err);
+  });
+}
+
+function showConvertPanel(): void {
+  isPerformanceMode.value = false;
+  setActivePanel("convert");
+  persistLastActiveMainView("convert");
+}
+
+function showSongbookPanel(): void {
+  isPerformanceMode.value = false;
+  setActivePanel("songbook");
+  persistLastActiveMainView("songbook");
 }
 
 function enterPerformanceMode(): void {
@@ -428,10 +448,12 @@ function enterPerformanceMode(): void {
 
   setActivePanel("songbook");
   isPerformanceMode.value = true;
+  persistLastActiveMainView("performance");
 }
 
 function exitPerformanceMode(): void {
   isPerformanceMode.value = false;
+  persistLastActiveMainView("songbook");
 }
 
 watch(isPerformanceMode, (value, previousValue) => {
@@ -444,6 +466,29 @@ watch(isPerformanceMode, (value, previousValue) => {
     }
   }
 }, { immediate: true });
+
+watch(
+  () => [configLoading.value, songbook.value, appConfig.lastActiveMainView.value] as const,
+  ([loadingConfig, currentSongbook, lastActiveMainView]) => {
+    if (hasAppliedInitialPerformanceView.value || loadingConfig) {
+      return;
+    }
+
+    if (lastActiveMainView !== "performance") {
+      hasAppliedInitialPerformanceView.value = true;
+      return;
+    }
+
+    if (!currentSongbook) {
+      return;
+    }
+
+    setActivePanel("songbook");
+    isPerformanceMode.value = true;
+    hasAppliedInitialPerformanceView.value = true;
+  },
+  { immediate: true }
+);
 
 onMounted(() => {
   document.addEventListener("pointerdown", handlePreferencesPointerDown);
@@ -871,6 +916,7 @@ function handleWindowKeydown(event: KeyboardEvent): void {
     event.preventDefault();
     setActivePanel("songbook");
     isPerformanceMode.value = !isPerformanceMode.value;
+    persistLastActiveMainView(isPerformanceMode.value ? "performance" : "songbook");
     return;
   }
 
@@ -1128,7 +1174,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
           <button
             :class="['nav-button', { active: activePanel === 'convert' }]"
             title="Convert"
-            @click="setActivePanel('convert')"
+            @click="showConvertPanel"
           >
             <ListEnd aria-hidden="true" />
             <span>Convert</span>
@@ -1136,7 +1182,7 @@ async function openGeminiApiKeyPage(): Promise<void> {
           <button
             :class="['nav-button', { active: activePanel === 'songbook' }]"
             title="Songbook"
-            @click="setActivePanel('songbook')"
+            @click="showSongbookPanel"
           >
             <BookOpen aria-hidden="true" />
             <span>Songbook</span>

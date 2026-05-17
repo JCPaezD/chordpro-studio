@@ -29,6 +29,28 @@ impl Default for PlaygroundPanelVisibility {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct WindowState {
+  pub x: i32,
+  pub y: i32,
+  pub width: u32,
+  pub height: u32,
+  pub maximized: bool,
+}
+
+impl Default for WindowState {
+  fn default() -> Self {
+    Self {
+      x: 0,
+      y: 0,
+      width: 1280,
+      height: 800,
+      maximized: false,
+    }
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
   #[serde(rename = "geminiApiKey")]
   pub gemini_api_key: Option<String>,
@@ -42,9 +64,13 @@ pub struct AppConfig {
   pub playground_model: Option<String>,
   #[serde(rename = "playgroundPanelVisibility")]
   pub playground_panel_visibility: PlaygroundPanelVisibility,
+  #[serde(rename = "lastActiveMainView")]
+  pub last_active_main_view: Option<String>,
   #[serde(rename = "showChordDiagrams")]
   pub show_chord_diagrams: bool,
   pub instrument: String,
+  #[serde(rename = "windowState")]
+  pub window_state: Option<WindowState>,
 }
 
 impl Default for AppConfig {
@@ -56,8 +82,10 @@ impl Default for AppConfig {
       conversion_mode: None,
       playground_model: None,
       playground_panel_visibility: PlaygroundPanelVisibility::default(),
+      last_active_main_view: None,
       show_chord_diagrams: true,
       instrument: "piano".into(),
+      window_state: None,
     }
   }
 }

@@ -199,10 +199,12 @@ Current config content:
 - `geminiApiKey`
 - `showChordDiagrams`
 - `instrument`
+- `windowState`
+- `lastActiveMainView`
 
 `ConfigRepository` persists the full app config through Tauri backend commands. Missing config now resolves to a default object with `geminiApiKey: null`, and the backend creates `config.json` on first read if it does not exist yet.
 
-`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode, the Playground model selection, chord-diagram visibility, chord-diagram instrument selection and the last restored songbook state.
+`useAppConfig()` is the single frontend source of truth for persisted config. It loads config once at startup, keeps it in memory, and exposes persisted UI preferences such as the User View conversion mode, the Playground model selection, chord-diagram visibility, chord-diagram instrument selection, restored window state, the last active main view and the last restored songbook state.
 
 ---
 

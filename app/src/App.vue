@@ -9,6 +9,7 @@ import UnsavedContentModal from "./ui/components/UnsavedContentModal.vue";
 import logo64 from "./ui/assets/logo-64.png";
 import { useAppConfig } from "./ui/composables/useAppConfig";
 import { useSongWorkspace } from "./ui/composables/useSongWorkspace";
+import { useWindowStatePersistence } from "./ui/composables/useWindowStatePersistence";
 import UserView from "./ui/views/UserView.vue";
 import PipelinePlaygroundView from "./ui/views/PipelinePlaygroundView.vue";
 
@@ -18,6 +19,7 @@ const isImmersive = ref(false);
 const appConfig = useAppConfig();
 const configLoading = computed(() => appConfig.loading.value);
 const workspace = useSongWorkspace({ appConfig });
+const windowStatePersistence = useWindowStatePersistence(appConfig);
 const bootVisible = ref(true);
 const bootStatus = ref("Loading...");
 let hasShownMainWindow = false;
@@ -51,14 +53,16 @@ async function showMainWindowWhenBootReady(): Promise<void> {
 
 async function initializeApp(): Promise<void> {
   try {
-    bootStatus.value = "Preparing window...";
-    await showMainWindowWhenBootReady();
     bootStatus.value = "Loading config...";
     await appConfig.loadConfig();
+    bootStatus.value = "Preparing window...";
+    await windowStatePersistence.restoreWindowState();
+    await showMainWindowWhenBootReady();
     bootStatus.value = "Restoring workspace...";
     await workspace.initialize();
     bootStatus.value = "Finalizing UI...";
     await settleInitialUi();
+    await windowStatePersistence.startWindowStatePersistence();
   } catch (err) {
     console.error("App initialization failed.", err);
     bootStatus.value = "Startup failed";
@@ -72,6 +76,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  windowStatePersistence.stopWindowStatePersistence();
   workspace.dispose();
 });
 </script>

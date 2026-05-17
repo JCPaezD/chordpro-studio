@@ -184,6 +184,7 @@ Current status:
 - v1.7 App Shell has received its first compact-chrome refinement slice: `User` and `Playground` now share the same lightweight top header pattern, Playground model/panel controls live in a separate compact control bar, the main rail uses stable measured sizing across desktop and responsive layouts, and Preferences, app modals and global toasts have been brought closer to the emerging visual system.
 - v1.7 UI validation tooling now includes `npm run ui:metrics`, a Playwright-based layout metrics check that reuses an installed Chrome/Edge browser and verifies key Convert/Songbook header, toolbar and editor alignment constraints without downloading Playwright-managed browsers.
 - v1.7 PDF preview viewer slice is implemented across Convert, Songbook, Playground and the current Performance PDF surface: a shared PDF.js-based viewer renders the existing ChordPro CLI Blob URLs with app-styled controls, height-first fit, continuous pages, page navigation, zoom and drag panning, reducing native WebView PDF chrome without changing the backend preview/export path.
+- v1.7 Desktop polish now persists and restores Tauri window size, position, maximized state, monitor placement and the last active main view, restoring Performance only when the saved songbook context can be restored safely.
 
 ## Current roadmap
 
@@ -207,11 +208,8 @@ Pending, planned or possible work.
 - first app-owned reading slice implemented: Performance now uses ChordPro CLI-generated HTML from the current `.cho` as its default and only reading surface, with PDF kept for Preview/export rather than as an in-Performance toggle
 - first reader slice includes fixed song title/artist context, font-size controls, adaptive 3 / 2 / 1 column fit, continuous scroll fallback, section-label styling and clearer song navigation controls
 - continue real-use validation of Performance reader ergonomics before adding deeper behavior such as auto-fit zoom, reader chord diagrams or more advanced section navigation
-
-### Desktop polish
-
-- persist window size and position between desktop sessions
-- stretch goal: restore the last active main view on startup when it does not conflict with restored songbook context
+- fix Performance reader lyric spacing where inline chord placement can introduce visible extra word/syllable gaps in the rendered lyrics
+- fix Performance reader floating song navigation controls in narrow/tall layouts so previous/next song controls do not cover lyrics or chords
 
 ### Editor improvements
 

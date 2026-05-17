@@ -1952,9 +1952,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       }
 
       hasLoadedInitialConfig = true;
+      const lastActiveMainView = appConfig.lastActiveMainView.value;
 
       if (songbook.value) {
-        activePanel.value = "songbook";
+        activePanel.value = lastActiveMainView === "convert" ? "convert" : "songbook";
         return;
       }
 
@@ -1967,7 +1968,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       try {
         const restoredSongbook = await songbookService.loadSongbook(lastSongbookPath);
         songbook.value = restoredSongbook;
-        activePanel.value = "songbook";
+        activePanel.value = lastActiveMainView === "convert" ? "convert" : "songbook";
 
         const lastOpenedSongPath = appConfig.lastOpenedSongPath.value;
         if (!lastOpenedSongPath) {
