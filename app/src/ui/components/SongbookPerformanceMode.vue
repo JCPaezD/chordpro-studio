@@ -107,20 +107,15 @@
               </div>
             </div>
           </div>
-          <div v-else ref="previewViewerRef" class="preview-viewer">
-            <iframe
-              :src="bufferedFrameSrcA"
-              class="preview-frame"
-              :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
-              title="ChordPro PDF Preview"
-              @load="handlePreviewFrameLoad('A')"
-            />
-            <iframe
-              :src="bufferedFrameSrcB"
-              class="preview-frame"
-              :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
-              title="ChordPro PDF Preview"
-              @load="handlePreviewFrameLoad('B')"
+          <div v-else class="preview-viewer">
+            <PdfPreviewViewer
+              :src="props.previewSrc"
+              :loading="showPreviewLoadingIndicator"
+              :manage-blob-cleanup="true"
+              :immersive="true"
+              :show-scroll-controls="true"
+              loading-message="Generating preview..."
+              aria-label="Performance PDF preview"
             />
             <div v-if="props.isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
               <span class="preview-refresh-spinner" />
@@ -161,12 +156,6 @@
                 </div>
               </div>
             </div>
-            <div v-if="showPreviewLoadingIndicator" class="preview-loading-overlay">
-              <div class="preview-loading-card">
-                <span class="loading-spinner" aria-hidden="true" />
-                <p class="message">Generating preview...</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -180,6 +169,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { isTauri } from "@tauri-apps/api/core";
 import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, X } from "lucide-vue-next";
 import type { Songbook } from "../../domain/songbook";
+import PdfPreviewViewer from "./PdfPreviewViewer.vue";
 import SongList from "./SongList.vue";
 import { usePdfFit } from "../composables/usePdfFit";
 
@@ -265,7 +255,7 @@ const selectedSongListPath = computed(() => hoveredSongPath.value);
 const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
 const activePreviewBaseUrl = computed(() => props.previewSrc);
 const nextRenderedPreviewUrl = computed(() => applyFit(activePreviewBaseUrl.value));
-const hasBufferedPreview = computed(() => !!bufferedFrameSrcA.value || !!bufferedFrameSrcB.value);
+const hasBufferedPreview = computed(() => !!props.previewSrc);
 
 function setSelectedListPath(filePath: string | null): void {
   if (props.selectedListPath === filePath) {

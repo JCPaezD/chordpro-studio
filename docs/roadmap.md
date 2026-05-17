@@ -179,10 +179,11 @@ Current status:
 ### v1.7 in progress
 
 - v1.7 UX/UI review has validated the first selected refinement slice for `Convert` and `Songbook`: compact integrated headers/toolbars, Lucide-based action iconography, softer status badges, reduced workspace chrome, denser editor/list surfaces and aligned Convert/Songbook editor metrics while preserving the current layout structure.
-- v1.7 Preview has received the same first-pass visual refinement: compact integrated export toolbar, reduced chrome around the PDF surface, softer empty/loading states and layout metrics coverage, while preserving the current ChordPro CLI -> Blob URL -> WebView PDF viewer path.
-- v1.7 Performance has received its first interaction refinement slice: split list + preview remains the preferred current layout, the song list now behaves as a visual index with direct song loading, keyboard and dock navigation move the active song directly, and the list handle / floating controls are separated from the native PDF toolbar while the existing WebView PDF viewer path remains unchanged.
+- v1.7 Preview has received the same first-pass visual refinement: compact integrated export toolbar, reduced chrome around the PDF surface, softer empty/loading states and layout metrics coverage.
+- v1.7 Performance has received its first interaction refinement slice: split list + preview remains the preferred current layout, the song list now behaves as a visual index with direct song loading, keyboard and dock navigation move the active song directly, and the list handle / floating controls are separated from the PDF viewer toolbar.
 - v1.7 App Shell has received its first compact-chrome refinement slice: `User` and `Playground` now share the same lightweight top header pattern, Playground model/panel controls live in a separate compact control bar, the main rail uses stable measured sizing across desktop and responsive layouts, and Preferences, app modals and global toasts have been brought closer to the emerging visual system.
 - v1.7 UI validation tooling now includes `npm run ui:metrics`, a Playwright-based layout metrics check that reuses an installed Chrome/Edge browser and verifies key Convert/Songbook header, toolbar and editor alignment constraints without downloading Playwright-managed browsers.
+- v1.7 PDF preview viewer slice is implemented across Convert, Songbook, Playground and the current Performance PDF surface: a shared PDF.js-based viewer renders the existing ChordPro CLI Blob URLs with app-styled controls, height-first fit, continuous pages, page navigation, zoom and drag panning, reducing native WebView PDF chrome without changing the backend preview/export path.
 
 ## Current roadmap
 
@@ -193,14 +194,8 @@ Pending, planned or possible work.
 ### UX/UI review and selected redesign scope
 
 - first-pass UX/UI review and selected redesign scope are now defined for `Convert`, `Songbook`, `Preview`, `Performance mode` and the app shell
-- selected v1.7 refinement slices have been implemented for integrated editor/tool headers, Preview toolbar integration, Performance split/navigation behavior and compact app-shell chrome
+- selected v1.7 refinement slices have been implemented for integrated editor/tool headers, Preview toolbar integration, PDF.js preview rendering, Performance split/navigation behavior and compact app-shell chrome
 - remaining UX/UI work in v1.7 should continue as explicit scoped slices, with manual validation before closure
-
-### PDF preview viewer for Convert / Songbook
-
-- select and begin integrating a more app-controlled PDF preview viewer shared by Convert and Songbook
-- reduce dependence on native WebView PDF chrome in standard preview flows
-- improve preview integration, controls and paper-to-app presentation
 
 ### Performance mode reading surface
 
@@ -366,7 +361,7 @@ Pending, planned or possible work.
 ### Potential preview system evolution
 
 - keep future viewer evolution split into two lines rather than treating it as a single viewer replacement
-- evaluate a non-native PDF viewer such as PDF.js for Convert / Songbook if advanced preview features require it while keeping fidelity to exported PDF
+- continue iterating the app-owned PDF.js preview viewer for standard PDF fidelity surfaces when better controls or presentation are needed
 - evaluate an adaptive HTML performance viewer rendered from the internal `Song` model instead of the CLI/PDF path for Performance mode
 - prioritize readability, continuous scrolling and dynamic controls such as zoom or font size over strict PDF fidelity in that alternative viewer
 - keep PDF as the reference/export renderer and evaluate an optional HTML / PDF toggle for future performance-oriented reading flows

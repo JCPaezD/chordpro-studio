@@ -38,7 +38,7 @@ Only record assumptions here when they materially affect behavior, UX, architect
 * [assumption] empty cleaned input is insufficient for conversion, while metadata-only and lyric-only content remain valid minimal ChordPro output as long as the model does not invent additional lyrics or chords
   impact: high
   revisitable: yes
-* [assumption] preview and PDF export continue to rely on the bundled ChordPro CLI plus native WebView PDF rendering via Blob URLs instead of alternative viewer pipelines
+* [assumption] preview and PDF export continue to rely on the bundled ChordPro CLI as the canonical PDF renderer; standard preview surfaces render the returned Blob URL through the app-owned PDF.js canvas viewer, while PDF export remains native save dialog plus CLI output
   impact: high
   revisitable: yes
 * [assumption] future Gemini error UX should classify provider failures in the shared workspace with semi-structured reliability levels, improve contextual user messages, and keep Playground as the place where raw technical error detail remains visible without modifying provider adapters or inventing unsupported diagnostics
@@ -59,10 +59,10 @@ Only record assumptions here when they materially affect behavior, UX, architect
 * [assumption] smart tab splitting only preprocesses explicit `{start_of_tab}` blocks, uses estimation-based width limits (`70` / `35`), and falls back to `{columns: 1}` on malformed tab input
   impact: medium
   revisitable: yes
-* [assumption] PDF fit is decided from the actual preview iframe size with an A4-aware heuristic rather than the full window size
+* [assumption] PDF preview fit is decided from the actual app viewer surface, prefers height-first page visibility by default, and only uses side-by-side pages when the available width can support them without sacrificing the primary reading fit
   impact: medium
   revisitable: yes
-* [assumption] performance-mode fit refresh forces the hidden iframe through `about:blank` before loading the next fitted PDF URL so the native viewer reliably reloads rapid fit changes
+* [assumption] the current Performance PDF surface can temporarily reuse the shared PDF.js preview viewer for visual consistency, while the deeper Performance reading-surface roadmap remains focused on a future adaptive HTML reader rendered from the internal `Song` model
   impact: medium
   revisitable: yes
 * [assumption] save and export feedback uses a single global toast with last-message-wins behavior instead of a full notification system
@@ -162,7 +162,8 @@ Limits:
 
 - preview generation now keeps the same request -> response model and cache path, but moves the blocking ChordPro CLI work off the Tauri main thread through an async command that runs the CLI in a blocking worker context
 - because preview rendering still reuses shared temporary preview files, backend preview execution is serialized to a single active CLI render at a time while superseded requests are discarded before and after the render so only the latest valid preview result is applied
-- the frontend keeps its existing preview pipeline, overlays and buffered iframe swap, and now reinforces latest-wins behavior by assigning request ordering even for preview calls that do not pass an explicit `requestId`
+- the frontend keeps the existing preview generation pipeline and latest-wins request ordering, but the v1.7 visual viewer now renders returned PDF Blob URLs through a shared PDF.js canvas component instead of native WebView PDF iframe chrome
+- the shared PDF.js viewer is used by Convert, Songbook, Playground and the current Performance PDF surface; it provides app-styled controls, height-first default fit, continuous page rendering, page navigation, zoom/reset controls and drag-to-pan without changing preview cache or export behavior
 - real process cancellation remains optional future work; current behavior is considered acceptable because the UI stays responsive and stale preview results are ignored
 
 ### Local smoke validation
@@ -221,7 +222,7 @@ Preview generation now follows this flow:
 -> generate `preview.pdf`
 -> return the PDF path plus PDF bytes to the frontend
 -> create a browser `Blob` URL
--> load it through the native WebView PDF viewer
+-> load it through the app-owned PDF.js preview viewer
 
 PDF export now follows this flow:
 
@@ -275,15 +276,13 @@ Preview failure behavior:
 - the manual `Refresh` action in Convert, Songbook and Playground now reuses the same preview pipeline with an explicit `bypass_cache` flag, so users can force a fresh CLI render without introducing a parallel preview path
 - preview errors are cleared at the start of a new preview generation so stale failure messages do not survive a later successful preview
 - User View `Generate` now keeps the existing `.cho` editor content visible behind a non-editable loading overlay until the conversion result is ready, using the same shared loading-card visual treatment as preview instead of clearing the editor upfront
-- User View `.cho` editor now refreshes preview with a debounced non-blocking path and keeps the current iframe/PDF visible while a new blob URL is loading
+- User View `.cho` editor now refreshes preview with a debounced non-blocking path and keeps the current PDF visible while a new blob URL is loading
 - the current debounce for Songbook auto-preview is intentionally shorter (`500ms`) after the async preview execution refactor and manual validation confirmed that this remains responsive without making the refresh feel intrusive in normal editing
-- the User View preview now uses a local dual-iframe buffer with a short delayed swap so the next PDF can load before becoming visible, reducing flicker without changing the underlying native viewer approach
+- the User View preview now uses the shared PDF.js viewer to render the current Blob URL directly, replacing the earlier local dual-iframe native viewer buffer
 - both `User` and Songbook performance mode now delay the visible `Generating preview...` overlay slightly for normal cached preview loads, but manual `Refresh` shows loading immediately because it explicitly requests regeneration
 - changing Convert/Songbook context while `Generate` is still running now reuses the existing abort/stale-request protection so outdated conversion results are not applied to a newer workspace context
-- even with the buffered swap, the native PDF viewer can still introduce small temporary editor stalls while a refreshed document is being loaded into the WebView
-- the current native PDF viewer approach still performs a full document reload when the iframe `src` changes; reducing that further would require a custom viewer outside the current architecture
-- Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and shares the same iframe-size-based PDF fit composable as Convert and Songbook; the final fit decision is A4-aware, performance mode refreshes fit through a local hidden-frame swap that forces a real iframe navigation via `about:blank` before loading the next fitted PDF URL because the native Edge/WebView PDF viewer did not reliably reapply rapid hash-only changes, and exiting back to Songbook now preserves the active preview blob URL long enough to re-stage the normal dual-frame fade without triggering stale-file errors
-- keyboard navigation in performance mode intentionally remains best-effort when focus stays in the app; once focus moves inside the native PDF viewer iframe, its own input handling takes precedence and the app does not try to steal focus back
+- Songbook performance mode in `User` now switches the app shell into an immersive low-padding layout, keeps navigation controls local to the view, and currently reuses the shared PDF.js viewer as an intermediate app-owned PDF reading surface until the planned adaptive Performance reader is designed and implemented
+- keyboard navigation in performance mode remains app-owned around the song list and floating controls; the PDF canvas viewer no longer hands focus to native iframe chrome, but interactive viewer controls still keep their own normal button behavior
 - User View empty states were refined without changing panel layout: Songbook now uses a clearer no-folder call to action, loaded songbooks show a low-weight selection hint, and the Preview placeholder uses softer two-line guidance that adapts when a songbook is available
 - Songbook view now keeps the active song visible when entering the panel or returning from Performance mode, reuses the existing selection auto-scroll during keyboard navigation, and extends ArrowUp / ArrowDown / Enter handling across the view only when focus is outside interactive controls such as buttons, inputs, textareas, contenteditable areas and the PDF viewer
 - Songbook performance mode reuses its existing selection auto-scroll not only during list navigation, but also on entry and when the song sidebar is reopened, so the currently active song stays visible without introducing a separate scroll path

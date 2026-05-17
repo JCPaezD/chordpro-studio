@@ -34,6 +34,7 @@ import ChordProEditorHeader from "../components/ChordProEditorHeader.vue";
 import ClearSongbookModal from "../components/ClearSongbookModal.vue";
 import DeleteSongModal from "../components/DeleteSongModal.vue";
 import LoadingOverlayCard from "../components/LoadingOverlayCard.vue";
+import PdfPreviewViewer from "../components/PdfPreviewViewer.vue";
 import RenameSongModal from "../components/RenameSongModal.vue";
 import RevertSongModal from "../components/RevertSongModal.vue";
 import SongList from "../components/SongList.vue";
@@ -45,7 +46,6 @@ import {
 import { buildSongDisplayTitle } from "../../domain/song/deriveDisplayTitle";
 import { useAppConfig } from "../composables/useAppConfig";
 import { useFeedback } from "../composables/useFeedback";
-import { usePdfFit } from "../composables/usePdfFit";
 import { useSongWorkspace } from "../composables/useSongWorkspace";
 import { NOT_ENOUGH_INPUT_MESSAGE } from "../../services/conversion";
 
@@ -117,13 +117,10 @@ const {
   cancelSongbookAction
 } = useSongWorkspace();
 
-type PreviewFrameId = "A" | "B";
 type SongbookSortField = "title" | "artist";
 type SongbookSortDirection = "asc" | "desc";
 type InputSource = "keyboard" | "mouse";
 
-const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
-const PREVIEW_FRAME_TRANSITION_MS = 180;
 const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 
 const isPerformanceMode = ref(false);
@@ -145,15 +142,6 @@ const isRevertingSong = ref(false);
 const showPreferencesMenu = ref(false);
 const preferencesButtonRef = ref<HTMLElement | null>(null);
 const preferencesPanelRef = ref<HTMLElement | null>(null);
-const activePreviewFrame = ref<PreviewFrameId>("A");
-const pendingPreviewFrame = ref<PreviewFrameId | null>(null);
-const previewFrameSrcA = ref("");
-const previewFrameSrcB = ref("");
-let previewFrameCleanupTimerA: ReturnType<typeof setTimeout> | null = null;
-let previewFrameCleanupTimerB: ReturnType<typeof setTimeout> | null = null;
-let previewFrameSwapTimer: ReturnType<typeof setTimeout> | null = null;
-let previewFrameSwapToken = 0;
-
 const conversionMode = computed<ConversionMode>(() => appConfig.conversionMode.value ?? "quality");
 const configLoading = computed(() => appConfig.loading.value);
 const hasApiKey = computed(() => !!appConfig.apiKey.value);
@@ -285,7 +273,7 @@ const songbookHeaderLabel = computed(() => {
   return parts[parts.length - 1] || "Songs";
 });
 
-const hasBufferedPreview = computed(() => !!previewFrameSrcA.value || !!previewFrameSrcB.value);
+const hasBufferedPreview = computed(() => !!previewSrc.value);
 const songbookSongs = computed(() => songbook.value?.songs ?? []);
 const songbookSortField = ref<SongbookSortField>("artist");
 const songbookSortDirection = ref<SongbookSortDirection>("asc");
@@ -362,10 +350,6 @@ const currentSongbookIndex = computed(() => {
 });
 const songListRef = ref<SongListExpose | null>(null);
 const songbookEditorPaneRef = ref<ChordProEditorPaneExpose | null>(null);
-const previewViewerRef = ref<HTMLElement | null>(null);
-const { applyFit: applyPreviewFit, scheduleFitUpdate: schedulePreviewFitUpdate } = usePdfFit(previewViewerRef);
-const viewerFrameSrcA = computed(() => applyPreviewFit(previewFrameSrcA.value));
-const viewerFrameSrcB = computed(() => applyPreviewFit(previewFrameSrcB.value));
 const songbookSelectionPath = ref<string | null>(null);
 const songListLastInputSource = ref<InputSource>("mouse");
 const currentSongbookSelectionIndex = computed(() => {
@@ -387,128 +371,6 @@ function compareSongbookSortValues(left: string, right: string): number {
     numeric: true,
     sensitivity: "base"
   });
-}
-
-function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
-  return frame === "A" ? "B" : "A";
-}
-
-function getPreviewFrameSrc(frame: PreviewFrameId): string {
-  return frame === "A" ? previewFrameSrcA.value : previewFrameSrcB.value;
-}
-
-function setPreviewFrameSrc(frame: PreviewFrameId, value: string): void {
-  if (frame === "A") {
-    previewFrameSrcA.value = value;
-    return;
-  }
-
-  previewFrameSrcB.value = value;
-}
-
-function revokeBlobUrl(url: string): void {
-  if (url.startsWith("blob:")) {
-    URL.revokeObjectURL(url);
-  }
-}
-
-function clearPreviewFrameCleanup(frame: PreviewFrameId): void {
-  if (frame === "A" && previewFrameCleanupTimerA !== null) {
-    clearTimeout(previewFrameCleanupTimerA);
-    previewFrameCleanupTimerA = null;
-    return;
-  }
-
-  if (frame === "B" && previewFrameCleanupTimerB !== null) {
-    clearTimeout(previewFrameCleanupTimerB);
-    previewFrameCleanupTimerB = null;
-  }
-}
-
-function releasePreviewFrame(frame: PreviewFrameId, options?: { preserveUrl?: string }): void {
-  const url = getPreviewFrameSrc(frame);
-  if (!url) {
-    return;
-  }
-
-  setPreviewFrameSrc(frame, "");
-
-  if (url === options?.preserveUrl) {
-    return;
-  }
-
-  if (url !== getPreviewFrameSrc(getInactivePreviewFrame(frame))) {
-    revokeBlobUrl(url);
-  }
-}
-
-function cancelPendingPreviewSwap(): void {
-  previewFrameSwapToken += 1;
-
-  if (previewFrameSwapTimer !== null) {
-    clearTimeout(previewFrameSwapTimer);
-    previewFrameSwapTimer = null;
-  }
-}
-
-function schedulePreviewFrameRelease(frame: PreviewFrameId): void {
-  clearPreviewFrameCleanup(frame);
-
-  const timer = setTimeout(() => {
-    releasePreviewFrame(frame);
-
-    if (frame === "A") {
-      previewFrameCleanupTimerA = null;
-    } else {
-      previewFrameCleanupTimerB = null;
-    }
-  }, PREVIEW_FRAME_TRANSITION_MS);
-
-  if (frame === "A") {
-    previewFrameCleanupTimerA = timer;
-    return;
-  }
-
-  previewFrameCleanupTimerB = timer;
-}
-
-function clearAllPreviewFrames(options?: { preserveUrl?: string }): void {
-  cancelPendingPreviewSwap();
-  clearPreviewFrameCleanup("A");
-  clearPreviewFrameCleanup("B");
-  releasePreviewFrame("A", options);
-  releasePreviewFrame("B", options);
-  pendingPreviewFrame.value = null;
-  activePreviewFrame.value = "A";
-}
-function handlePreviewFrameLoad(frame: PreviewFrameId): void {
-  schedulePreviewFitUpdate();
-
-  if (pendingPreviewFrame.value !== frame) {
-    return;
-  }
-
-  cancelPendingPreviewSwap();
-
-  const previousActiveFrame = activePreviewFrame.value;
-
-  if (previousActiveFrame === frame) {
-    pendingPreviewFrame.value = null;
-    return;
-  }
-
-  const swapToken = previewFrameSwapToken + 1;
-  previewFrameSwapToken = swapToken;
-  previewFrameSwapTimer = setTimeout(() => {
-    if (pendingPreviewFrame.value !== frame || previewFrameSwapToken !== swapToken) {
-      return;
-    }
-
-    activePreviewFrame.value = frame;
-    pendingPreviewFrame.value = null;
-    previewFrameSwapTimer = null;
-    schedulePreviewFrameRelease(previousActiveFrame);
-  }, PREVIEW_FRAME_SWAP_DELAY_MS);
 }
 
 watch(isGeneratingPreview, (value) => {
@@ -533,37 +395,6 @@ watch(isGeneratingPreview, (value) => {
   showPreviewLoadingIndicator.value = false;
 }, { immediate: true });
 
-watch(previewSrc, (nextUrl) => {
-  if (isPerformanceMode.value) {
-    return;
-  }
-
-  cancelPendingPreviewSwap();
-
-  if (!nextUrl) {
-    clearAllPreviewFrames();
-    return;
-  }
-
-  const activeFrame = activePreviewFrame.value;
-  const inactiveFrame = getInactivePreviewFrame(activeFrame);
-  const activeUrl = getPreviewFrameSrc(activeFrame);
-  const inactiveUrl = getPreviewFrameSrc(inactiveFrame);
-
-  if (nextUrl === activeUrl || nextUrl === inactiveUrl) {
-    return;
-  }
-
-  clearPreviewFrameCleanup(inactiveFrame);
-  setPreviewFrameSrc(inactiveFrame, nextUrl);
-
-  if (inactiveUrl && inactiveUrl !== activeUrl) {
-    revokeBlobUrl(inactiveUrl);
-  }
-
-  pendingPreviewFrame.value = inactiveFrame;
-});
-
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handlePreferencesPointerDown);
   window.removeEventListener("keydown", handleWindowKeydown);
@@ -574,7 +405,6 @@ onBeforeUnmount(() => {
     previewLoadingIndicatorTimer = null;
   }
 
-  clearAllPreviewFrames();
 });
 
 async function convertSong(): Promise<void> {
@@ -607,15 +437,6 @@ watch(isPerformanceMode, (value, previousValue) => {
   emit("immersive-change", value);
 
   if (previousValue && !value) {
-    const preservedPreviewUrl = previewSrc.value;
-    clearAllPreviewFrames({ preserveUrl: preservedPreviewUrl });
-
-    if (preservedPreviewUrl) {
-      const entryFrame = getInactivePreviewFrame(activePreviewFrame.value);
-      setPreviewFrameSrc(entryFrame, preservedPreviewUrl);
-      pendingPreviewFrame.value = entryFrame;
-    }
-
     if (activePanel.value === "songbook") {
       syncSongbookSelection();
       alignSongbookViewportToActiveSong("auto");
@@ -1843,25 +1664,17 @@ async function openGeminiApiKeyPage(): Promise<void> {
               </div>
             </div>
           </div>
-          <div v-else ref="previewViewerRef" class="preview-viewer">
-            <iframe
-              :src="viewerFrameSrcA"
-              class="preview-frame"
-              :class="activePreviewFrame === 'A' ? 'preview-frame-active' : 'preview-frame-inactive'"
-              title="ChordPro PDF Preview"
-              @load="handlePreviewFrameLoad('A')"
-            />
-            <iframe
-              :src="viewerFrameSrcB"
-              class="preview-frame"
-              :class="activePreviewFrame === 'B' ? 'preview-frame-active' : 'preview-frame-inactive'"
-              title="ChordPro PDF Preview"
-              @load="handlePreviewFrameLoad('B')"
+          <div v-else class="preview-viewer">
+            <PdfPreviewViewer
+              :src="previewSrc"
+              :loading="showPreviewLoadingIndicator"
+              :manage-blob-cleanup="props.mode === 'user'"
+              loading-message="Generating preview..."
+              aria-label="ChordPro PDF preview"
             />
             <div v-if="isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
               <span class="preview-refresh-spinner" />
             </div>
-            <LoadingOverlayCard v-if="showPreviewLoadingIndicator" message="Generating preview..." />
           </div>
         </div>
       </section>
@@ -2207,6 +2020,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.58rem;
+  letter-spacing: 0.045em;
   white-space: nowrap;
 }
 
@@ -3368,26 +3183,6 @@ async function openGeminiApiKeyPage(): Promise<void> {
   flex: 1;
   overflow: hidden;
   background: rgba(255, 254, 249, 0.34);
-}
-
-.preview-frame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #fff;
-  transition: opacity 180ms ease-in-out;
-}
-
-.preview-frame-active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.preview-frame-inactive {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .preview-refresh-indicator {

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
+import PdfPreviewViewer from "../components/PdfPreviewViewer.vue";
 import type { PipelineEntryPoint } from "../../services/pipeline/SongPipelineService";
 import {
   DEFAULT_PLAYGROUND_PANEL_VISIBILITY,
@@ -570,7 +571,7 @@ onMounted(async () => {
         </div>
         <div class="panel-content preview-panel-content">
           <p v-if="previewPath" class="preview-path">{{ previewPath }}</p>
-          <div v-if="previewError" class="preview-state">
+          <div v-if="previewError && !previewSrc" class="preview-state">
             <p class="preview-message preview-error">{{ previewError }}</p>
           </div>
           <div v-else-if="!isTauri()" class="preview-state">
@@ -626,13 +627,14 @@ onMounted(async () => {
             </div>
           </div>
           <div v-else class="preview-viewer">
-            <iframe :key="previewSrc" :src="previewSrc" class="preview-frame" title="ChordPro PDF Preview" />
-            <div v-if="isGeneratingPreview" class="preview-loading-overlay">
-              <div class="preview-loading-card">
-                <span class="loading-spinner" aria-hidden="true" />
-                <p class="preview-message">Generating preview...</p>
-              </div>
-            </div>
+            <PdfPreviewViewer
+              :src="previewSrc"
+              :loading="isGeneratingPreview"
+              :manage-blob-cleanup="props.mode === 'playground'"
+              loading-message="Generating preview..."
+              aria-label="Playground ChordPro PDF preview"
+            />
+            <p v-if="previewError" class="preview-viewer-error">{{ previewError }}</p>
           </div>
         </div>
       </section>
@@ -1122,21 +1124,19 @@ onMounted(async () => {
   position: relative;
 }
 
-.preview-frame {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  border: 1px solid rgba(47, 59, 49, 0.16);
-  background: #fffef9;
-}
-
-.preview-loading-overlay {
+.preview-viewer-error {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(31, 37, 31, 0.24);
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(139, 18, 40, 0.2);
+  background: rgba(255, 250, 241, 0.94);
+  color: #8b1228;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .preview-loading-card {
