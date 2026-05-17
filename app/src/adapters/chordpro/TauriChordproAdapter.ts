@@ -3,13 +3,20 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import type {
   ChordproAdapter,
   ChordproExportOptions,
+  ChordproHtmlOptions,
   ChordproPreviewOptions,
+  PerformanceHtmlResult,
   PreviewResult
 } from "./adapter";
 
 interface GeneratePreviewResponse {
   pdfPath: string;
   pdfBase64: string;
+}
+
+interface GeneratePerformanceHtmlResponse {
+  htmlPath: string;
+  html: string;
 }
 
 interface ExportPdfResponse {
@@ -58,6 +65,27 @@ export class TauriChordproAdapter implements ChordproAdapter {
       return {
         pdfPath: response.pdfPath,
         pdfBase64: response.pdfBase64
+      };
+    } catch (error) {
+      throw formatTauriError(error);
+    }
+  }
+
+  async generatePerformanceHtml(chordproText: string, options?: ChordproHtmlOptions): Promise<PerformanceHtmlResult> {
+    if (!isTauri()) {
+      throw new Error("Performance reader requires the Tauri desktop runtime.");
+    }
+
+    try {
+      const response = await invoke<GeneratePerformanceHtmlResponse>("generate_performance_html", {
+        chordproText,
+        renderStyle: options?.renderStyle,
+        fileName: options?.fileName
+      });
+
+      return {
+        htmlPath: response.htmlPath,
+        html: response.html
       };
     } catch (error) {
       throw formatTauriError(error);

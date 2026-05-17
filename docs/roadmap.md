@@ -204,8 +204,9 @@ Pending, planned or possible work.
   - first slice implemented: keep split list + preview as the preferred current layout while retaining full-preview mode when the list is collapsed
   - first slice implemented: simplify song list navigation, dock controls and keyboard shortcuts around immediate active-song changes
   - first slice implemented: use `active` as the persistent Performance song state and keep hover/focus feedback temporary instead of maintaining a separate list `selected` state
-- decide the rendering base and initial implementation slice for a progressive in-app reader
-- begin implementing a first progressive in-app reading slice for Performance mode
+- first app-owned reading slice implemented: Performance now uses ChordPro CLI-generated HTML from the current `.cho` as its default and only reading surface, with PDF kept for Preview/export rather than as an in-Performance toggle
+- first reader slice includes fixed song title/artist context, font-size controls, adaptive 3 / 2 / 1 column fit, continuous scroll fallback, section-label styling and clearer song navigation controls
+- continue real-use validation of Performance reader ergonomics before adding deeper behavior such as auto-fit zoom, reader chord diagrams or more advanced section navigation
 
 ### Desktop polish
 
@@ -269,6 +270,12 @@ Pending, planned or possible work.
 ### Rendering / CLI
 
 - allow optional filtering of tab blocks (`{start_of_tab}` / `{end_of_tab}`) without modifying the original `.cho`
+
+### Performance reader improvements (incremental)
+
+- evaluate chord diagram support inside the Performance reader as a reader-specific enhancement, separate from PDF/export diagram rendering
+- evaluate whether the current dark Performance reader direction should extend to other focused surfaces such as the side rail or `.cho` editor, without forcing a global dark theme
+- continue tuning adaptive Performance reader layout so columns, text size and scrolling favor playing through a song with the fewest practical actions
 
 ### Songbook / export improvements
 

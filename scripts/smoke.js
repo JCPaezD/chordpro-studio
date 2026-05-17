@@ -64,6 +64,10 @@ async function main() {
       ensureRenderStyleVariantResult(backendResult);
     });
 
+    await runStep("Performance HTML", steps, async () => {
+      ensurePerformanceHtmlResult(backendResult);
+    });
+
     await runStep("Export", steps, async () => {
       ensureExportResult(backendResult);
     });
@@ -276,6 +280,12 @@ function ensureRenderStyleVariantResult(backendResult) {
 
   if (backendResult.variantPreviewPath === backendResult.secondPreviewPath) {
     throw new Error("[FAIL] Render style cache variant: alternate render style reused the same cache path.");
+  }
+}
+
+function ensurePerformanceHtmlResult(backendResult) {
+  if (!backendResult.performanceHtmlPath || !backendResult.performanceHtmlSize) {
+    throw new Error("[FAIL] Performance HTML: reader HTML was not generated.");
   }
 }
 

@@ -1,6 +1,6 @@
 use crate::chordpro_cli::{
-  export_pdf_internal, generate_preview_with_state, ChordProCommandError, PreviewExecutionState,
-  DiagramInstrument, RenderStyleOptions,
+  export_pdf_internal, generate_performance_html, generate_preview_with_state, ChordProCommandError,
+  PreviewExecutionState, DiagramInstrument, RenderStyleOptions,
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
@@ -22,6 +22,8 @@ pub struct SmokeSummary {
   pub second_preview_size: u64,
   pub variant_preview_path: String,
   pub variant_preview_size: u64,
+  pub performance_html_path: String,
+  pub performance_html_size: u64,
   pub export_pdf_path: String,
   pub export_pdf_size: u64,
   pub export_cho_path: String,
@@ -79,6 +81,24 @@ pub async fn run(app: AppHandle, output_dir: PathBuf) -> Result<SmokeSummary, St
   .map_err(format_backend_error)?;
   let variant_preview_bytes = decode_pdf_bytes(&variant_preview.pdf_base64)?;
 
+  let performance_html = generate_performance_html(
+    app.clone(),
+    SMOKE_CHORDPRO_TEXT.to_string(),
+    render_style.clone(),
+    file_name.clone(),
+  )
+  .await
+  .map_err(format_backend_error)?;
+  if !performance_html.html.contains("class=\"song\"") || !performance_html.html.contains("Smoke Test") {
+    return Err(String::from("Performance HTML did not contain the expected song markup."));
+  }
+  let performance_html_output_path = output_dir.join("performance.html");
+  write_non_empty_file(
+    &performance_html_output_path,
+    performance_html.html.as_bytes(),
+    "performance HTML",
+  )?;
+
   let export_pdf_path = output_dir.join("export.pdf");
   export_pdf_internal(
     app,
@@ -104,6 +124,8 @@ pub async fn run(app: AppHandle, output_dir: PathBuf) -> Result<SmokeSummary, St
     second_preview_size: second_preview_bytes.len() as u64,
     variant_preview_path: variant_preview.pdf_path,
     variant_preview_size: variant_preview_bytes.len() as u64,
+    performance_html_path: performance_html_output_path.to_string_lossy().into_owned(),
+    performance_html_size: performance_html.html.len() as u64,
     export_pdf_path: export_pdf_path.to_string_lossy().into_owned(),
     export_pdf_size,
     export_cho_path: export_cho_path.to_string_lossy().into_owned(),

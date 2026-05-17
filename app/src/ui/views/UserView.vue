@@ -96,6 +96,7 @@ const {
   requestClearSongbook,
   exportCurrent,
   exportSongbookPdf,
+  generatePerformanceHtml,
   runPipeline,
   abortConversion,
   previewFromChordPro,
@@ -1085,8 +1086,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
       :is-refreshing-preview="isRefreshingPreview"
       :preview-error="previewError"
       :preview-src="previewSrc"
+      :chord-pro-text="chordProText"
       :has-renderable-preview-source="hasRenderablePreviewSource"
       :preview-placeholder-info="previewPlaceholderInfo"
+      :generate-performance-html="generatePerformanceHtml"
       :open-song="openSongInPerformanceMode"
       :exit-performance-mode="exitPerformanceMode"
       @selected-change="handlePerformanceSelectionChange"

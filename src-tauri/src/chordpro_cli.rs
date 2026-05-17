@@ -22,6 +22,7 @@ const PREVIEW_CHO_FILENAME: &str = "preview.cho";
 const PREVIEW_PDF_FILENAME: &str = "preview.pdf";
 const EXPORT_CHO_FILENAME: &str = "export.cho";
 const PREVIEW_CACHE_FOLDER: &str = "cache/previews";
+const PERFORMANCE_HTML_CACHE_FOLDER: &str = "cache/performance-html";
 const DEFAULT_SINGLE_COLUMN_TAB_MAX_CHARS: usize = 70;
 const DEFAULT_MULTI_COLUMN_TAB_MAX_CHARS: usize = 35;
 
@@ -49,6 +50,13 @@ pub struct ChordProCommandError {
 pub struct PreviewResponse {
   pub pdf_path: String,
   pub pdf_base64: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerformanceHtmlResponse {
+  pub html_path: String,
+  pub html: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -156,6 +164,30 @@ pub(crate) async fn generate_preview_with_state(
   Ok(preview)
 }
 
+#[tauri::command]
+pub async fn generate_performance_html(
+  app: AppHandle,
+  chordpro_text: String,
+  render_style: Option<RenderStyleOptions>,
+  file_name: Option<String>,
+) -> Result<PerformanceHtmlResponse, ChordProCommandError> {
+  let render_style = render_style.unwrap_or_default();
+  let rendered_chordpro_text =
+    preprocess_chordpro_for_render(&chordpro_text, &render_style, file_name.as_deref());
+
+  tauri::async_runtime::spawn_blocking(move || {
+    generate_performance_html_uncached(&app, &rendered_chordpro_text, &render_style)
+  })
+  .await
+  .map_err(|error| ChordProCommandError {
+    code: "PERFORMANCE_HTML_TASK_JOIN_ERROR".into(),
+    message: format!("Performance HTML generation task failed: {error}"),
+    stdout: None,
+    stderr: None,
+    details: None,
+  })?
+}
+
 fn generate_preview_uncached(
   app: &AppHandle,
   rendered_chordpro_text: &str,
@@ -204,6 +236,49 @@ fn generate_preview_uncached(
   Ok(PreviewResponse {
     pdf_path: response_path.to_string_lossy().into_owned(),
     pdf_base64: STANDARD.encode(generated_pdf_bytes),
+  })
+}
+
+fn generate_performance_html_uncached(
+  app: &AppHandle,
+  rendered_chordpro_text: &str,
+  render_style: &RenderStyleOptions,
+) -> Result<PerformanceHtmlResponse, ChordProCommandError> {
+  let output_path = performance_html_cache_file_path(app, rendered_chordpro_text, render_style)?;
+
+  if let Some(cached_html) = read_valid_cached_performance_html(&output_path) {
+    return Ok(PerformanceHtmlResponse {
+      html_path: output_path.to_string_lossy().into_owned(),
+      html: cached_html,
+    });
+  }
+
+  let cache_dir = ensure_performance_html_cache_dir(app)?;
+  let cache_key = hash_preview_input(rendered_chordpro_text, render_style);
+  let input_path = cache_dir.join(format!("{cache_key}.cho"));
+
+  write_text_file(&input_path, rendered_chordpro_text)?;
+  run_chordpro_command(
+    app,
+    [
+      input_path.as_os_str(),
+      "--output".as_ref(),
+      output_path.as_os_str(),
+    ],
+    render_style,
+  )?;
+
+  let generated_html = fs::read_to_string(&output_path).map_err(|error| ChordProCommandError {
+    code: "PERFORMANCE_HTML_READ_ERROR".into(),
+    message: format!("Failed to read generated performance HTML: {error}"),
+    stdout: None,
+    stderr: None,
+    details: Some(output_path.to_string_lossy().into_owned()),
+  })?;
+
+  Ok(PerformanceHtmlResponse {
+    html_path: output_path.to_string_lossy().into_owned(),
+    html: generated_html,
   })
 }
 
@@ -409,6 +484,30 @@ fn ensure_preview_cache_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandE
   Ok(cache_dir)
 }
 
+fn ensure_performance_html_cache_dir(app: &AppHandle) -> Result<PathBuf, ChordProCommandError> {
+  let cache_dir = app
+    .path()
+    .app_config_dir()
+    .map_err(|error| ChordProCommandError {
+      code: "CACHE_DIRECTORY_ERROR".into(),
+      message: format!("Failed to resolve app config directory: {error}"),
+      stdout: None,
+      stderr: None,
+      details: None,
+    })?
+    .join(PERFORMANCE_HTML_CACHE_FOLDER);
+
+  fs::create_dir_all(&cache_dir).map_err(|error| ChordProCommandError {
+    code: "CACHE_DIRECTORY_ERROR".into(),
+    message: format!("Failed to prepare performance HTML cache directory: {error}"),
+    stdout: None,
+    stderr: None,
+    details: Some(cache_dir.to_string_lossy().into_owned()),
+  })?;
+
+  Ok(cache_dir)
+}
+
 fn preview_cache_file_path(
   app: &AppHandle,
   chordpro_text: &str,
@@ -417,6 +516,16 @@ fn preview_cache_file_path(
   let cache_dir = ensure_preview_cache_dir(app)?;
   let cache_key = hash_preview_input(chordpro_text, render_style);
   Ok(cache_dir.join(format!("{cache_key}.pdf")))
+}
+
+fn performance_html_cache_file_path(
+  app: &AppHandle,
+  chordpro_text: &str,
+  render_style: &RenderStyleOptions,
+) -> Result<PathBuf, ChordProCommandError> {
+  let cache_dir = ensure_performance_html_cache_dir(app)?;
+  let cache_key = hash_preview_input(chordpro_text, render_style);
+  Ok(cache_dir.join(format!("{cache_key}.html")))
 }
 
 fn hash_preview_input(chordpro_text: &str, render_style: &RenderStyleOptions) -> String {
@@ -456,6 +565,20 @@ fn read_valid_cached_preview(cache_path: &Path) -> Option<Vec<u8>> {
   }
 
   Some(bytes)
+}
+
+fn read_valid_cached_performance_html(cache_path: &Path) -> Option<String> {
+  let metadata = fs::metadata(cache_path).ok()?;
+  if !metadata.is_file() || metadata.len() == 0 {
+    return None;
+  }
+
+  let html = fs::read_to_string(cache_path).ok()?;
+  if !html.contains("<html") && !html.contains("<div class=\"song\"") {
+    return None;
+  }
+
+  Some(html)
 }
 
 fn write_preview_cache_file(cache_path: &Path, pdf_bytes: &[u8]) -> io::Result<()> {

@@ -26,6 +26,7 @@ fn main() {
     })
     .invoke_handler(tauri::generate_handler![
       chordpro_cli::generate_preview,
+      chordpro_cli::generate_performance_html,
       chordpro_cli::export_pdf,
       chordpro_cli::export_songbook_pdf,
       config::read_config,

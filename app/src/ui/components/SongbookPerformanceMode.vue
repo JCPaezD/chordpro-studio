@@ -53,17 +53,17 @@
               Preview requires the Tauri desktop runtime.
             </p>
           </div>
-          <div v-else-if="!hasBufferedPreview && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
+          <div v-else-if="!hasPerformanceSurface && showPreviewLoadingIndicator" class="preview-state preview-loading-empty">
             <div class="preview-loading-card">
               <span class="loading-spinner" aria-hidden="true" />
               <p class="message">Generating preview...</p>
             </div>
           </div>
-          <div v-else-if="!hasBufferedPreview && props.previewError" class="preview-state">
+          <div v-else-if="!hasPerformanceSurface && props.previewError" class="preview-state">
             <p class="message error-message">{{ props.previewError }}</p>
           </div>
           <div
-            v-else-if="!hasBufferedPreview && !props.hasRenderablePreviewSource && props.previewPlaceholderInfo.hasContext"
+            v-else-if="!hasPerformanceSurface && !props.hasRenderablePreviewSource && props.previewPlaceholderInfo.hasContext"
             class="preview-state"
           >
             <div class="preview-empty-copy">
@@ -92,35 +92,68 @@
               </div>
             </div>
           </div>
-          <div v-else-if="!hasBufferedPreview" class="preview-state">
+          <div v-else-if="!hasPerformanceSurface" class="preview-state">
             <div class="preview-empty-copy">
               <div class="preview-context-block">
                 <p class="message preview-context-title">
-                  Open a song to see the PDF preview.
+                  Open a song to see the performance reader.
                 </p>
               </div>
               <div class="preview-context-footer">
                 <span class="preview-context-separator" aria-hidden="true" />
                 <p class="message preview-context-hint">
-                  Use the song list to load a document into the preview.
+                  Use the song list to load a document into the reader.
                 </p>
               </div>
             </div>
           </div>
           <div v-else class="preview-viewer">
-            <PdfPreviewViewer
-              :src="props.previewSrc"
-              :loading="showPreviewLoadingIndicator"
-              :manage-blob-cleanup="true"
-              :immersive="true"
-              :show-scroll-controls="true"
-              loading-message="Generating preview..."
-              aria-label="Performance PDF preview"
+            <PerformanceHtmlReader
+              ref="htmlReaderRef"
+              :html="performanceHtml"
+              :title="currentReaderTitle"
+              :artist="currentSongArtist"
+              :loading="isPerformanceHtmlLoading"
+              :error="performanceHtmlError"
+              :font-scale="readerFontScale"
             />
-            <div v-if="props.isRefreshingPreview" class="preview-refresh-indicator" aria-hidden="true">
-              <span class="preview-refresh-spinner" />
-            </div>
             <div class="performance-dock-shell" aria-label="Performance controls">
+              <div class="performance-reader-controls" aria-label="Reader controls">
+                <div class="performance-control-group" role="group" aria-label="Reader text size">
+                  <button
+                    class="performance-control-button icon-only"
+                    type="button"
+                    aria-label="Decrease text size"
+                    title="Decrease text size"
+                    :disabled="readerFontScale <= MIN_READER_FONT_SCALE"
+                    @click="adjustReaderFontScale(-READER_FONT_SCALE_STEP)"
+                  >
+                    <Minus aria-hidden="true" />
+                  </button>
+                  <button
+                    class="performance-control-button text-scale-button"
+                    type="button"
+                    aria-label="Reset text size"
+                    title="Reset text size"
+                    :disabled="readerFontScale === 1"
+                    @click="resetReaderFontScale"
+                  >
+                    <RotateCcw aria-hidden="true" />
+                    {{ readerFontScaleLabel }}
+                  </button>
+                  <button
+                    class="performance-control-button icon-only"
+                    type="button"
+                    aria-label="Increase text size"
+                    title="Increase text size"
+                    :disabled="readerFontScale >= MAX_READER_FONT_SCALE"
+                    @click="adjustReaderFontScale(READER_FONT_SCALE_STEP)"
+                  >
+                    <Plus aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
               <button
                 class="performance-icon-button performance-exit-button"
                 aria-label="Exit performance mode"
@@ -132,7 +165,7 @@
               </button>
 
               <div class="performance-dock">
-                <div class="performance-dock-group">
+                <div class="performance-dock-group" aria-label="Song navigation">
                   <button
                     class="performance-icon-button"
                     :disabled="!canSelectPreviousSong"
@@ -167,9 +200,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
-import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, X } from "lucide-vue-next";
+import { ChevronDown, ChevronUp, Minus, PanelLeftClose, PanelLeftOpen, Plus, RotateCcw, X } from "lucide-vue-next";
 import type { Songbook } from "../../domain/songbook";
-import PdfPreviewViewer from "./PdfPreviewViewer.vue";
+import PerformanceHtmlReader from "./PerformanceHtmlReader.vue";
 import SongList from "./SongList.vue";
 import { usePdfFit } from "../composables/usePdfFit";
 
@@ -191,10 +224,16 @@ type SongListExpose = {
   focus: () => void;
   getItemElement: (index: number) => HTMLButtonElement | null;
 };
+type PerformanceHtmlReaderExpose = {
+  scrollToTop: () => void;
+};
 
 const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
 const PREVIEW_FRAME_SWAP_DELAY_MS = 100;
 const PREVIEW_FRAME_TRANSITION_MS = 180;
+const MIN_READER_FONT_SCALE = 0.84;
+const MAX_READER_FONT_SCALE = 1.4;
+const READER_FONT_SCALE_STEP = 0.08;
 
 const props = defineProps<{
   songbook: Songbook | null;
@@ -203,12 +242,14 @@ const props = defineProps<{
   selectedSongPath: string;
   selectedListPath: string | null;
   currentSongTitle: string;
+  chordProText: string;
   isGeneratingPreview: boolean;
   isRefreshingPreview: boolean;
   previewError: string;
   previewSrc: string;
   hasRenderablePreviewSource: boolean;
   previewPlaceholderInfo: PreviewPlaceholderInfo;
+  generatePerformanceHtml: (chordProText: string) => Promise<string>;
   openSong: (filePath: string) => Promise<boolean>;
   exitPerformanceMode: () => void;
 }>();
@@ -217,9 +258,14 @@ const emit = defineEmits<{
 }>();
 
 const songListRef = ref<SongListExpose | null>(null);
+const htmlReaderRef = ref<PerformanceHtmlReaderExpose | null>(null);
 const previewViewportRef = ref<HTMLElement | null>(null);
 const previewViewerRef = ref<HTMLElement | null>(null);
 const isSongListOpen = ref(true);
+const readerFontScale = ref(1);
+const performanceHtml = ref("");
+const performanceHtmlError = ref("");
+const isPerformanceHtmlLoading = ref(false);
 const hoveredSongPath = ref<string | null>(null);
 const showPreviewLoadingIndicator = ref(false);
 const activePreviewFrame = ref<PreviewFrameId>("A");
@@ -237,6 +283,7 @@ let previewFrameNavigationRafA: number | null = null;
 let previewFrameNavigationRafB: number | null = null;
 let previewFrameSwapTimer: ReturnType<typeof setTimeout> | null = null;
 let previewFrameSwapToken = 0;
+let performanceHtmlRequestId = 0;
 const songEntries = computed(() => props.songListItems);
 const currentSongIndex = computed(() => {
   const songs = songEntries.value;
@@ -255,7 +302,14 @@ const selectedSongListPath = computed(() => hoveredSongPath.value);
 const { applyFit, fitRevision, scheduleFitUpdate } = usePdfFit(previewViewerRef);
 const activePreviewBaseUrl = computed(() => props.previewSrc);
 const nextRenderedPreviewUrl = computed(() => applyFit(activePreviewBaseUrl.value));
-const hasBufferedPreview = computed(() => !!props.previewSrc);
+const hasHtmlReaderSource = computed(() => props.hasRenderablePreviewSource && props.chordProText.trim().length > 0);
+const hasPerformanceSurface = computed(() => hasHtmlReaderSource.value);
+const currentActiveSong = computed(() => songEntries.value.find((songEntry) => songEntry.filePath === props.selectedSongPath));
+const currentReaderTitle = computed(() => currentActiveSong.value?.title || props.previewPlaceholderInfo.title || props.currentSongTitle);
+const currentSongArtist = computed(() => {
+  return currentActiveSong.value?.artist || props.previewPlaceholderInfo.artist;
+});
+const readerFontScaleLabel = computed(() => `${Math.round(readerFontScale.value * 100)}%`);
 
 function setSelectedListPath(filePath: string | null): void {
   if (props.selectedListPath === filePath) {
@@ -369,6 +423,66 @@ function closeSongList(options?: { focusPreview?: boolean }): void {
   if (options?.focusPreview) {
     focusPreviewViewport();
   }
+}
+
+function resetReaderScroll(): void {
+  void nextTick(() => {
+    htmlReaderRef.value?.scrollToTop();
+  });
+}
+
+async function loadPerformanceHtml(options?: { resetScroll?: boolean }): Promise<void> {
+  const requestId = performanceHtmlRequestId + 1;
+  performanceHtmlRequestId = requestId;
+  performanceHtmlError.value = "";
+
+  if (!isTauri() || !hasHtmlReaderSource.value) {
+    performanceHtml.value = "";
+    isPerformanceHtmlLoading.value = false;
+    return;
+  }
+
+  isPerformanceHtmlLoading.value = true;
+  performanceHtml.value = "";
+
+  try {
+    const html = await props.generatePerformanceHtml(props.chordProText);
+
+    if (requestId !== performanceHtmlRequestId) {
+      return;
+    }
+
+    performanceHtml.value = html;
+
+    if (options?.resetScroll) {
+      resetReaderScroll();
+    }
+  } catch (err) {
+    if (requestId !== performanceHtmlRequestId) {
+      return;
+    }
+
+    const detail = err instanceof Error ? err.message.trim() : "";
+    performanceHtmlError.value = detail
+      ? `Reader generation failed: ${detail}`
+      : "Reader generation failed.";
+  } finally {
+    if (requestId === performanceHtmlRequestId) {
+      isPerformanceHtmlLoading.value = false;
+    }
+  }
+}
+
+function adjustReaderFontScale(delta: number): void {
+  const nextScale = Math.min(
+    MAX_READER_FONT_SCALE,
+    Math.max(MIN_READER_FONT_SCALE, Number((readerFontScale.value + delta).toFixed(2)))
+  );
+  readerFontScale.value = nextScale;
+}
+
+function resetReaderFontScale(): void {
+  readerFontScale.value = 1;
 }
 
 function getInactivePreviewFrame(frame: PreviewFrameId): PreviewFrameId {
@@ -849,6 +963,14 @@ watch(isSongListOpen, (isOpen) => {
 });
 
 watch(
+  () => [props.selectedSongPath, props.chordProText] as const,
+  () => {
+    void loadPerformanceHtml({ resetScroll: true });
+  },
+  { immediate: true }
+);
+
+watch(
   () => [props.previewSrc, fitRevision.value],
   () => {
     stagePreviewUrl(nextRenderedPreviewUrl.value);
@@ -901,7 +1023,7 @@ onBeforeUnmount(() => {
   --performance-control-gap: 0;
   --performance-float-edge: calc(var(--performance-control-size) * 0.18);
   --performance-dock-edge: calc(var(--performance-control-size) * 0.46);
-  --performance-toolbar-clearance: calc(var(--performance-dock-edge) * 2.5);
+  --performance-toolbar-clearance: var(--performance-dock-edge);
 
   position: relative;
   display: flex;
@@ -1188,6 +1310,90 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+.performance-reader-controls {
+  position: absolute;
+  top: var(--performance-toolbar-clearance);
+  left: 50%;
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: calc(100% - (var(--performance-control-size) * 5));
+  transform: translateX(-50%);
+  align-items: center;
+  justify-content: center;
+  gap: 0.46rem;
+  pointer-events: auto;
+}
+
+.performance-control-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(24, 32, 25, 0.16);
+  background: rgba(255, 250, 241, 0.92);
+  color: #233127;
+  box-shadow: 0 14px 26px rgba(24, 32, 25, 0.15);
+  backdrop-filter: blur(6px);
+}
+
+.performance-control-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  min-width: 3.5rem;
+  min-height: 2.28rem;
+  padding: 0.34rem 0.66rem;
+  border: 0;
+  border-right: 1px solid rgba(35, 49, 39, 0.14);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.performance-control-button:last-child {
+  border-right: 0;
+}
+
+.performance-control-button.active {
+  background: rgba(238, 244, 237, 0.96);
+  color: #233127;
+}
+
+.performance-control-button:hover:not(:disabled) {
+  background: rgba(238, 244, 237, 0.96);
+}
+
+.performance-control-button.active:hover:not(:disabled) {
+  background: #f8fbf6;
+}
+
+.performance-control-button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.performance-control-button svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.performance-control-button.icon-only {
+  min-width: 2.28rem;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.performance-control-button.text-scale-button {
+  min-width: 5.1rem;
+}
+
 .performance-exit-button {
   position: absolute;
   top: var(--performance-toolbar-clearance);
@@ -1196,9 +1402,13 @@ onBeforeUnmount(() => {
 }
 
 .performance-dock {
+  position: absolute;
+  top: 50%;
+  left: var(--performance-dock-edge);
   display: grid;
   gap: 0;
   padding: 0;
+  transform: translateY(-50%);
   border: 1px solid rgba(24, 32, 25, 0.16);
   background: rgba(255, 250, 241, 0.92);
   box-shadow: 0 14px 26px rgba(24, 32, 25, 0.15);
@@ -1217,6 +1427,21 @@ onBeforeUnmount(() => {
 .performance-dock-group {
   display: grid;
   gap: var(--performance-control-gap);
+}
+
+.performance-dock-group::before {
+  content: "Song";
+  display: grid;
+  place-items: center;
+  min-height: 1.32rem;
+  border-bottom: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(238, 244, 237, 0.92);
+  color: rgba(35, 49, 39, 0.72);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .performance-dock-group:last-child .performance-icon-button:last-child {
@@ -1378,7 +1603,7 @@ onBeforeUnmount(() => {
     --performance-control-gap: 0.4rem;
     --performance-float-edge: calc(var(--performance-control-size) * 0.16);
     --performance-dock-edge: calc(var(--performance-control-size) * 0.36);
-    --performance-toolbar-clearance: calc(var(--performance-dock-edge) * 2.4);
+    --performance-toolbar-clearance: var(--performance-dock-edge);
     --performance-sidebar-mobile-width: min(18rem, calc(100vw - (var(--performance-float-edge) * 2) - 0.7rem));
   }
 
@@ -1417,6 +1642,26 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(24, 32, 25, 0.2);
     background: #fffefb;
     box-shadow: 0 22px 42px rgba(24, 32, 25, 0.22);
+  }
+
+  .performance-reader-controls {
+    top: calc(var(--performance-float-edge) + var(--performance-toolbar-clearance));
+    right: calc(var(--performance-float-edge) + var(--performance-control-size) + 0.4rem);
+    left: auto;
+    max-width: calc(100% - (var(--performance-control-size) * 3) - 1.2rem);
+    transform: none;
+    justify-content: flex-end;
+  }
+
+  .performance-control-button {
+    min-width: 3rem;
+    min-height: 2.24rem;
+    padding-right: 0.54rem;
+    padding-left: 0.54rem;
+  }
+
+  .performance-control-button.text-scale-button {
+    min-width: 4.8rem;
   }
 }
 </style>

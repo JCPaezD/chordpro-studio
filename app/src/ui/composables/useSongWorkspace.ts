@@ -109,6 +109,7 @@ export type SongWorkspace = {
   requestClearAllState(): Promise<void>;
   exportCurrent(defaultExtension?: "pdf" | "cho"): Promise<void>;
   exportSongbookPdf(): Promise<void>;
+  generatePerformanceHtml(chordPro: string): Promise<string>;
   requestClearSongbook(): Promise<void>;
   openSongbookFolder(): Promise<void>;
   refreshSongbook(options?: { feedback?: SongbookFeedbackKind | false }): Promise<void>;
@@ -572,6 +573,16 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       });
     }, 500);
   }
+
+  async function generatePerformanceHtml(chordPro: string): Promise<string> {
+    const reader = await chordproAdapter.generatePerformanceHtml(chordPro, {
+      renderStyle: getRenderStyle(),
+      fileName: document.value.fileName
+    });
+
+    return reader.html;
+  }
+
   function clearGeneratedState(): void {
     cleanedText.value = "";
     songJson.value = "";
@@ -2061,6 +2072,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     requestClearAllState,
     exportCurrent,
     exportSongbookPdf,
+    generatePerformanceHtml,
     requestClearSongbook,
     openSongbookFolder,
     refreshSongbook,
