@@ -2450,8 +2450,11 @@ async function openGeminiApiKeyPage(): Promise<void> {
   margin-top: 0.35rem;
 }
 
-.convert-layout :deep(.editor-textarea) {
+.convert-layout :deep(.editor-codemirror .cm-editor) {
   border: 0;
+}
+
+.convert-layout :deep(.editor-codemirror .cm-content) {
   padding: 0.7rem 0.78rem;
 }
 
@@ -2968,8 +2971,8 @@ async function openGeminiApiKeyPage(): Promise<void> {
 }
 
 .convert-layout .input-textarea:focus,
-.convert-layout :deep(.editor-textarea:focus),
-.editor-panel :deep(.editor-textarea:focus) {
+.convert-layout :deep(.editor-codemirror .cm-editor.cm-focused),
+.editor-panel :deep(.editor-codemirror .cm-editor.cm-focused) {
   outline: 2px solid rgba(55, 81, 59, 0.24);
   outline-offset: -2px;
 }
@@ -2998,8 +3001,11 @@ async function openGeminiApiKeyPage(): Promise<void> {
   margin-top: 0.16rem;
 }
 
-.editor-panel :deep(.editor-textarea) {
+.editor-panel :deep(.editor-codemirror .cm-editor) {
   border: 0;
+}
+
+.editor-panel :deep(.editor-codemirror .cm-content) {
   padding: 0.7rem 0.78rem;
 }
 

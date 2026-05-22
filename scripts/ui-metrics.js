@@ -60,7 +60,7 @@ async function measureSongbookLayoutFixture(page) {
   return page.evaluate(() => {
     const userScope = findScopeFromElement(".user-view");
     const headerScope = findScopeFromStyle(".editor-subtitle-value.is-surface");
-    const paneScope = findScopeFromStyle(".editor-textarea");
+    const paneScope = findScopeFromStyle(".editor-codemirror");
     const listScope = findScopeFromStyle(".song-list");
 
     if (!userScope || !headerScope || !paneScope || !listScope) {
@@ -146,7 +146,13 @@ async function measureSongbookLayoutFixture(page) {
             </div>
           </div>
           <div class="editor-body" ${paneScope}>
-            <textarea class="editor-textarea editor-monospace" ${paneScope}></textarea>
+            <div class="editor-codemirror" ${paneScope}>
+              <div class="cm-editor" ${paneScope}>
+                <div class="cm-scroller" ${paneScope}>
+                  <div class="cm-content" ${paneScope}></div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </section>
@@ -161,7 +167,7 @@ async function measureSongbookLayoutFixture(page) {
       countBadge: rect(root, ".song-count-badge"),
       dirtyBadge: rect(root, ".songbook-inline-dirty-badge"),
       songList: rect(root, ".song-list"),
-      editorTextarea: rect(root, ".editor-textarea"),
+      editorTextarea: rect(root, ".cm-editor"),
       listTitle: rect(root, ".song-list-title-row h3"),
       editorTitle: rect(root, ".editor-title-line h3")
     };
@@ -221,7 +227,7 @@ async function measureConvertLayoutFixture(page) {
   return page.evaluate(() => {
     const userScope = findScopeFromElement(".user-view");
     const headerScope = findScopeFromStyle(".editor-subtitle-value.is-surface");
-    const paneScope = findScopeFromStyle(".editor-textarea");
+    const paneScope = findScopeFromStyle(".editor-codemirror");
 
     if (!userScope || !headerScope || !paneScope) {
       throw new Error(`Missing scoped Vue attributes: ${JSON.stringify({ userScope, headerScope, paneScope })}`);
@@ -280,7 +286,13 @@ async function measureConvertLayoutFixture(page) {
             </div>
           </div>
           <div class="editor-body" ${paneScope}>
-            <textarea class="editor-textarea editor-monospace" ${paneScope}></textarea>
+            <div class="editor-codemirror" ${paneScope}>
+              <div class="cm-editor" ${paneScope}>
+                <div class="cm-scroller" ${paneScope}>
+                  <div class="cm-content" ${paneScope}></div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </section>
@@ -295,7 +307,7 @@ async function measureConvertLayoutFixture(page) {
       sourceActionButton: rect(root, ".editor-header-primary-actions .editor-toolbar .toolbar-button"),
       sourceDirtyBadge: rect(root, ".convert-inline-dirty-badge"),
       originalTextarea: rect(root, ".input-textarea"),
-      sourceTextarea: rect(root, ".editor-textarea"),
+      sourceTextarea: rect(root, ".cm-editor"),
       originalTitle: rect(root, ".convert-heading h3"),
       sourceTitle: rect(root, ".editor-title-line h3")
     };

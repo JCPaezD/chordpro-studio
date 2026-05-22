@@ -377,8 +377,11 @@ When documentation files are manually edited by the user, Codex should treat the
 
 ## Editor typography notes
 
-- all main text editors now use the same shared monospace stack in Convert, Songbook and Playground to preserve chord alignment while keeping their previous font size, line-height and layout rules intact
-- the monospace stack is centralized through a shared CSS variable and then applied explicitly only to editor textareas, so non-editor UI text keeps the normal application font
+- all main ChordPro editors in Convert, Songbook and Playground now use the shared `ChordProEditorPane` component backed by CodeMirror, keeping the same public `modelValue` / `update:modelValue` contract used by the previous textarea
+- the editor keeps the shared monospace stack to preserve chord alignment while adding ChordPro highlighting for directives, directive values, section directives, inline chords and tab blocks
+- CodeMirror owns native editing behavior such as keyboard undo/redo, select-all, cursor movement and text drag/drop while the app still owns save, preview, export, dirty-state and loading-overlay behavior around the editor
+- Tauri desktop windows disable native window file drag/drop through `dragDropEnabled = false` so HTML5 drag/drop inside CodeMirror works on Windows; file opening remains dialog-driven rather than window-drop-driven
+- Songbook dirty state compares the live `.cho` text against the last saved file baseline, so returning to the saved content through undo or manual edits clears the dirty affordance instead of treating every input event as permanently dirty
 ## UI Layout Notes
 
 - the User View refactor is now implemented: the shell is viewport-constrained, the header is fixed within the view, preview height stays stable across states, and panel scrolling is internal only

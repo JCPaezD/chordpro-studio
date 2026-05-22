@@ -27,6 +27,7 @@ type WorkspaceDocument = {
   filePath: string;
   fileName: string;
   chordProText: string;
+  savedChordProText: string;
   song: Song | null;
   dirty: boolean;
 };
@@ -166,6 +167,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     filePath: "",
     fileName: "",
     chordProText: "",
+    savedChordProText: "",
     song: null,
     dirty: false
   });
@@ -226,7 +228,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       document.value = {
         ...document.value,
         chordProText: value,
-        dirty: true
+        dirty: isDocumentDirty(value, document.value.filePath, document.value.savedChordProText)
       };
     }
   });
@@ -420,22 +422,30 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     songJson.value = nextDocument.song ? JSON.stringify(nextDocument.song, null, 2) : "";
   }
 
+  function isDocumentDirty(chordPro: string, filePath: string, savedChordPro: string): boolean {
+    return !!filePath && chordPro !== savedChordPro;
+  }
+
   function createDocumentFromChordPro(
     chordPro: string,
     options?: {
       filePath?: string;
       dirty?: boolean;
+      savedChordProText?: string;
       song?: Song | null;
     }
   ): WorkspaceDocument {
     const filePath = options?.filePath ?? "";
+    const savedChordProText = options?.savedChordProText ?? chordPro;
+    const dirty = options?.dirty ?? isDocumentDirty(chordPro, filePath, savedChordProText);
 
     return {
       filePath,
       fileName: filePath ? getFilenameFromPath(filePath) : "",
       chordProText: chordPro,
+      savedChordProText,
       song: options?.song ?? null,
-      dirty: options?.dirty ?? false
+      dirty
     };
   }
 
@@ -457,13 +467,15 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       document.value = {
         ...document.value,
         chordProText: chordPro,
-        song: parsedSong
+        song: parsedSong,
+        dirty: isDocumentDirty(chordPro, document.value.filePath, document.value.savedChordProText)
       };
       songJson.value = JSON.stringify(parsedSong, null, 2);
     } catch {
       document.value = {
         ...document.value,
-        chordProText: chordPro
+        chordProText: chordPro,
+        dirty: isDocumentDirty(chordPro, document.value.filePath, document.value.savedChordProText)
       };
     }
   }
@@ -1230,7 +1242,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       document.value = {
         ...document.value,
         chordProText: result.chordPro,
-        song: result.song
+        song: result.song,
+        dirty: isDocumentDirty(result.chordPro, document.value.filePath, document.value.savedChordProText)
       };
       songJson.value = JSON.stringify(result.song, null, 2);
     }

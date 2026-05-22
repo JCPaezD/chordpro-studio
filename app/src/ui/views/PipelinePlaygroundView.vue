@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
 import appLogo from "../assets/logo-64.png";
+import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import PdfPreviewViewer from "../components/PdfPreviewViewer.vue";
 import type { PipelineEntryPoint } from "../../services/pipeline/SongPipelineService";
 import {
@@ -304,6 +305,10 @@ async function runFromChordPro(): Promise<void> {
   await runFromEntryPoint("chordPro");
 }
 
+function updateChordPro(value: string): void {
+  chordProText.value = value;
+}
+
 function loadPlaygroundModel(): void {
   selectedGeminiModel.value = geminiModelOverride.value || (appConfig.playgroundModel.value ?? "gemini-flash-latest");
 }
@@ -521,7 +526,12 @@ onMounted(async () => {
           </div>
         </div>
         <div class="panel-content">
-          <textarea v-model="chordProText" class="editor-monospace" />
+          <ChordProEditorPane
+            class="playground-chordpro-editor"
+            :model-value="chordProText"
+            placeholder="Edit ChordPro source..."
+            @update:model-value="updateChordPro"
+          />
         </div>
       </section>
 
@@ -1228,6 +1238,30 @@ textarea {
   box-sizing: border-box;
   resize: none;
   overflow: auto;
+}
+
+.playground-chordpro-editor {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.playground-chordpro-editor :deep(.editor-pane),
+.playground-chordpro-editor :deep(.editor-body) {
+  gap: 0;
+  min-height: 0;
+}
+
+.playground-chordpro-editor :deep(.cm-editor) {
+  font-size: 0.9rem;
+}
+
+.playground-chordpro-editor :deep(.cm-scroller) {
+  line-height: 1.4;
+}
+
+.playground-chordpro-editor :deep(.cm-content) {
+  padding: 0.75rem;
 }
 
 pre {

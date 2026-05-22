@@ -186,6 +186,7 @@ Current status:
 - v1.7 PDF preview viewer slice is implemented across Convert, Songbook, Playground and the current Performance PDF surface: a shared PDF.js-based viewer renders the existing ChordPro CLI Blob URLs with app-styled controls, height-first fit, continuous pages, page navigation, zoom and drag panning, reducing native WebView PDF chrome without changing the backend preview/export path.
 - v1.7 Desktop polish now persists and restores Tauri window size, position, maximized state, monitor placement and the last active main view, restoring Performance only when the saved songbook context can be restored safely.
 - v1.7 Performance reader polish fixed two validated reading frictions: inline chord placement no longer introduces artificial lyric spacing, and narrow/tall layouts now reserve reader space so previous/next song controls do not cover lyrics or chords.
+- v1.7 Editor improvements now replace the raw `.cho` textarea with a shared CodeMirror-based editor in Convert, Songbook and Playground, adding ChordPro syntax highlighting, native editor undo/redo/select-all behavior, internal/external drag-and-drop editing in Tauri and baseline-aware dirty state tracking.
 
 ## Current roadmap
 
@@ -213,11 +214,8 @@ Pending, planned or possible work.
 
 ### Editor improvements
 
-- add basic syntax highlighting for the `.cho` editor:
-  - lightweight regex-based approach
-  - no heavy editor refactor yet
-  - avoid breaking current input behavior
-- stretch goal: add lightweight undo / redo UI controls for the main text editors
+- first editor slice implemented: Convert, Songbook and Playground now use a shared CodeMirror-based `.cho` editor with ChordPro syntax highlighting, native keyboard undo/redo/select-all behavior, drag-and-drop editing and baseline-aware dirty state tracking
+- evaluate and, if it still fits v1.7 scope, add lightweight undo / redo UI controls for the main ChordPro editors before closing the version
 
 ### Conversion / LLM improvements
 
@@ -341,7 +339,7 @@ Pending, planned or possible work.
 - layout optimization
 - song library
 - ensure rendering robustness remains compatible with future layout optimization features
-- evaluate richer editing capabilities for the .cho editor (e.g. structured chord manipulation, improved editing UX, potential migration beyond textarea)
+- evaluate richer editing capabilities for the `.cho` editor (e.g. structured chord manipulation, improved editing UX, or deeper CodeMirror language support)
 
 ### Songbook PDF enhancements
 
