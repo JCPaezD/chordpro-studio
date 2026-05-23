@@ -212,6 +212,12 @@ Pending, planned or possible work.
 - first reader polish pass completed: inline chord table cells no longer add artificial lyric spacing, and narrow/tall layouts reserve a left safe area for floating song navigation controls
 - first reader polish pass also resolves the old Performance PDF viewer focus trap: interacting with the reader surface no longer steals keyboard ownership from Performance navigation shortcuts such as `Esc`, previous song and next song
 - continue real-use validation of Performance reader ergonomics before adding deeper behavior such as auto-fit zoom, reader chord diagrams or more advanced section navigation
+- real-use validation findings pending review:
+  - evaluate hover-to-open behavior for the collapsed song list, with the handle potentially acting as a pinned/unpinned control; pinned list should keep split layout, while temporary hover-open can overlay the reader
+  - restore or define a keyboard shortcut for opening and closing the Performance song list without conflicting with direct song navigation
+  - evaluate reader scroll shortcuts that do not overload the previous/next song arrow behavior
+  - fix long-line behavior in narrow/tall layouts when a verse is still too wide in one-column mode and creates horizontal scroll; known example: `Turnedo - Ivan Ferreiro` on a maximized vertical display
+  - restore circular navigation in the Performance song list when moving past the first or last item
 
 ### Editor improvements
 
