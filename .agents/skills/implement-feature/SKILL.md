@@ -406,5 +406,7 @@ Explain briefly:
 - assumptions made (only meaningful ones, using the same format as `docs/dev-notes.md`)
 - verification steps performed
 
+Use the user's conversation language for summaries and review notes; in this project, default to Spanish when the user is working in Spanish. Keep code, commands, commit messages, technical identifiers, and persistent documentation text in their target language.
+
 Ensure build checks pass before finishing.
 

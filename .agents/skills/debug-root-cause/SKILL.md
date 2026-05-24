@@ -167,6 +167,8 @@ Return:
 - root cause hypothesis
 - validation plan (if needed)
 
+Use the user's conversation language for conversation-only diagnostic output; in this project, default to Spanish when the user is working in Spanish. Keep code, logs, commands, external contract names, and persistent documentation text in their original or target language.
+
 Do NOT include:
 
 - code changes

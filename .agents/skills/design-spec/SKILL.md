@@ -90,6 +90,7 @@ Use this structure:
 
 Return the main workflow result in normal markdown that reflows naturally in the UI.
 Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
+Use the user's conversation language for conversation-only specs; in this project, default to Spanish when the user is working in Spanish. Keep persistent spec artifacts or documentation text in the target artifact's established language.
 
 ---
 

@@ -198,3 +198,9 @@ If a post-release documentation issue appears, fix it in a separate follow-up co
 - keep release notes concise and factual
 - prefer MSI-to-MSI validation when checking installer upgrade behavior
 - keep the release process stoppable at each human review point
+
+## Conversation Language
+
+Use the user's conversation language for review checklists, summaries, and approval prompts; in this project, default to Spanish when the user is working in Spanish.
+
+Keep persistent release notes, tags, artifact names, commands, commit messages, and repository documentation in the language or format established for that target artifact.

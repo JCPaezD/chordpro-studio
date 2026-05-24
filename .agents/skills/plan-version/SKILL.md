@@ -92,6 +92,7 @@ Use this structure when proposing a block or roadmap adjustment:
 Return the main workflow result in normal markdown that reflows naturally in the UI.
 Do not wrap the main human-readable output in fenced code blocks unless literal formatting must be preserved.
 This structure is for conversation output, not for direct roadmap transcription.
+Use the user's conversation language for conversation-only planning output; in this project, default to Spanish when the user is working in Spanish. Keep roadmap text in the target document's established language.
 
 ---
 

@@ -96,6 +96,14 @@ Propose or apply documentation updates when work changes:
 
 For UI, UX, layout, dialogs, interaction flow or visual behavior, stop for human validation before treating roadmap closure or final documentation closure as complete.
 
+## Conversation Language
+
+When a skill returns a workflow result only for conversation review, write it in the user's conversation language. For this project, default to Spanish when the user is working in Spanish.
+
+Keep persistent repository artifacts in the language that best matches the target file or artifact. For example, keep existing English docs, code-facing identifiers, commit messages, release artifacts, or templates in English when that is the established local convention.
+
+If one response mixes a conversational explanation with a proposed persistent artifact, write the explanation in the user's language and keep the artifact in its target language.
+
 ## Visual And UI Validation
 
 Choose the visual validation surface by intent:
