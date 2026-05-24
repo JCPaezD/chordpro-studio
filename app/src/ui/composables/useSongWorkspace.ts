@@ -70,6 +70,7 @@ export type SongWorkspace = {
   rawInput: Ref<string>;
   cleanedText: Ref<string>;
   chordProText: Ref<string>;
+  editorSessionKey: Ref<string>;
   songJson: Ref<string>;
   loading: Ref<boolean>;
   isGeneratingPreview: Ref<boolean>;
@@ -149,6 +150,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const activePanel = ref<"songbook" | "convert">("convert");
   const rawInput = ref("");
   const cleanedText = ref("");
+  const editorSessionKey = ref("chordpro-editor-session-0");
   const songJson = ref("");
   const loading = ref(false);
   const isGeneratingPreview = ref(false);
@@ -221,6 +223,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   let resolveRawInputDiscardResolution: ((choice: RawInputDiscardResolution) => void) | null = null;
   let pendingSaveFilenameMismatchResolution: Promise<SaveFilenameMismatchResolution> | null = null;
   let resolveSaveFilenameMismatchResolution: ((choice: SaveFilenameMismatchResolution) => void) | null = null;
+  let editorSessionCounter = 0;
 
   const chordProText = computed({
     get: () => document.value.chordProText,
@@ -416,8 +419,16 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     rawInput.value = await navigator.clipboard.readText();
   }
 
-  function replaceDocument(nextDocument: WorkspaceDocument): void {
+  function resetEditorSession(): void {
+    editorSessionCounter += 1;
+    editorSessionKey.value = `chordpro-editor-session-${editorSessionCounter}`;
+  }
+
+  function replaceDocument(nextDocument: WorkspaceDocument, options?: { resetEditorSession?: boolean }): void {
     cancelPendingPreviewRefresh();
+    if (options?.resetEditorSession !== false) {
+      resetEditorSession();
+    }
     document.value = nextDocument;
     songJson.value = nextDocument.song ? JSON.stringify(nextDocument.song, null, 2) : "";
   }
@@ -920,7 +931,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         filePath: targetPath,
         song: parsedSong,
         dirty: false
-      })
+      }),
+      { resetEditorSession: false }
     );
 
     if (songbook.value) {
@@ -1023,7 +1035,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
             filePath: finalPath,
             song: document.value.song,
             dirty: false
-          })
+          }),
+          { resetEditorSession: false }
         );
         if (songbook.value) {
           await refreshSongbook();
@@ -2046,6 +2059,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     rawInput,
     cleanedText,
     chordProText,
+    editorSessionKey,
     songJson,
     loading,
     isGeneratingPreview,

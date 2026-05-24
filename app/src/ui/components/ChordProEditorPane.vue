@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { Compartment, EditorState, RangeSetBuilder, Transaction, type Extension } from "@codemirror/state";
+import { defaultKeymap, history, historyField, historyKeymap, redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
+import { Compartment, EditorState, RangeSetBuilder, type Extension } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -14,6 +14,11 @@ import {
 } from "@codemirror/view";
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 
+import {
+  deleteCachedChordProEditorSnapshot,
+  getCachedChordProEditorSnapshot,
+  setCachedChordProEditorSnapshot
+} from "./chordProEditorSessionCache";
 import LoadingOverlayCard from "./LoadingOverlayCard.vue";
 
 const props = withDefaults(
@@ -23,21 +28,31 @@ const props = withDefaults(
     disabled?: boolean;
     loading?: boolean;
     loadingMessage?: string;
+    historyKey?: string;
   }>(),
   {
     placeholder: "ChordPro text",
     disabled: false,
     loading: false,
-    loadingMessage: "Loading..."
+    loadingMessage: "Loading...",
+    historyKey: ""
   }
 );
 
+type EditorHistoryState = {
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
 const emit = defineEmits<{
   "update:modelValue": [value: string];
+  "history-state-change": [state: EditorHistoryState];
 }>();
 
 const editorHostRef = ref<HTMLDivElement | null>(null);
 const editorView = shallowRef<EditorView | null>(null);
+const canUndo = ref(false);
+const canRedo = ref(false);
 const editableCompartment = new Compartment();
 const placeholderCompartment = new Compartment();
 const editorAttributesCompartment = new Compartment();
@@ -225,28 +240,126 @@ function createEditorAttributesExtension(): Extension {
   });
 }
 
-function createEditorState(): EditorState {
-  return EditorState.create({
-    doc: props.modelValue,
-    extensions: [
-      history(),
-      drawSelection(),
-      dropCursor(),
-      EditorView.lineWrapping,
-      keymap.of([...defaultKeymap, ...historyKeymap]),
-      editableCompartment.of(createEditableExtensions()),
-      placeholderCompartment.of(createPlaceholderExtension()),
-      editorAttributesCompartment.of(createEditorAttributesExtension()),
-      chordProHighlightExtension,
-      EditorView.updateListener.of((update) => {
-        if (!update.docChanged || isApplyingExternalChange) {
-          return;
-        }
+function updateHistoryState(view = editorView.value): void {
+  const nextState = {
+    canUndo: !!view && !props.disabled && undoDepth(view.state) > 0,
+    canRedo: !!view && !props.disabled && redoDepth(view.state) > 0
+  };
 
-        emit("update:modelValue", update.state.doc.toString());
-      })
-    ]
+  if (nextState.canUndo === canUndo.value && nextState.canRedo === canRedo.value) {
+    return;
+  }
+
+  canUndo.value = nextState.canUndo;
+  canRedo.value = nextState.canRedo;
+  emit("history-state-change", nextState);
+}
+
+function createEditorExtensions(): Extension {
+  return [
+    history(),
+    drawSelection(),
+    dropCursor(),
+    EditorView.lineWrapping,
+    keymap.of([...defaultKeymap, ...historyKeymap]),
+    editableCompartment.of(createEditableExtensions()),
+    placeholderCompartment.of(createPlaceholderExtension()),
+    editorAttributesCompartment.of(createEditorAttributesExtension()),
+    chordProHighlightExtension,
+    EditorView.updateListener.of((update) => {
+      persistEditorState(update.view);
+      updateHistoryState(update.view);
+
+      if (!update.docChanged || isApplyingExternalChange) {
+        return;
+      }
+
+      emit("update:modelValue", update.state.doc.toString());
+    })
+  ];
+}
+
+function createEditorState(doc = props.modelValue): EditorState {
+  return EditorState.create({
+    doc,
+    extensions: createEditorExtensions()
   });
+}
+
+function getEditorHistoryKey(): string {
+  return props.historyKey || "__default_chordpro_editor_session__";
+}
+
+function getCachedEditorState(key = getEditorHistoryKey()): EditorState | null {
+  const cachedSnapshot = getCachedChordProEditorSnapshot(key);
+  if (!cachedSnapshot || cachedSnapshot.doc !== props.modelValue) {
+    return null;
+  }
+
+  try {
+    return EditorState.fromJSON(
+      cachedSnapshot.stateJson,
+      { extensions: createEditorExtensions() },
+      { history: historyField }
+    );
+  } catch {
+    return null;
+  }
+}
+
+function createInitialEditorState(): EditorState {
+  return getCachedEditorState() ?? createEditorState();
+}
+
+function persistEditorState(view = editorView.value): void {
+  if (!view) {
+    return;
+  }
+
+  setCachedChordProEditorSnapshot(getEditorHistoryKey(), {
+    doc: view.state.doc.toString(),
+    stateJson: view.state.toJSON({ history: historyField })
+  });
+}
+
+function applyEditorState(state: EditorState): void {
+  const view = editorView.value;
+  if (!view) {
+    return;
+  }
+
+  isApplyingExternalChange = true;
+  try {
+    view.setState(state);
+    persistEditorState(view);
+    updateHistoryState(view);
+  } finally {
+    isApplyingExternalChange = false;
+  }
+}
+
+function undoEditor(): void {
+  const view = editorView.value;
+  if (!view || props.disabled || !canUndo.value) {
+    return;
+  }
+
+  undo(view);
+  persistEditorState(view);
+  view.focus();
+  updateHistoryState(view);
+}
+
+function redoEditor(): void {
+  const view = editorView.value;
+  if (!view || props.disabled || !canRedo.value) {
+    return;
+  }
+
+  redo(view);
+  persistEditorState(view);
+  view.focus();
+  updateHistoryState(view);
 }
 
 function syncEditorDocument(value: string): void {
@@ -262,14 +375,8 @@ function syncEditorDocument(value: string): void {
 
   isApplyingExternalChange = true;
   try {
-    view.dispatch({
-      changes: {
-        from: 0,
-        to: currentValue.length,
-        insert: value
-      },
-      annotations: Transaction.addToHistory.of(false)
-    });
+    const cachedState = getCachedEditorState();
+    applyEditorState(cachedState ?? createEditorState(value));
   } finally {
     isApplyingExternalChange = false;
   }
@@ -286,7 +393,9 @@ function scrollToTop(): void {
 }
 
 defineExpose({
-  scrollToTop
+  scrollToTop,
+  undo: undoEditor,
+  redo: redoEditor
 });
 
 onMounted(() => {
@@ -295,12 +404,15 @@ onMounted(() => {
   }
 
   editorView.value = new EditorView({
-    state: createEditorState(),
+    state: createInitialEditorState(),
     parent: editorHostRef.value
   });
+  persistEditorState(editorView.value);
+  updateHistoryState(editorView.value);
 });
 
 onBeforeUnmount(() => {
+  persistEditorState();
   editorView.value?.destroy();
   editorView.value = null;
 });
@@ -313,11 +425,23 @@ watch(
 );
 
 watch(
+  () => props.historyKey,
+  (_nextKey, previousKey) => {
+    if (previousKey) {
+      deleteCachedChordProEditorSnapshot(previousKey);
+    }
+
+    applyEditorState(createInitialEditorState());
+  }
+);
+
+watch(
   () => props.disabled,
   () => {
     editorView.value?.dispatch({
       effects: editableCompartment.reconfigure(createEditableExtensions())
     });
+    updateHistoryState();
   }
 );
 
@@ -343,7 +467,13 @@ watch(
 <template>
   <section class="editor-pane">
     <div v-if="$slots.header" class="editor-header">
-      <slot name="header" />
+      <slot
+        name="header"
+        :can-undo="canUndo"
+        :can-redo="canRedo"
+        :undo="undoEditor"
+        :redo="redoEditor"
+      />
     </div>
 
     <div class="editor-body">

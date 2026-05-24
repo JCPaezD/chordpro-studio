@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 
 import { isTauri } from "@tauri-apps/api/core";
+import { Redo2, Undo2 } from "lucide-vue-next";
 import appLogo from "../assets/logo-64.png";
 import ChordProEditorPane from "../components/ChordProEditorPane.vue";
 import PdfPreviewViewer from "../components/PdfPreviewViewer.vue";
@@ -25,6 +26,7 @@ const {
   rawInput,
   cleanedText,
   chordProText,
+  editorSessionKey,
   songJson,
   loading,
   isGeneratingPreview,
@@ -48,6 +50,14 @@ const {
 const appConfig = useAppConfig();
 type PlaygroundStageId = "raw" | "cleaned" | "chordPro" | "json" | "preview";
 type PlaygroundStageState = "input" | "fresh" | "stale";
+type ChordProEditorPaneExpose = {
+  undo: () => void;
+  redo: () => void;
+};
+type EditorHistoryState = {
+  canUndo: boolean;
+  canRedo: boolean;
+};
 
 const STAGE_ORDER: PlaygroundStageId[] = ["raw", "cleaned", "chordPro", "json", "preview"];
 const STAGE_NUMBERS: Record<PlaygroundStageId, string> = {
@@ -74,6 +84,11 @@ const geminiModelOverride = ref("");
 const resolvedGeminiModel = computed(() => geminiModelOverride.value || selectedGeminiModel.value);
 const lastPipelineEntryPoint = ref<PipelineEntryPoint | null>(null);
 const lastFailedStage = ref<PlaygroundStageId | null>(null);
+const chordProEditorPaneRef = ref<ChordProEditorPaneExpose | null>(null);
+const chordProHistoryState = ref<EditorHistoryState>({
+  canUndo: false,
+  canRedo: false
+});
 const panelVisibility = ref<PlaygroundPanelVisibility>({
   ...DEFAULT_PLAYGROUND_PANEL_VISIBILITY
 });
@@ -309,6 +324,18 @@ function updateChordPro(value: string): void {
   chordProText.value = value;
 }
 
+function updateChordProHistoryState(state: EditorHistoryState): void {
+  chordProHistoryState.value = state;
+}
+
+function undoChordProEditor(): void {
+  chordProEditorPaneRef.value?.undo();
+}
+
+function redoChordProEditor(): void {
+  chordProEditorPaneRef.value?.redo();
+}
+
 function loadPlaygroundModel(): void {
   selectedGeminiModel.value = geminiModelOverride.value || (appConfig.playgroundModel.value ?? "gemini-flash-latest");
 }
@@ -514,6 +541,24 @@ onMounted(async () => {
           </div>
           <div class="panel-actions">
             <button
+              class="mini-button icon-mini-button"
+              aria-label="Undo ChordPro editor change"
+              title="Undo"
+              :disabled="!chordProHistoryState.canUndo"
+              @click="undoChordProEditor"
+            >
+              <Undo2 aria-hidden="true" class="button-icon" />
+            </button>
+            <button
+              class="mini-button icon-mini-button"
+              aria-label="Redo ChordPro editor change"
+              title="Redo"
+              :disabled="!chordProHistoryState.canRedo"
+              @click="redoChordProEditor"
+            >
+              <Redo2 aria-hidden="true" class="button-icon" />
+            </button>
+            <button
               class="run-button run-button-secondary"
               :disabled="loading || isGeneratingPreview || !chordProText"
               @click="runFromChordPro"
@@ -527,10 +572,13 @@ onMounted(async () => {
         </div>
         <div class="panel-content">
           <ChordProEditorPane
+            ref="chordProEditorPaneRef"
             class="playground-chordpro-editor"
             :model-value="chordProText"
+            :history-key="editorSessionKey"
             placeholder="Edit ChordPro source..."
             @update:model-value="updateChordPro"
+            @history-state-change="updateChordProHistoryState"
           />
         </div>
       </section>
@@ -1351,6 +1399,18 @@ pre {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+.icon-mini-button {
+  width: 2.5rem;
+  padding: 0;
+}
+
+.button-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  stroke-width: 1.9;
 }
 
 .run-button:disabled,

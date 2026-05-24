@@ -381,6 +381,7 @@ When documentation files are manually edited by the user, Codex should treat the
 - all main ChordPro editors in Convert, Songbook and Playground now use the shared `ChordProEditorPane` component backed by CodeMirror, keeping the same public `modelValue` / `update:modelValue` contract used by the previous textarea
 - the editor keeps the shared monospace stack to preserve chord alignment while adding ChordPro highlighting for directives, directive values, section directives, inline chords and tab blocks
 - CodeMirror owns native editing behavior such as keyboard undo/redo, select-all, cursor movement and text drag/drop while the app still owns save, preview, export, dirty-state and loading-overlay behavior around the editor
+- editor undo/redo history is runtime-only session state keyed by the active ChordPro document session; it survives Convert/Songbook/Playground view switches for the same document, resets on document replacement, and is not persisted across app restarts
 - Tauri desktop windows disable native window file drag/drop through `dragDropEnabled = false` so HTML5 drag/drop inside CodeMirror works on Windows; file opening remains dialog-driven rather than window-drop-driven
 - Songbook dirty state compares the live `.cho` text against the last saved file baseline, so returning to the saved content through undo or manual edits clears the dirty affordance instead of treating every input event as permanently dirty
 ## UI Layout Notes

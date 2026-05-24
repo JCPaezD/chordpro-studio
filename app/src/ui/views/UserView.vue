@@ -21,10 +21,12 @@ import {
   Pencil,
   Play,
   RefreshCw,
+  Redo2,
   RotateCcw,
   Save,
   Settings,
   Trash2,
+  Undo2,
   WandSparkles,
   X
 } from "lucide-vue-next";
@@ -76,6 +78,7 @@ const {
   activePanel,
   rawInput,
   chordProText,
+  editorSessionKey,
   loading,
   isGeneratingPreview,
   isRefreshingPreview,
@@ -1362,10 +1365,11 @@ async function openGeminiApiKeyPage(): Promise<void> {
                   :disabled="loading"
                   :loading="loading"
                   loading-message="Generating ChordPro..."
+                  :history-key="editorSessionKey"
                   placeholder="ChordPro source will appear here after generation."
                   @update:model-value="updateChordPro"
                 >
-                  <template #header>
+                  <template #header="{ canUndo, canRedo, undo, redo }">
                     <ChordProEditorHeader
                       class="convert-editor-header"
                       title="ChordPro source"
@@ -1374,7 +1378,27 @@ async function openGeminiApiKeyPage(): Promise<void> {
                       <template #primaryActions>
                         <div class="convert-editor-action-row">
                           <span v-if="hasUnsavedChanges" class="convert-inline-dirty-badge">Unsaved</span>
-                          <div class="action-toolbar compact editor-toolbar" aria-label="ChordPro source actions">
+                          <div class="action-toolbar compact editor-toolbar" aria-label="ChordPro source undo actions">
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Undo editor change"
+                              title="Undo"
+                              :disabled="loading || !canUndo"
+                              @click="undo"
+                            >
+                              <Undo2 aria-hidden="true" class="button-icon" />
+                            </button>
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Redo editor change"
+                              title="Redo"
+                              :disabled="loading || !canRedo"
+                              @click="redo"
+                            >
+                              <Redo2 aria-hidden="true" class="button-icon" />
+                            </button>
+                          </div>
+                          <div class="action-toolbar compact editor-toolbar" aria-label="ChordPro source file actions">
                             <button
                               class="mini-button toolbar-button toolbar-icon-button"
                               aria-label="Refresh preview"
@@ -1516,10 +1540,11 @@ async function openGeminiApiKeyPage(): Promise<void> {
                   ref="songbookEditorPaneRef"
                   class="songbook-editor-pane"
                   :model-value="chordProText"
+                  :history-key="editorSessionKey"
                   :placeholder="songbookEditorPlaceholder"
                   @update:model-value="updateChordPro"
                 >
-                  <template #header>
+                  <template #header="{ canUndo, canRedo, undo, redo }">
                     <ChordProEditorHeader
                       :title="songbookEditorTitle"
                       :subtitle="songbookEditorSubtitle"
@@ -1578,27 +1603,45 @@ async function openGeminiApiKeyPage(): Promise<void> {
                       <template #primaryActions>
                         <div class="songbook-editor-action-row">
                           <span v-if="hasUnsavedChanges" class="songbook-inline-dirty-badge">{{ songbookUnsavedLabel }}</span>
-                          <div class="action-toolbar compact songbook-editor-toolbar" aria-label="Song editor actions">
-                            <div class="toolbar-group">
-                              <button
-                                :class="['mini-button toolbar-button toolbar-icon-button', { 'warning-button': canRevertCurrentSongbookFile }]"
-                                aria-label="Revert song changes"
-                                title="Revert"
-                                :disabled="!canRevertCurrentSongbookFile || isRevertingSong"
-                                @click="openRevertCurrentSongModal"
-                              >
-                                <RotateCcw aria-hidden="true" class="button-icon" />
-                              </button>
-                              <button
-                                class="mini-button toolbar-button toolbar-icon-button"
-                                aria-label="Refresh preview"
-                                title="Refresh preview"
-                                :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !canSaveSongbookDocument"
-                                @click="previewFromChordPro"
-                              >
-                                <RefreshCw aria-hidden="true" class="button-icon" />
-                              </button>
-                            </div>
+                          <div class="action-toolbar compact songbook-editor-toolbar" aria-label="Song editor undo actions">
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Undo editor change"
+                              title="Undo"
+                              :disabled="!canUndo"
+                              @click="undo"
+                            >
+                              <Undo2 aria-hidden="true" class="button-icon" />
+                            </button>
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Redo editor change"
+                              title="Redo"
+                              :disabled="!canRedo"
+                              @click="redo"
+                            >
+                              <Redo2 aria-hidden="true" class="button-icon" />
+                            </button>
+                          </div>
+                          <div class="action-toolbar compact songbook-editor-toolbar" aria-label="Song editor refresh actions">
+                            <button
+                              :class="['mini-button toolbar-button toolbar-icon-button', { 'warning-button': canRevertCurrentSongbookFile }]"
+                              aria-label="Revert song to saved file"
+                              title="Revert to saved file"
+                              :disabled="!canRevertCurrentSongbookFile || isRevertingSong"
+                              @click="openRevertCurrentSongModal"
+                            >
+                              <RotateCcw aria-hidden="true" class="button-icon" />
+                            </button>
+                            <button
+                              class="mini-button toolbar-button toolbar-icon-button"
+                              aria-label="Refresh preview"
+                              title="Refresh preview"
+                              :disabled="loading || isGeneratingPreview || isRefreshingPreview || !isTauri() || !canSaveSongbookDocument"
+                              @click="previewFromChordPro"
+                            >
+                              <RefreshCw aria-hidden="true" class="button-icon" />
+                            </button>
                           </div>
                         </div>
                       </template>

@@ -222,7 +222,7 @@ Pending, planned or possible work.
 ### Editor improvements
 
 - first editor slice implemented: Convert, Songbook and Playground now use a shared CodeMirror-based `.cho` editor with ChordPro syntax highlighting, native keyboard undo/redo/select-all behavior, drag-and-drop editing and baseline-aware dirty state tracking
-- evaluate and, if it still fits v1.7 scope, add lightweight undo / redo UI controls for the main ChordPro editors before closing the version
+- lightweight undo / redo UI controls are now exposed in the main ChordPro editor surfaces, with runtime-only history preserved across Convert, Songbook and Playground view switches for the same active document session
 
 ### Conversion / LLM improvements
 
