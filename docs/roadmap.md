@@ -187,6 +187,7 @@ Current status:
 - v1.7 Desktop polish now persists and restores Tauri window size, position, maximized state, monitor placement and the last active main view, restoring Performance only when the saved songbook context can be restored safely.
 - v1.7 Performance reader polish fixed validated reading and interaction frictions: inline chord placement no longer introduces artificial lyric spacing, narrow/tall layouts now reserve reader space so previous/next song controls do not cover lyrics or chords, and replacing the old Performance PDF surface with the app-owned reader resolves the same keyboard focus-loss class for `Esc` and previous/next controls after clicking inside the reader.
 - v1.7 Editor improvements now replace the raw `.cho` textarea with a shared CodeMirror-based editor in Convert, Songbook and Playground, adding ChordPro syntax highlighting, native editor undo/redo/select-all behavior, internal/external drag-and-drop editing in Tauri and baseline-aware dirty state tracking.
+- v1.7 Gemini error UX now classifies provider failures conservatively in the shared workspace path, surfaces contextual User View guidance with copyable technical detail and AI Studio usage links, preserves requested/resolved model feedback, and includes a dev-only simulation panel plus a Tauri-validated visual notice queue for repeated fast errors.
 
 ## Current roadmap
 
@@ -226,8 +227,6 @@ Pending, planned or possible work.
 
 ### Conversion / LLM improvements
 
-- improve Gemini error feedback in User View with contextual and actionable provider-aware messaging while preserving technical detail in Playground
-- classify provider failures more explicitly in the shared workspace path (for example invalid key, rate limit or network failure) without inventing unsupported details
 - keep `Quality` / `Fast` as the primary user-facing model modes while evolving model selection underneath into a hierarchical mode -> model strategy
 - clarify and document that the default pipeline should behave as a transformer, not a generator
 - stretch goal: allow automatic fallback only within the current mode and surface explicit user feedback when that fallback is used

@@ -19,6 +19,9 @@
       "allow": [
         {
           "url": "https://aistudio.google.com/app/apikey"
+        },
+        {
+          "url": "https://aistudio.google.com/rate-limit"
         }
       ]
     },

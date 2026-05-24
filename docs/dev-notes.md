@@ -207,6 +207,7 @@ Limits:
 - when the behavior depends on the real Tauri desktop runtime, native dialogs, WebView/PDF viewer behavior, filesystem integration, window chrome, or Tauri-only APIs, the current preferred path is to ask the user for screenshots from the real app
 - Playwright is the preferred Codex-owned capture path because it can control viewport dimensions directly; the integrated browser remains a review surface, not the default screenshot automation surface
 - automated screenshots and layout checks do not replace the required human validation checkpoint for UI, UX, layout, dialog, interaction-flow or visual-behavior changes
+- for fast repeated UI feedback in Tauri/WebView2, do not treat DOM animation presence (`getAnimations()`, active keyframes, class changes, or remounts) as proof that the animation is visually correct; verify the runtime sequence and whether technical state clears/reappears fast enough to truncate perceived transitions
 
 ### Playground pipeline entry points
 
@@ -414,6 +415,10 @@ User View model selector:
 - `Fast` -> `gemini-flash-lite-latest`
 - `Quality` -> `gemini-flash-latest`
 - the selected conversion mode is loaded from AppConfig on startup and falls back to `Quality` only when `conversionMode` is missing
+- Gemini conversion errors are classified in the shared workspace through `LLMProviderError` so User View can show contextual, conservative messages while Playground keeps the technical provider detail; `RESOURCE_EXHAUSTED` is only narrowed to rate limit or quota when Gemini's message/details justify it, otherwise it remains a combined rate-or-quota case
+- Gemini conversion results preserve both the requested model alias and `modelVersion` when the API returns it; User View may show the resolved model after successful conversion, while errors only claim the requested model unless a resolved version is available
+- automatic model fallback remains out of the first v1.7 error-UX slice; future fallback should reuse the same provider category/model metadata and stay within the current `Quality` or `Fast` strategy unless a later spec explicitly changes that
+- User View conversion error notices intentionally keep a small visual state (`displayedGenerateError` plus `pendingGenerateError`) separate from the technical workspace `error` state; `runPipeline()` clears `error` at the start of a new run and fast errors can be written immediately after, so rendering the notice directly from `error.value` caused Tauri/WebView2 to visually truncate overlapping exit/enter animations even though DOM animation checks passed
 
 Playground model selector:
 

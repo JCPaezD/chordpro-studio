@@ -43,7 +43,11 @@ export class OpenAIProvider implements LLMProvider {
     };
 
     if (typeof data.output_text === "string" && data.output_text.length > 0) {
-      return { text: data.output_text };
+      return {
+        text: data.output_text,
+        provider: "openai",
+        requestedModel: this.model
+      };
     }
 
     const fallbackText =
@@ -56,6 +60,10 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error("OpenAI response did not include generated text.");
     }
 
-    return { text: fallbackText };
+    return {
+      text: fallbackText,
+      provider: "openai",
+      requestedModel: this.model
+    };
   }
 }

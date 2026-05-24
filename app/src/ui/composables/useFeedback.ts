@@ -5,10 +5,12 @@ export type FeedbackType = "success" | "error" | "info";
 type FeedbackPayload = {
   type: FeedbackType;
   message: string;
+  detail?: string;
 };
 
 const feedbackType = ref<FeedbackType>("info");
 const feedbackMessage = ref("");
+const feedbackDetail = ref("");
 const isVisible = ref(false);
 
 let dismissTimer: ReturnType<typeof setTimeout> | null = null;
@@ -29,13 +31,14 @@ function showFeedback(payload: FeedbackPayload): void {
   clearDismissTimer();
   feedbackType.value = payload.type;
   feedbackMessage.value = payload.message;
+  feedbackDetail.value = payload.detail ?? "";
   isVisible.value = true;
 
   if (payload.type !== "error") {
     dismissTimer = setTimeout(() => {
       dismissTimer = null;
       isVisible.value = false;
-    }, 2500);
+    }, 8000);
   }
 }
 
@@ -43,6 +46,7 @@ export function useFeedback() {
   return {
     type: readonly(feedbackType),
     message: readonly(feedbackMessage),
+    detail: readonly(feedbackDetail),
     isVisible: readonly(isVisible),
     hasMessage: computed(() => isVisible.value && feedbackMessage.value.trim().length > 0),
     showFeedback,

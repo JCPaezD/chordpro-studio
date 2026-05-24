@@ -22,6 +22,23 @@ const icon = computed(() => {
 
   return "i";
 });
+
+const detailParts = computed(() => {
+  const detail = feedback.detail.value.trim();
+  const match = detail.match(/^(.*?)\s+(\([^)]*\))$/);
+
+  if (!match) {
+    return {
+      main: detail,
+      meta: ""
+    };
+  }
+
+  return {
+    main: match[1],
+    meta: match[2]
+  };
+});
 </script>
 
 <template>
@@ -30,7 +47,13 @@ const icon = computed(() => {
       <div v-if="feedback.hasMessage.value" class="feedback-toast-shell" role="status" aria-live="polite">
         <div :class="['feedback-toast', toneClass]">
           <span class="feedback-icon" aria-hidden="true">{{ icon }}</span>
-          <p class="feedback-message">{{ feedback.message.value }}</p>
+          <p class="feedback-message">
+            <span>{{ feedback.message.value }}</span>
+            <span v-if="feedback.detail.value" class="feedback-detail">
+              <strong>{{ detailParts.main }}</strong>
+              <span v-if="detailParts.meta" class="feedback-detail-meta">{{ detailParts.meta }}</span>
+            </span>
+          </p>
           <button class="feedback-close" type="button" aria-label="Dismiss feedback" @click="feedback.dismissFeedback">
             ×
           </button>
@@ -51,7 +74,7 @@ const icon = computed(() => {
 
 .feedback-toast {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
   max-width: min(24rem, calc(100vw - 1.44rem));
   padding: 0;
@@ -81,7 +104,6 @@ const icon = computed(() => {
   align-items: center;
   justify-content: center;
   width: 2.18rem;
-  height: 2.18rem;
   flex: 0 0 auto;
   border-right: 1px solid rgba(35, 49, 39, 0.1);
   background: rgba(247, 240, 225, 0.72);
@@ -90,11 +112,27 @@ const icon = computed(() => {
 }
 
 .feedback-message {
+  display: grid;
+  gap: 0.12rem;
   margin: 0;
   flex: 1;
   padding: 0.46rem 0.72rem;
   font-size: 0.88rem;
   line-height: 1.35;
+}
+
+.feedback-message strong {
+  font-weight: 780;
+}
+
+.feedback-detail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.feedback-detail-meta {
+  font-weight: 500;
 }
 
 .feedback-close {

@@ -5,6 +5,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   BookOpen,
+  Bug,
   ClipboardPaste,
   Copy,
   CopyPlus,
@@ -46,6 +47,7 @@ import {
   type ConversionMode,
   type LastActiveMainView
 } from "../../adapters/filesystem/ConfigRepository";
+import type { SimulatedConversionErrorKind } from "../composables/useSongWorkspace";
 import { buildSongDisplayTitle } from "../../domain/song/deriveDisplayTitle";
 import { useAppConfig } from "../composables/useAppConfig";
 import { useFeedback } from "../composables/useFeedback";
@@ -85,6 +87,9 @@ const {
   isManualPreviewRefresh,
   isExportingSongbook,
   error,
+  conversionErrorInfo,
+  conversionErrorEventId,
+  lastConversionModelLabel,
   previewSrc,
   previewError,
   hasRenderablePreviewSource,
@@ -95,6 +100,7 @@ const {
   songbookError,
   selectedSongPath,
   hasUnsavedChanges,
+  copyToClipboard,
   pasteFromClipboard,
   requestClearAllState,
   requestClearSongbook,
@@ -125,8 +131,17 @@ const {
 type SongbookSortField = "title" | "artist";
 type SongbookSortDirection = "asc" | "desc";
 type InputSource = "keyboard" | "mouse";
+type GenerateErrorNotice = {
+  id: number;
+  message: string;
+  action: string;
+  technicalDetail: string;
+  helpLinks: string[];
+  model: string;
+};
 
 const PREVIEW_LOADING_INDICATOR_DELAY_MS = 150;
+const GENERATE_ERROR_NOTICE_EXIT_MS = 240;
 
 const isPerformanceMode = ref(false);
 const showChordProEditor = ref(false);
@@ -147,12 +162,20 @@ const isRevertingSong = ref(false);
 const showPreferencesMenu = ref(false);
 const preferencesButtonRef = ref<HTMLElement | null>(null);
 const preferencesPanelRef = ref<HTMLElement | null>(null);
+const showDevConversionMenu = ref(false);
+const devConversionButtonRef = ref<HTMLElement | null>(null);
+const devConversionPanelRef = ref<HTMLElement | null>(null);
+const simulatedConversionError = ref<SimulatedConversionErrorKind>("none");
+const displayedGenerateError = ref<GenerateErrorNotice | null>(null);
+const pendingGenerateError = ref<GenerateErrorNotice | null>(null);
+const isSwitchingGenerateError = ref(false);
+const isDevConversionSimulationActive = computed(() => isDev && simulatedConversionError.value !== "none");
 const conversionMode = computed<ConversionMode>(() => appConfig.conversionMode.value ?? "quality");
 const configLoading = computed(() => appConfig.loading.value);
 const hasApiKey = computed(() => !!appConfig.apiKey.value);
 const showChordDiagrams = computed(() => appConfig.showChordDiagrams.value);
 const chordDiagramInstrument = computed(() => appConfig.instrument.value);
-const canGenerate = computed(() => !configLoading.value && hasApiKey.value && !loading.value);
+const canGenerate = computed(() => !configLoading.value && (hasApiKey.value || isDevConversionSimulationActive.value) && !loading.value);
 const canCreateSongbookDraft = computed(() => !!songbook.value);
 const canSaveSongbookDocument = computed(() => chordProText.value.trim().length > 0);
 const isSongbookDraftDocument = computed(() => !!songbook.value && !workspaceDocument.value.filePath);
@@ -177,6 +200,19 @@ const conversionModeLabel = computed(() =>
   conversionMode.value === "fast" ? "Fast" : "Quality"
 );
 
+const simulatedConversionErrorOptions: Array<{ value: SimulatedConversionErrorKind; label: string }> = [
+  { value: "none", label: "None" },
+  { value: "missing_api_key", label: "Missing API key" },
+  { value: "invalid_api_key", label: "Invalid API key" },
+  { value: "rate_or_quota", label: "Rate or quota" },
+  { value: "quota", label: "Quota" },
+  { value: "model_unavailable", label: "Model unavailable" },
+  { value: "service_unavailable", label: "Service unavailable" },
+  { value: "network", label: "Network" },
+  { value: "empty_response", label: "Empty response" },
+  { value: "invalid_chordpro_output", label: "Invalid ChordPro output" }
+];
+
 const isManagingApiKey = computed(() => openedApiKeyWithExistingValue.value);
 const apiKeyModalTitle = computed(() =>
   isManagingApiKey.value ? "Manage Gemini API key" : "Set Gemini API key"
@@ -198,21 +234,21 @@ const canSaveApiKey = computed(() =>
   !isSavingApiKey.value && apiKeyDraft.value.trim().length > 0 && !apiKeyValidationMessage.value
 );
 const userFacingGenerateError = computed(() => {
-  const technicalError = error.value.trim();
-  if (!technicalError) {
+  if (!error.value.trim()) {
     return "";
   }
 
-  if (technicalError === NOT_ENOUGH_INPUT_MESSAGE) {
-    return technicalError;
+  if (conversionErrorInfo.value) {
+    return conversionErrorInfo.value.message;
   }
 
-  if (technicalError.toLowerCase().includes("api key not valid")) {
-    return "Invalid Gemini API key. Please check your API key.";
-  }
-
-  return "Failed to generate chords. Please try again.";
+  return error.value === NOT_ENOUGH_INPUT_MESSAGE ? error.value : "Failed to generate chords. Please try again.";
 });
+
+const userFacingGenerateAction = computed(() => conversionErrorInfo.value?.action ?? "");
+const userFacingGenerateTechnicalDetail = computed(() => conversionErrorInfo.value?.technicalDetail ?? "");
+const userFacingGenerateHelpLinks = computed(() => conversionErrorInfo.value?.helpLinks ?? []);
+const userFacingGenerateModel = computed(() => conversionErrorInfo.value?.modelLabel ?? "");
 
 const songbookEditorTitle = computed(() => {
   if (!workspaceDocument.value.chordProText.trim()) {
@@ -371,6 +407,7 @@ const songbookListOrderSignature = computed(() =>
 );
 const showPreviewLoadingIndicator = ref(false);
 let previewLoadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
+let generateErrorNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function compareSongbookSortValues(left: string, right: string): number {
   return left.localeCompare(right, undefined, {
@@ -401,14 +438,35 @@ watch(isGeneratingPreview, (value) => {
   showPreviewLoadingIndicator.value = false;
 }, { immediate: true });
 
+watch(conversionErrorEventId, (eventId) => {
+  if (eventId <= 0 || !userFacingGenerateError.value) {
+    return;
+  }
+
+  queueGenerateErrorNotice({
+    id: eventId,
+    message: userFacingGenerateError.value,
+    action: userFacingGenerateAction.value,
+    technicalDetail: userFacingGenerateTechnicalDetail.value,
+    helpLinks: [...userFacingGenerateHelpLinks.value],
+    model: userFacingGenerateModel.value
+  });
+});
+
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handlePreferencesPointerDown);
+  document.removeEventListener("pointerdown", handleDevConversionPointerDown);
   window.removeEventListener("keydown", handleWindowKeydown);
   window.removeEventListener("keydown", handlePreferencesEscape);
 
   if (previewLoadingIndicatorTimer !== null) {
     clearTimeout(previewLoadingIndicatorTimer);
     previewLoadingIndicatorTimer = null;
+  }
+
+  if (generateErrorNoticeTimer !== null) {
+    clearTimeout(generateErrorNoticeTimer);
+    generateErrorNoticeTimer = null;
   }
 
 });
@@ -418,8 +476,20 @@ async function convertSong(): Promise<void> {
     return;
   }
 
+  beginGenerateErrorNoticeExit();
   showConvertPanel();
-  await runPipeline({ model: selectedModel.value });
+  const completed = await runPipeline({
+    model: selectedModel.value,
+    simulatedConversionError: isDev ? simulatedConversionError.value : "none"
+  });
+
+  if (completed && !error.value && lastConversionModelLabel.value) {
+    feedback.showFeedback({
+      type: "info",
+      message: "Converted with model",
+      detail: lastConversionModelLabel.value
+    });
+  }
 }
 
 function updateChordPro(value: string): void {
@@ -495,6 +565,7 @@ watch(
 
 onMounted(() => {
   document.addEventListener("pointerdown", handlePreferencesPointerDown);
+  document.addEventListener("pointerdown", handleDevConversionPointerDown);
   window.addEventListener("keydown", handleWindowKeydown);
   window.addEventListener("keydown", handlePreferencesEscape);
 
@@ -950,8 +1021,85 @@ function closePreferencesMenu(): void {
   showPreferencesMenu.value = false;
 }
 
+function closeDevConversionMenu(): void {
+  showDevConversionMenu.value = false;
+}
+
 function togglePreferencesMenu(): void {
   showPreferencesMenu.value = !showPreferencesMenu.value;
+}
+
+function toggleDevConversionMenu(): void {
+  showDevConversionMenu.value = !showDevConversionMenu.value;
+}
+
+function dismissGenerateError(): void {
+  error.value = "";
+  conversionErrorInfo.value = null;
+  pendingGenerateError.value = null;
+  beginGenerateErrorNoticeExit();
+}
+
+function clearGenerateErrorNoticeTimer(): void {
+  if (generateErrorNoticeTimer !== null) {
+    clearTimeout(generateErrorNoticeTimer);
+    generateErrorNoticeTimer = null;
+  }
+}
+
+function finishGenerateErrorNoticeSwitch(): void {
+  displayedGenerateError.value = pendingGenerateError.value;
+  pendingGenerateError.value = null;
+  isSwitchingGenerateError.value = false;
+  generateErrorNoticeTimer = null;
+}
+
+function beginGenerateErrorNoticeExit(): void {
+  if (isSwitchingGenerateError.value || !displayedGenerateError.value) {
+    return;
+  }
+
+  clearGenerateErrorNoticeTimer();
+  isSwitchingGenerateError.value = true;
+  displayedGenerateError.value = null;
+  generateErrorNoticeTimer = setTimeout(finishGenerateErrorNoticeSwitch, GENERATE_ERROR_NOTICE_EXIT_MS);
+}
+
+function queueGenerateErrorNotice(notice: GenerateErrorNotice): void {
+  pendingGenerateError.value = notice;
+
+  if (isSwitchingGenerateError.value) {
+    return;
+  }
+
+  if (!displayedGenerateError.value) {
+    displayedGenerateError.value = pendingGenerateError.value;
+    pendingGenerateError.value = null;
+    return;
+  }
+
+  beginGenerateErrorNoticeExit();
+}
+
+async function copyGenerateTechnicalDetail(): Promise<void> {
+  const technicalDetail = displayedGenerateError.value?.technicalDetail ?? userFacingGenerateTechnicalDetail.value;
+
+  if (!technicalDetail) {
+    return;
+  }
+
+  try {
+    await copyToClipboard(technicalDetail);
+    feedback.showFeedback({
+      type: "info",
+      message: "Technical details copied"
+    });
+  } catch (err) {
+    feedback.showFeedback({
+      type: "error",
+      message: err instanceof Error ? err.message : "Could not copy technical details."
+    });
+  }
 }
 
 async function toggleChordDiagramsPreference(): Promise<void> {
@@ -979,9 +1127,23 @@ function handlePreferencesPointerDown(event: MouseEvent): void {
   closePreferencesMenu();
 }
 
+function handleDevConversionPointerDown(event: MouseEvent): void {
+  const target = event.target instanceof Node ? event.target : null;
+  if (!target) {
+    return;
+  }
+
+  if (devConversionButtonRef.value?.contains(target) || devConversionPanelRef.value?.contains(target)) {
+    return;
+  }
+
+  closeDevConversionMenu();
+}
+
 function handlePreferencesEscape(event: KeyboardEvent): void {
   if (event.key === "Escape") {
     closePreferencesMenu();
+    closeDevConversionMenu();
   }
 }
 
@@ -1106,8 +1268,10 @@ watch(showApiKeyModal, async (isOpen) => {
 });
 
 async function openGeminiApiKeyPage(): Promise<void> {
-  const url = "https://aistudio.google.com/app/apikey";
+  await openExternalUrl("https://aistudio.google.com/app/apikey");
+}
 
+async function openExternalUrl(url: string): Promise<void> {
   try {
     if (isTauri()) {
       await openUrl(url);
@@ -1116,7 +1280,9 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
     window.open(url, "_blank", "noopener,noreferrer");
   } catch (err) {
-    apiKeyFeedback.value = err instanceof Error ? err.message : "Could not open browser.";
+    const message = err instanceof Error ? err.message : "Could not open browser.";
+    apiKeyFeedback.value = message;
+    feedback.showFeedback({ type: "error", message });
   }
 }
 </script>
@@ -1281,48 +1447,133 @@ async function openGeminiApiKeyPage(): Promise<void> {
             </div>
 
             <div class="panel-actions-stack align-end convert-header-actions">
-              <div class="action-toolbar convert-toolbar" aria-label="Convert actions">
-                <div class="toolbar-group convert-settings-group">
-                  <button class="mini-button toolbar-button toolbar-api-button" @click="openApiKeyModal">
-                    <KeyRound aria-hidden="true" class="button-icon" />
-                    API key
-                  </button>
+              <div class="convert-toolbar-row">
+                <div v-if="isDev" class="convert-dev-actions">
+                  <div class="action-toolbar convert-dev-toolbar" aria-label="Developer conversion diagnostics">
+                    <button
+                      ref="devConversionButtonRef"
+                      :class="['mini-button toolbar-button toolbar-dev-button', { active: isDevConversionSimulationActive }]"
+                      type="button"
+                      aria-haspopup="dialog"
+                      :aria-expanded="showDevConversionMenu ? 'true' : 'false'"
+                      title="Dev conversion diagnostics"
+                      @click="toggleDevConversionMenu"
+                    >
+                      <Bug aria-hidden="true" class="button-icon" />
+                      Dev
+                    </button>
+                  </div>
+                  <Transition name="preferences-popover">
+                    <div v-if="showDevConversionMenu" ref="devConversionPanelRef" class="preferences-popover dev-conversion-popover">
+                      <p class="preferences-heading">Conversion diagnostics</p>
+                      <label class="preferences-item dev-conversion-field">
+                        <span class="preferences-item-label">Simulated result</span>
+                        <select v-model="simulatedConversionError" class="dev-conversion-select">
+                          <option
+                            v-for="option in simulatedConversionErrorOptions"
+                            :key="option.value"
+                            :value="option.value"
+                          >
+                            {{ option.label }}
+                          </option>
+                        </select>
+                      </label>
+                      <p class="dev-conversion-note">
+                        DEV only. The selected error is injected before Gemini is called.
+                      </p>
+                    </div>
+                  </Transition>
                 </div>
-                <div class="toolbar-group convert-run-group">
-                  <button class="mini-button toolbar-button toolbar-mode-button" :disabled="loading || configLoading" @click="toggleConversionMode">
-                    <Gauge aria-hidden="true" class="button-icon" />
-                    {{ conversionModeLabel }}
-                  </button>
-                  <button
-                    class="mini-button toolbar-button toolbar-source-button"
-                    :aria-pressed="showChordProEditor"
-                    :title="showChordProEditor ? 'Hide ChordPro editor' : 'Show ChordPro editor'"
-                    @click="showChordProEditor = !showChordProEditor"
-                  >
-                    <PanelRightClose v-if="showChordProEditor" aria-hidden="true" class="button-icon" />
-                    <PanelRightOpen v-else aria-hidden="true" class="button-icon" />
-                    Source
-                  </button>
-                  <button v-if="loading" class="primary-button toolbar-primary" @click="abortConversion">
-                    <span class="button-content">
-                      <X aria-hidden="true" class="button-icon" />
-                      <span class="button-label">Abort</span>
-                    </span>
-                  </button>
-                  <button v-else class="primary-button toolbar-primary" :disabled="!canGenerate" @click="convertSong">
-                    <span class="button-content">
-                      <WandSparkles aria-hidden="true" class="button-icon" />
-                      <span class="button-label">Generate</span>
-                    </span>
-                  </button>
+                <div class="action-toolbar convert-toolbar" aria-label="Convert actions">
+                  <div class="toolbar-group convert-settings-group">
+                    <button class="mini-button toolbar-button toolbar-api-button" @click="openApiKeyModal">
+                      <KeyRound aria-hidden="true" class="button-icon" />
+                      API key
+                    </button>
+                  </div>
+                  <div class="toolbar-group convert-run-group">
+                    <button class="mini-button toolbar-button toolbar-mode-button" :disabled="loading || configLoading" @click="toggleConversionMode">
+                      <Gauge aria-hidden="true" class="button-icon" />
+                      {{ conversionModeLabel }}
+                    </button>
+                    <button
+                      class="mini-button toolbar-button toolbar-source-button"
+                      :aria-pressed="showChordProEditor"
+                      :title="showChordProEditor ? 'Hide ChordPro editor' : 'Show ChordPro editor'"
+                      @click="showChordProEditor = !showChordProEditor"
+                    >
+                      <PanelRightClose v-if="showChordProEditor" aria-hidden="true" class="button-icon" />
+                      <PanelRightOpen v-else aria-hidden="true" class="button-icon" />
+                      Source
+                    </button>
+                    <button v-if="loading" class="primary-button toolbar-primary" @click="abortConversion">
+                      <span class="button-content">
+                        <X aria-hidden="true" class="button-icon" />
+                        <span class="button-label">Abort</span>
+                      </span>
+                    </button>
+                    <button v-else class="primary-button toolbar-primary" :disabled="!canGenerate" @click="convertSong">
+                      <span class="button-content">
+                        <WandSparkles aria-hidden="true" class="button-icon" />
+                        <span class="button-label">Generate</span>
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
               <p v-if="!hasApiKey && !configLoading" class="action-feedback warning-message">
                 Gemini API key required to generate
               </p>
-              <p v-if="userFacingGenerateError" class="action-feedback error-message">{{ userFacingGenerateError }}</p>
             </div>
           </div>
+
+          <Transition name="convert-error-notice" mode="out-in">
+            <div
+              v-if="displayedGenerateError"
+              :key="displayedGenerateError.id"
+              class="convert-error-notice"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="convert-error-title-row">
+                <p class="convert-error-title">{{ displayedGenerateError.message }}</p>
+                <div class="convert-error-actions">
+                  <button
+                    v-if="displayedGenerateError.technicalDetail"
+                    type="button"
+                    class="convert-error-icon-button"
+                    aria-label="Copy technical details"
+                    title="Copy technical details"
+                    @click="copyGenerateTechnicalDetail"
+                  >
+                    <Copy aria-hidden="true" class="button-icon" />
+                  </button>
+                  <button
+                    class="convert-error-icon-button"
+                    type="button"
+                    aria-label="Dismiss conversion error"
+                    title="Dismiss"
+                    @click="dismissGenerateError"
+                  >
+                    <X aria-hidden="true" class="button-icon" />
+                  </button>
+                </div>
+              </div>
+              <p v-if="displayedGenerateError.action" class="convert-error-action">{{ displayedGenerateError.action }}</p>
+              <div v-if="displayedGenerateError.model || displayedGenerateError.helpLinks.length > 0" class="convert-error-meta-row">
+                <p v-if="displayedGenerateError.model" class="convert-error-detail">{{ displayedGenerateError.model }}</p>
+                <button
+                  v-for="link in displayedGenerateError.helpLinks"
+                  :key="link"
+                  class="convert-error-link"
+                  type="button"
+                  @click="openExternalUrl(link)"
+                >
+                  Gemini usage limits
+                </button>
+              </div>
+            </div>
+          </Transition>
 
           <div class="panel-content">
             <div :class="['convert-layout', { split: showChordProEditor }]">
@@ -2157,6 +2408,14 @@ async function openGeminiApiKeyPage(): Promise<void> {
   box-shadow: 0 18px 36px rgba(24, 32, 25, 0.16);
 }
 
+.dev-conversion-popover {
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: auto;
+  bottom: auto;
+  width: min(20rem, calc(100vw - 8rem));
+}
+
 .preferences-heading {
   margin: 0;
   font-size: 0.78rem;
@@ -2265,6 +2524,29 @@ async function openGeminiApiKeyPage(): Promise<void> {
   cursor: default;
 }
 
+.dev-conversion-field {
+  display: grid;
+  align-items: start;
+}
+
+.dev-conversion-select {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid rgba(35, 49, 39, 0.14);
+  background: rgba(255, 254, 249, 0.92);
+  color: #233127;
+  font: inherit;
+  font-weight: 650;
+}
+
+.dev-conversion-note {
+  margin: 0;
+  color: rgba(35, 49, 39, 0.66);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .preferences-popover-enter-active,
 .preferences-popover-leave-active {
   transition: opacity 160ms ease, transform 160ms ease;
@@ -2294,6 +2576,10 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .panel-shell {
   gap: 0;
+}
+
+.convert-panel-shell {
+  position: relative;
 }
 
 .workspace-panel,
@@ -2573,17 +2859,41 @@ async function openGeminiApiKeyPage(): Promise<void> {
   min-width: 0;
 }
 
+.convert-toolbar-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  max-width: 100%;
+}
+
+.convert-dev-actions {
+  position: relative;
+  display: inline-flex;
+}
+
+.convert-dev-toolbar {
+  width: fit-content;
+}
+
 .convert-toolbar .toolbar-group {
   display: contents;
 }
 
+.convert-dev-toolbar .toolbar-button,
 .convert-toolbar .toolbar-button,
 .convert-toolbar .primary-button {
   border-left: 1px solid rgba(35, 49, 39, 0.1);
 }
 
+.convert-dev-toolbar .toolbar-button:first-child,
 .convert-toolbar .convert-settings-group .toolbar-button:first-child {
   border-left: 0;
+}
+
+.toolbar-dev-button.active {
+  background: rgba(233, 240, 230, 0.92);
+  color: #233b29;
 }
 
 .convert-toolbar .convert-run-group .toolbar-button:first-child {
@@ -2967,6 +3277,128 @@ async function openGeminiApiKeyPage(): Promise<void> {
 
 .error-message {
   color: #8f3131;
+}
+
+.convert-error-notice {
+  position: absolute;
+  top: 6.03rem;
+  right: 0.45rem;
+  z-index: 10;
+  display: grid;
+  gap: 0.08rem;
+  box-sizing: border-box;
+  width: min(31rem, calc(100% - 1rem));
+  padding: 0.46rem 0.5rem 0.44rem 0.58rem;
+  border: 1px solid rgba(143, 49, 49, 0.2);
+  background: rgba(255, 251, 243, 0.98);
+  box-shadow: 0 0.75rem 1.7rem rgba(30, 26, 18, 0.14);
+  color: #233127;
+  will-change: transform, opacity;
+}
+
+.convert-error-notice-enter-active {
+  transition: opacity 420ms ease, transform 420ms cubic-bezier(0.18, 0.86, 0.24, 1);
+}
+
+.convert-error-notice-leave-active {
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.convert-error-notice-enter-from {
+  opacity: 0;
+  transform: translateY(-0.45rem);
+}
+
+.convert-error-notice-leave-to {
+  opacity: 0;
+  transform: translateY(-0.25rem);
+}
+
+.convert-error-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.38rem;
+}
+
+.panel .convert-error-title,
+.panel .convert-error-action,
+.panel .convert-error-detail {
+  margin: 0;
+}
+
+.panel .convert-error-title {
+  color: #8f3131;
+  font-size: 0.86rem;
+  font-weight: 760;
+  line-height: 1.15;
+}
+
+.convert-error-action,
+.convert-error-detail,
+.convert-error-link {
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.panel .convert-error-action {
+  color: #6f4837;
+}
+
+.convert-error-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.panel .convert-error-detail {
+  color: rgba(35, 49, 39, 0.68);
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.convert-error-link {
+  display: inline-block;
+  margin-left: auto;
+  height: 0.86rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #37513b;
+  font: inherit;
+  line-height: 1.15;
+  transform: translateY(0.18rem);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.convert-error-actions {
+  display: flex;
+  gap: 0.18rem;
+}
+
+.convert-error-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 1.34rem;
+  height: 1.34rem;
+  padding: 0;
+  border: 1px solid rgba(143, 49, 49, 0.14);
+  background: rgba(255, 255, 249, 0.8);
+  color: #37513b;
+  cursor: pointer;
+}
+
+.convert-error-icon-button:hover {
+  background: #ffffff;
+  color: #1d3d2b;
+}
+
+.convert-error-icon-button .button-icon {
+  width: 0.82rem;
+  height: 0.82rem;
 }
 
 .warning-message {

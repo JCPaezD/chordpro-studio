@@ -82,6 +82,9 @@ export class SongPipelineService {
   ): Promise<{
     cleanedText: string;
     chordPro: string;
+    provider?: string;
+    requestedModel?: string;
+    modelVersion?: string;
     retryLog?: string[];
     song: Song;
   }> {
@@ -115,6 +118,9 @@ export class SongPipelineService {
     return {
       cleanedText,
       chordPro,
+      provider: conversionResult.provider,
+      requestedModel: conversionResult.requestedModel,
+      modelVersion: conversionResult.modelVersion,
       retryLog: conversionResult.retryLog,
       song
     };

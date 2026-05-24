@@ -5,6 +5,7 @@ import { dirname, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { GeminiRetryError, GeminiProvider } from "../../adapters/llm/GeminiProvider";
+import { LLMProviderError, type LLMErrorCategory } from "../../adapters/llm/LLMProvider";
 import { OpenAIProvider } from "../../adapters/llm/OpenAIProvider";
 import type { ChordproRenderStyle } from "../../adapters/chordpro/adapter";
 import { TauriChordproAdapter } from "../../adapters/chordpro/TauriChordproAdapter";
@@ -38,6 +39,7 @@ type RunPipelineOptions = {
   clearBeforeRun?: boolean;
   entryPoint?: PipelineEntryPoint;
   input?: string;
+  simulatedConversionError?: SimulatedConversionErrorKind;
 };
 
 type PreviewPlaceholderInfo = {
@@ -48,6 +50,26 @@ type PreviewPlaceholderInfo = {
   fileName: string;
   hasContext: boolean;
 };
+
+export type ConversionErrorInfo = {
+  message: string;
+  action?: string;
+  technicalDetail?: string;
+  modelLabel?: string;
+  helpLinks: string[];
+};
+
+export type SimulatedConversionErrorKind =
+  | "none"
+  | "missing_api_key"
+  | "invalid_api_key"
+  | "rate_or_quota"
+  | "quota"
+  | "model_unavailable"
+  | "service_unavailable"
+  | "network"
+  | "empty_response"
+  | "invalid_chordpro_output";
 
 type UnsavedContentResolution = "save" | "discard" | "cancel";
 type RawInputDiscardResolution = "discard" | "cancel";
@@ -64,6 +86,7 @@ type SongbookFeedbackKind = "load" | "refresh";
 
 const PROCESSING_CANCELLED_MESSAGE = "Processing cancelled";
 const NEW_SONGBOOK_DRAFT_TEMPLATE = "{title: }\n{artist: }\n\n";
+const GEMINI_USAGE_LIMITS_URL = "https://aistudio.google.com/rate-limit";
 
 export type SongWorkspace = {
   activePanel: Ref<"songbook" | "convert">;
@@ -78,6 +101,9 @@ export type SongWorkspace = {
   isManualPreviewRefresh: Ref<boolean>;
   isExportingSongbook: Ref<boolean>;
   error: Ref<string>;
+  conversionErrorInfo: Ref<ConversionErrorInfo | null>;
+  conversionErrorEventId: Ref<number>;
+  lastConversionModelLabel: Ref<string>;
   songbookError: Ref<string>;
   retryLog: Ref<string[]>;
   validationReason: Ref<string>;
@@ -158,6 +184,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
   const isManualPreviewRefresh = ref(false);
   const isExportingSongbook = ref(false);
   const error = ref("");
+  const conversionErrorInfo = ref<ConversionErrorInfo | null>(null);
+  const conversionErrorEventId = ref(0);
+  const lastConversionModelLabel = ref("");
   const songbookError = ref("");
   const retryLog = ref<string[]>([]);
   const validationReason = ref("");
@@ -610,6 +639,8 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     cleanedText.value = "";
     songJson.value = "";
     error.value = "";
+    conversionErrorInfo.value = null;
+    lastConversionModelLabel.value = "";
     songbookError.value = "";
     retryLog.value = [];
     validationReason.value = "";
@@ -919,6 +950,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     rawInput.value = "";
     cleanedText.value = "";
     error.value = "";
+    conversionErrorInfo.value = null;
     songbookError.value = "";
     retryLog.value = [];
     validationReason.value = "";
@@ -1162,7 +1194,13 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     const geminiApiKey = appConfig.apiKey.value;
 
     if (!geminiApiKey) {
-      throw new Error("API key required to generate.");
+      throw new LLMProviderError({
+        provider: "gemini",
+        requestedModel: model,
+        category: "missing_api_key",
+        retryable: false,
+        technicalMessage: "API key required to generate."
+      });
     }
 
     return new GeminiProvider(geminiApiKey, model);
@@ -1178,6 +1216,241 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
 
   function isAbortError(error: unknown): boolean {
     return error instanceof Error && error.name === "AbortError";
+  }
+
+  function modelLabel(requestedModel?: string, modelVersion?: string): string {
+    if (modelVersion && requestedModel && modelVersion !== requestedModel) {
+      return `${modelVersion} (${requestedModel})`;
+    }
+
+    return modelVersion || requestedModel || "";
+  }
+
+  function helpLinksForError(error: LLMProviderError): string[] {
+    const links = new Set(error.helpLinks);
+
+    if (error.provider === "gemini" && (
+      error.category === "rate_limit" ||
+      error.category === "quota" ||
+      error.category === "rate_or_quota" ||
+      error.category === "billing_or_tier"
+    )) {
+      links.add(GEMINI_USAGE_LIMITS_URL);
+    }
+
+    return [...links];
+  }
+
+  function actionForProviderError(category: LLMErrorCategory): string | undefined {
+    switch (category) {
+      case "missing_api_key":
+      case "invalid_api_key":
+        return "Check or replace your Gemini API key.";
+      case "permission":
+        return "Check that the API key can use the selected Gemini model.";
+      case "rate_limit":
+        return "Wait a bit or check your AI Studio usage limits.";
+      case "quota":
+      case "rate_or_quota":
+        return "Check your AI Studio usage limits, billing or quota, then try again.";
+      case "billing_or_tier":
+        return "Check whether billing, region or access tier allows this model.";
+      case "model_unavailable":
+        return "Try another conversion mode or verify the configured model.";
+      case "service_unavailable":
+      case "timeout":
+      case "network":
+        return "Try again in a moment.";
+      default:
+        return undefined;
+    }
+  }
+
+  function messageForProviderError(error: LLMProviderError): string {
+    const model = error.requestedModel ? ` for ${error.requestedModel}` : "";
+
+    switch (error.category) {
+      case "missing_api_key":
+        return "Gemini API key is required to generate chords.";
+      case "invalid_api_key":
+        return "Gemini rejected the API key.";
+      case "permission":
+        return `Gemini denied access${model}.`;
+      case "rate_limit":
+        return `Gemini rate limit reached${model}.`;
+      case "quota":
+        return `Gemini quota limit reached${model}.`;
+      case "rate_or_quota":
+        return `Gemini rate or quota limit reached${model}.`;
+      case "billing_or_tier":
+        return `Gemini cannot use this request${model} with the current billing, region or access tier.`;
+      case "model_unavailable":
+        return `Gemini could not find or use ${error.requestedModel ?? "the selected model"}.`;
+      case "service_unavailable":
+        return `Gemini is temporarily unavailable or overloaded${model}.`;
+      case "timeout":
+        return `Gemini timed out${model}.`;
+      case "network":
+        return "Could not reach Gemini.";
+      case "empty_response":
+        return "Gemini returned an empty response.";
+      case "invalid_request":
+        return `Gemini rejected the conversion request${model}.`;
+      default:
+        return "Gemini could not generate chords.";
+    }
+  }
+
+  function conversionErrorFromProviderError(error: LLMProviderError): ConversionErrorInfo {
+    const requestedModelLabel = modelLabel(error.requestedModel);
+
+    return {
+      message: messageForProviderError(error),
+      action: actionForProviderError(error.category),
+      technicalDetail: error.technicalMessage,
+      modelLabel: requestedModelLabel ? `Requested model: ${requestedModelLabel}` : "",
+      helpLinks: helpLinksForError(error)
+    };
+  }
+
+  function conversionErrorFromUnknown(error: unknown): ConversionErrorInfo {
+    if (error instanceof GeminiRetryError && error.causeError) {
+      const info = conversionErrorFromProviderError(error.causeError);
+      return {
+        ...info,
+        technicalDetail: `${error.message}\n${info.technicalDetail ?? ""}`.trim()
+      };
+    }
+
+    if (error instanceof LLMProviderError) {
+      return conversionErrorFromProviderError(error);
+    }
+
+    if (error instanceof ChordProValidationError) {
+      return {
+        message: "Gemini returned a response, but it was not valid ChordPro.",
+        action: "Review the generated text and try again.",
+        technicalDetail: error.message,
+        helpLinks: []
+      };
+    }
+
+    if (error instanceof InsufficientInputError) {
+      return {
+        message: error.message,
+        helpLinks: []
+      };
+    }
+
+    return {
+      message: "Failed to generate chords.",
+      action: "Please try again.",
+      technicalDetail: error instanceof Error ? error.message : "Pipeline execution failed.",
+      helpLinks: []
+    };
+  }
+
+  function simulateConversionError(kind: SimulatedConversionErrorKind | undefined, requestedModel?: string): void {
+    if (!import.meta.env.DEV || !kind || kind === "none") {
+      return;
+    }
+
+    if (kind === "invalid_chordpro_output") {
+      throw new ChordProValidationError("INVALID_CHORDPRO_OUTPUT", {
+        reason: "simulated_explanatory_text_detected",
+        rawOutput: "Here is the converted song:\n\n{title: Simulated}\n[C]Hello"
+      });
+    }
+
+    const common = {
+      provider: "gemini" as const,
+      requestedModel,
+      retryable: false,
+      helpLinks: [] as string[]
+    };
+
+    if (kind === "missing_api_key") {
+      throw new LLMProviderError({
+        ...common,
+        category: "missing_api_key",
+        technicalMessage: "Simulated Gemini error: API key required to generate."
+      });
+    }
+
+    if (kind === "invalid_api_key") {
+      throw new LLMProviderError({
+        ...common,
+        statusCode: 400,
+        providerStatus: "INVALID_ARGUMENT",
+        category: "invalid_api_key",
+        technicalMessage: "Simulated Gemini request failed (400 INVALID_ARGUMENT): API key not valid. Please pass a valid API key.",
+        rawBody: JSON.stringify({
+          error: {
+            code: 400,
+            message: "API key not valid. Please pass a valid API key.",
+            status: "INVALID_ARGUMENT"
+          }
+        })
+      });
+    }
+
+    if (kind === "rate_or_quota" || kind === "quota") {
+      throw new LLMProviderError({
+        ...common,
+        statusCode: 429,
+        providerStatus: "RESOURCE_EXHAUSTED",
+        category: kind === "quota" ? "quota" : "rate_or_quota",
+        retryable: true,
+        technicalMessage: kind === "quota"
+          ? "Simulated Gemini request failed (429 RESOURCE_EXHAUSTED): Quota exceeded for this Gemini project."
+          : "Simulated Gemini request failed (429 RESOURCE_EXHAUSTED): Resource has been exhausted.",
+        rawBody: JSON.stringify({
+          error: {
+            code: 429,
+            message: kind === "quota" ? "Quota exceeded for this Gemini project." : "Resource has been exhausted.",
+            status: "RESOURCE_EXHAUSTED"
+          }
+        })
+      });
+    }
+
+    if (kind === "model_unavailable") {
+      throw new LLMProviderError({
+        ...common,
+        statusCode: 404,
+        providerStatus: "NOT_FOUND",
+        category: "model_unavailable",
+        technicalMessage: `Simulated Gemini request failed (404 NOT_FOUND): Model ${requestedModel ?? "selected"} is not found or is not supported for generateContent.`
+      });
+    }
+
+    if (kind === "service_unavailable") {
+      throw new LLMProviderError({
+        ...common,
+        statusCode: 503,
+        providerStatus: "UNAVAILABLE",
+        category: "service_unavailable",
+        retryable: true,
+        technicalMessage: "Simulated Gemini request failed (503 UNAVAILABLE): The service is temporarily overloaded."
+      });
+    }
+
+    if (kind === "network") {
+      throw new LLMProviderError({
+        ...common,
+        category: "network",
+        retryable: true,
+        technicalMessage: "Simulated Gemini network error: failed to fetch."
+      });
+    }
+
+    if (kind === "empty_response") {
+      throw new LLMProviderError({
+        ...common,
+        category: "empty_response",
+        technicalMessage: "Simulated Gemini response did not include generated text."
+      });
+    }
   }
 
   function clearCurrentAbortController(controller?: AbortController | null): void {
@@ -1226,6 +1499,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     error.value = "";
+    conversionErrorInfo.value = null;
     retryLog.value = [];
     validationReason.value = "";
     validationRawOutput.value = "";
@@ -1237,6 +1511,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
       cleanedText: string;
       chordPro: string;
       song: Song;
+      provider?: string;
+      requestedModel?: string;
+      modelVersion?: string;
       retryLog?: string[];
     },
     entryPoint: PipelineEntryPoint
@@ -1262,6 +1539,10 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     retryLog.value = result.retryLog ?? [];
+    const resolvedModelLabel = modelLabel(result.requestedModel, result.modelVersion);
+    if (resolvedModelLabel) {
+      lastConversionModelLabel.value = resolvedModelLabel;
+    }
   }
 
   async function runPipeline(options?: RunPipelineOptions): Promise<boolean> {
@@ -1283,6 +1564,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     isGeneratingPreview.value = true;
 
     try {
+      simulateConversionError(options?.simulatedConversionError, options?.model);
       const pipeline = createPipeline(options?.model);
       const result = await pipeline.process(
         {
@@ -1334,12 +1616,28 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
         retryLog.value = err.retryLog;
       }
 
+      conversionErrorInfo.value = conversionErrorFromUnknown(err);
+
       if (err instanceof InsufficientInputError) {
         error.value = err.message;
+        conversionErrorEventId.value += 1;
+        return true;
+      }
+
+      if (err instanceof GeminiRetryError && err.causeError) {
+        error.value = `${err.message}: ${err.causeError.technicalMessage}`;
+        conversionErrorEventId.value += 1;
+        return true;
+      }
+
+      if (err instanceof LLMProviderError) {
+        error.value = err.technicalMessage;
+        conversionErrorEventId.value += 1;
         return true;
       }
 
       error.value = err instanceof Error ? err.message : "Pipeline execution failed.";
+      conversionErrorEventId.value += 1;
       return true;
     } finally {
       clearCurrentAbortController(abortController);
@@ -1608,6 +1906,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     error.value = "";
+    conversionErrorInfo.value = null;
     songbookError.value = "";
 
     try {
@@ -1668,6 +1967,7 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     }
 
     error.value = "";
+    conversionErrorInfo.value = null;
     songbookError.value = "";
 
     try {
@@ -2067,6 +2367,9 @@ function createSongWorkspace({ appConfig }: SongWorkspaceDependencies): SongWork
     isManualPreviewRefresh,
     isExportingSongbook,
     error,
+    conversionErrorInfo,
+    conversionErrorEventId,
+    lastConversionModelLabel,
     songbookError,
     retryLog,
     validationReason,

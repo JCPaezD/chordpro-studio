@@ -329,6 +329,12 @@ Current runtime API key handling:
 - the shared workspace receives the current Gemini API key through dependency injection
 - providers do not read config directly
 
+Provider error contract:
+
+- provider adapters may throw `LLMProviderError` with a conservative category, requested model, provider status/code, raw technical message, raw body/details and help links when the provider returns structured failure data
+- the shared workspace maps that provider-level detail into User View messages while preserving the technical detail for Playground
+- Gemini `modelVersion` is propagated on successful conversions when the API returns it; errors only claim the requested model unless a resolved model version is available
+
 Environment-based keys may still be used for development-only fallback paths such as explicit OpenAI testing, but the normal User workflow now depends on the persisted Gemini key managed in the app UI.
 
 ---
